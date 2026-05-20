@@ -67,6 +67,19 @@ ${expiryNote("This link expires in 1 hour. If you didn't sign up for FeedLog, yo
   })
 }
 
+export function renderInvitationEmail({ url, orgName }: { url: string; orgName: string }): string {
+  return layout({
+    preheader: `You're invited to join ${orgName} on FeedLog.`,
+    content: `
+<h2 style="margin: 0 0 16px; font-size: 20px; font-weight: 600;">Join ${orgName} on FeedLog</h2>
+<p style="margin: 0 0 12px;">You've been invited to collaborate. Click below to accept and get started:</p>
+${actionButton(url, 'Accept invitation')}
+${fallbackLink(url)}
+${expiryNote('This invitation link is tied to your email. If you weren\'t expecting it, you can safely ignore this message.')}
+`,
+  })
+}
+
 export function renderResetPasswordEmail({ url, name }: { url: string; name: string }): string {
   return layout({
     preheader: "A password reset was requested for your account. If it wasn't you, ignore this email.",

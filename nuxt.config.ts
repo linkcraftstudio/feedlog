@@ -123,7 +123,7 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      uploadPrefix: 'uploads',
+      uploadPrefix: process.env.NUXT_PUBLIC_UPLOAD_PREFIX || 'uploads',
     },
   },
 })

@@ -38,6 +38,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 // Generate and store embedding for a post with optimistic lock on content_hash
 export async function generatePostEmbedding(
   postId: string,
+  orgId: string,
   title: string,
   content: string,
   contentHash: string,
@@ -77,6 +78,7 @@ export async function generatePostEmbedding(
         .insert(postEmbedding)
         .values({
           postId,
+          orgId,
           embedding,
           model: EMBEDDING_MODEL,
           contentHash,

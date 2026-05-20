@@ -1,16 +1,23 @@
 import { eq, and, sql } from 'drizzle-orm'
 import { vote, post } from '#layers/feedlog/server/db/schemas'
 
-// POST /api/posts/:id/vote — Vote on a post (requires auth, idempotent)
+// POST /api/posts/:id/vote — Vote on a post (any authenticated user, idempotent).
 export default defineEventHandler(async (event) => {
-  const session = await requireAuth(event)
+  const { session, orgId } = await requireAuthInOrg(event)
   const postId = getRouterParam(event, 'postId')!
 
   const db = useDB()
 
-  // Block voting on merged posts
-  const [p] = await db.select({ mergedTo: post.mergedTo }).from(post).where(eq(post.id, postId)).limit(1)
-  if (p?.mergedTo) {
+  // Block voting on merged posts; also confirms the post belongs to this org.
+  const [p] = await db
+    .select({ mergedTo: post.mergedTo })
+    .from(post)
+    .where(and(eq(post.id, postId), eq(post.orgId, orgId)))
+    .limit(1)
+  if (!p) {
+    throw createError({ statusCode: 404, message: 'Post not found' })
+  }
+  if (p.mergedTo) {
     throw createError({ statusCode: 403, message: 'Cannot vote on a merged post' })
   }
 

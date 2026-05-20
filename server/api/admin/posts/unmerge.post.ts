@@ -6,9 +6,9 @@ const unmergeSchema = z.object({
   postId: z.uuid(),
 })
 
-// POST /api/admin/posts/unmerge — Unmerge a previously merged post
+// POST /api/admin/posts/unmerge — Unmerge a previously merged post (manager+).
 export default defineEventHandler(async (event) => {
-  await requireAdmin(event)
+  const { orgId } = await requireOrgPermission(event, { feedlog: ['moderate'] })
   const body = await readValidatedBody(event, unmergeSchema.parse)
 
   const db = useDB()
@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
   const [mergedPost] = await db
     .select({ id: post.id, mergedTo: post.mergedTo })
     .from(post)
-    .where(eq(post.id, body.postId))
+    .where(and(eq(post.id, body.postId), eq(post.orgId, orgId)))
     .limit(1)
 
   if (!mergedPost) {

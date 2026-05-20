@@ -4,6 +4,7 @@ import { comment, commentLike, user, post } from '#layers/feedlog/server/db/sche
 // GET /api/posts/:postId/comments — Unified comment query (top-level, children, pagination)
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
+  const orgId = event.context.orgId!
   const postId = getRouterParam(event, 'postId')!
   const query = getQuery(event)
 
@@ -15,6 +16,13 @@ export default defineEventHandler(async (event) => {
   const childrenLimit = Math.min(Number(query.childrenLimit) || 5, 20)
 
   const db = useDB()
+
+  // Confirm the parent post belongs to the active org before exposing comments.
+  const [postRow] = await db.select({ id: post.id }).from(post)
+    .where(and(eq(post.id, postId), eq(post.orgId, orgId))).limit(1)
+  if (!postRow) {
+    throw createError({ statusCode: 404, message: 'Post not found' })
+  }
 
   // Loading child comments for a specific parent
   if (parentId) {

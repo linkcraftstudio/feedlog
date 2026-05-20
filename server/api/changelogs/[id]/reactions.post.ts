@@ -2,19 +2,19 @@ import { eq, and, sql, isNotNull } from 'drizzle-orm'
 import { changelog, changelogReaction } from '#layers/feedlog/server/db/schemas'
 import { reactionSchema } from '#layers/feedlog/shared/schemas/changelog'
 
-// POST /api/changelogs/:id/reactions — Add reaction (requires auth, idempotent)
+// POST /api/changelogs/:id/reactions — Add reaction (any authenticated user, idempotent).
 export default defineEventHandler(async (event) => {
-  const session = await requireAuth(event)
+  const { session, orgId } = await requireAuthInOrg(event)
   const id = getRouterParam(event, 'id')!
   const body = await readValidatedBody(event, reactionSchema.parse)
 
   const db = useDB()
 
-  // Verify changelog exists and is published
+  // Verify changelog exists, is published, and belongs to this org.
   const [entry] = await db
     .select({ id: changelog.id })
     .from(changelog)
-    .where(and(eq(changelog.id, id), isNotNull(changelog.publishedAt)))
+    .where(and(eq(changelog.id, id), eq(changelog.orgId, orgId), isNotNull(changelog.publishedAt)))
     .limit(1)
 
   if (!entry) {

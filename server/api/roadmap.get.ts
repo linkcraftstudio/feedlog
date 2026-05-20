@@ -15,6 +15,7 @@ type RoadmapResponse = Record<typeof ROADMAP_STATUSES[number], RoadmapColumn>
 // GET /api/roadmap — Roadmap view: posts grouped by status
 export default defineEventHandler(async (event): Promise<RoadmapResponse> => {
   const session = await getUserSession(event)
+  const orgId = event.context.orgId!
   const query = getQuery(event)
   const boardId = query.boardId as string | undefined
 
@@ -25,7 +26,7 @@ export default defineEventHandler(async (event): Promise<RoadmapResponse> => {
 
   // Query 1: UNION ALL — top 20 per status by votes
   const statusQueries = ROADMAP_STATUSES.map(status => {
-    const conditions: any[] = [eq(post.status, status), isNull(post.mergedTo)]
+    const conditions: any[] = [eq(post.orgId, orgId), eq(post.status, status), isNull(post.mergedTo)]
     if (boardCondition) conditions.push(boardCondition)
 
     return db
@@ -52,7 +53,7 @@ export default defineEventHandler(async (event): Promise<RoadmapResponse> => {
   })
 
   // Query 2: counts per status
-  const countConditions: any[] = [inArray(post.status, [...ROADMAP_STATUSES]), isNull(post.mergedTo)]
+  const countConditions: any[] = [eq(post.orgId, orgId), inArray(post.status, [...ROADMAP_STATUSES]), isNull(post.mergedTo)]
   if (boardCondition) countConditions.push(boardCondition)
 
   const [results, counts] = await Promise.all([

@@ -14,9 +14,10 @@ export default defineEventHandler(async (event): Promise<CursorPaginatedList<Pos
   const pageSize = Math.min(Number(query.pageSize) || 10, 100)
 
   const db = useDB()
+  const orgId = event.context.orgId!
 
   // Default: exclude merged posts
-  const conditions: any[] = [isNull(post.mergedTo)]
+  const conditions: any[] = [eq(post.orgId, orgId), isNull(post.mergedTo)]
   if (boardId) conditions.push(eq(post.boardId, boardId))
   if (status) conditions.push(eq(post.status, status))
 

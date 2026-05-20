@@ -67,12 +67,40 @@ function switchTo(target: ModalState) {
 }
 
 // --- Social OAuth (shared popup logic) ---
+//
+// callbackURL is where better-auth 302s after the OAuth flow finishes
+// (the redirect_uri registered with Google/GitHub).
+//
+//   - Default (authDomain unset or same-origin as the current page):
+//     callbackURL='/auth/callback' — same-origin popup that postMessages
+//     the opener and closes.
+//
+//   - Cross-domain (authDomain on a different host): callbackURL is
+//     `{authDomain}/api/auth/post-login?return=...`, an endpoint that
+//     mints a one-time-token and bounces back to the current host's
+//     /api/auth/handoff. The handoff endpoint sets the session cookie and
+//     lands the popup on /auth/callback, which then postMessages the
+//     opener as before.
+function buildCallbackURL(): string {
+  const authDomain = (useRuntimeConfig().public.authDomain || '') as string
+  if (!authDomain || typeof window === 'undefined') return '/auth/callback'
+  let crossOrigin = false
+  try {
+    crossOrigin = new URL(authDomain).origin !== window.location.origin
+  } catch {
+    return '/auth/callback'
+  }
+  if (!crossOrigin) return '/auth/callback'
+  const returnTo = `${window.location.origin}/auth/callback`
+  return `${authDomain}/api/auth/post-login?return=${encodeURIComponent(returnTo)}`
+}
+
 async function loginWithSocial(provider: 'google' | 'github') {
   loading.value = true
 
   const res = await $fetch<{ url: string }>('/api/auth/sign-in/social', {
     method: 'POST',
-    body: { provider, callbackURL: '/auth/callback' },
+    body: { provider, callbackURL: buildCallbackURL() },
   })
 
   const width = 500

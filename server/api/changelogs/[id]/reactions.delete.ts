@@ -1,25 +1,25 @@
 import { eq, and, sql, isNotNull } from 'drizzle-orm'
 import { changelog, changelogReaction } from '#layers/feedlog/server/db/schemas'
+import { reactionSchema } from '#layers/feedlog/shared/schemas/changelog'
 
-// DELETE /api/changelogs/:id/reactions?emoji=👍 — Remove reaction (requires auth, idempotent)
+// DELETE /api/changelogs/:id/reactions?emoji=👍 — Remove reaction (any authenticated user, idempotent).
 export default defineEventHandler(async (event) => {
-  const session = await requireAuth(event)
+  const { session, orgId } = await requireAuthInOrg(event)
   const id = getRouterParam(event, 'id')!
   const query = getQuery(event)
-  const emoji = query.emoji as string
-
-  // Validate emoji
-  if (!emoji || !(CHANGELOG_EMOJIS as readonly string[]).includes(emoji)) {
+  const parsed = reactionSchema.safeParse({ emoji: query.emoji })
+  if (!parsed.success) {
     throw createError({ statusCode: 400, message: 'Invalid emoji' })
   }
+  const { emoji } = parsed.data
 
   const db = useDB()
 
-  // Verify changelog exists and is published
+  // Verify changelog exists, is published, belongs to this org.
   const [entry] = await db
     .select({ id: changelog.id })
     .from(changelog)
-    .where(and(eq(changelog.id, id), isNotNull(changelog.publishedAt)))
+    .where(and(eq(changelog.id, id), eq(changelog.orgId, orgId), isNotNull(changelog.publishedAt)))
     .limit(1)
 
   if (!entry) {

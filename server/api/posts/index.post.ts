@@ -2,9 +2,9 @@ import { post, postSearch, user } from '#layers/feedlog/server/db/schemas'
 import { eq } from 'drizzle-orm'
 import { createPostSchema } from '#layers/feedlog/shared/schemas/post'
 
-// POST /api/posts — Create a post (requires authentication)
+// POST /api/posts — Create a post (any authenticated user: end-user or staff).
 export default defineEventHandler(async (event) => {
-  const session = await requireAuth(event)
+  const { session, orgId } = await requireAuthInOrg(event)
 
   const body = await readValidatedBody(event, createPostSchema.parse)
 
@@ -16,6 +16,7 @@ export default defineEventHandler(async (event) => {
   const [created] = await db
     .insert(post)
     .values({
+      orgId,
       title: body.title,
       content: body.content,
       excerpt,
@@ -34,11 +35,11 @@ export default defineEventHandler(async (event) => {
   const searchText = stripMarkdown(body.title + '\n' + body.content)
   await db
     .insert(postSearch)
-    .values({ postId: created.id, searchText })
+    .values({ postId: created.id, orgId, searchText })
 
   // Async embedding generation (non-blocking)
   event.waitUntil(
-    generatePostEmbedding(created.id, body.title, body.content, contentHash),
+    generatePostEmbedding(created.id, orgId, body.title, body.content, contentHash),
   )
 
   const [author] = await db

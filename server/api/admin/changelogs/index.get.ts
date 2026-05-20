@@ -1,9 +1,12 @@
 import { eq, and, desc, sql, or } from 'drizzle-orm'
 import { changelog, user } from '#layers/feedlog/server/db/schemas'
 
-// GET /api/admin/changelogs — Admin changelog list (page pagination, trgm search)
+// GET /api/admin/changelogs — Admin list. Any org member can read; mutation
+// endpoints (create / update / publish / delete) are gated by feedlog:moderate.
+// Note: this surfaces draft / scheduled rows to contributors too — that's
+// intentional, since the dashboard route is the only place those exist.
 export default defineEventHandler(async (event) => {
-  await requireAdmin(event)
+  const { orgId } = await requireOrgMember(event)
 
   const query = getQuery(event)
   const status = query.status as string | undefined
@@ -14,7 +17,7 @@ export default defineEventHandler(async (event) => {
 
   const db = useDB()
 
-  const conditions: any[] = []
+  const conditions: any[] = [eq(changelog.orgId, orgId)]
   if (status) conditions.push(eq(changelog.status, status))
   if (search && search.length >= 1) {
     conditions.push(
@@ -27,7 +30,7 @@ export default defineEventHandler(async (event) => {
     )
   }
 
-  const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+  const whereClause = and(...conditions)
 
   const [countResult] = await db
     .select({ total: sql<number>`cast(count(*) as int)` })

@@ -79,7 +79,7 @@ function initials(name: string | null) {
   <MergedPostCard
     v-if="isMergedPost"
     :comment="comment"
-    :is-admin="usePermission(computed(() => ''), 'post').isAdmin.value"
+    :is-admin="usePermission(computed(() => ''), 'post').isOrgManager.value"
     @unmerge="$emit('unmerge', $event)"
   />
 

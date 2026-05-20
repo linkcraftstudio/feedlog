@@ -1,12 +1,23 @@
 import { eq, and, sql } from 'drizzle-orm'
-import { commentLike, comment } from '#layers/feedlog/server/db/schemas'
+import { commentLike, comment, post } from '#layers/feedlog/server/db/schemas'
 
-// POST /api/comments/:id/like — Like a comment (requires auth, idempotent)
+// POST /api/comments/:id/like — Like a comment (any authenticated user, idempotent).
 export default defineEventHandler(async (event) => {
-  const session = await requireAuth(event)
+  const { session, orgId } = await requireAuthInOrg(event)
   const commentId = getRouterParam(event, 'id')!
 
   const db = useDB()
+
+  // Confirm the comment lives in this org via its parent post.
+  const [scope] = await db
+    .select({ id: comment.id })
+    .from(comment)
+    .leftJoin(post, eq(comment.postId, post.id))
+    .where(and(eq(comment.id, commentId), eq(post.orgId, orgId)))
+    .limit(1)
+  if (!scope) {
+    throw createError({ statusCode: 404, message: 'Comment not found' })
+  }
 
   // Check if already liked
   const [existing] = await db

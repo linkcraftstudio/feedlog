@@ -1,9 +1,9 @@
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { changelog } from '#layers/feedlog/server/db/schemas'
 
-// POST /api/admin/changelogs/:id/publish — Publish changelog (admin)
+// POST /api/admin/changelogs/:id/publish — Publish changelog (feedlog:moderate).
 export default defineEventHandler(async (event) => {
-  await requireAdmin(event)
+  const { orgId } = await requireOrgPermission(event, { feedlog: ['moderate'] })
 
   const id = getRouterParam(event, 'id')!
   const db = useDB()
@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
       cover: changelog.cover,
     })
     .from(changelog)
-    .where(eq(changelog.id, id))
+    .where(and(eq(changelog.id, id), eq(changelog.orgId, orgId)))
     .limit(1)
 
   if (!existing) {
@@ -39,7 +39,7 @@ export default defineEventHandler(async (event) => {
       status: 'published',
       publishedAt: new Date(),
     })
-    .where(eq(changelog.id, id))
+    .where(and(eq(changelog.id, id), eq(changelog.orgId, orgId)))
     .returning()
 
   return updated

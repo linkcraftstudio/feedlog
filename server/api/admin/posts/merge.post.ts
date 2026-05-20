@@ -1,15 +1,15 @@
-import { eq, and, sql, isNull } from 'drizzle-orm'
+import { eq, and, sql } from 'drizzle-orm'
 import { z } from 'zod/v4'
-import { post, vote, comment } from '#layers/feedlog/server/db/schemas'
+import { post, comment } from '#layers/feedlog/server/db/schemas'
 
 const mergeSchema = z.object({
   canonicalPostId: z.uuid(),
   mergedPostId: z.uuid(),
 })
 
-// POST /api/admin/posts/merge — Merge a post into a canonical post
+// POST /api/admin/posts/merge — Merge a post into a canonical post (manager+).
 export default defineEventHandler(async (event) => {
-  const session = await requireAdmin(event)
+  const { session, orgId } = await requireOrgPermission(event, { feedlog: ['moderate'] })
   const body = await readValidatedBody(event, mergeSchema.parse)
 
   if (body.canonicalPostId === body.mergedPostId) {
@@ -18,11 +18,11 @@ export default defineEventHandler(async (event) => {
 
   const db = useDB()
 
-  // Fetch both posts
+  // Fetch both posts (must belong to current org)
   const [canonical] = await db
     .select({ id: post.id, mergedTo: post.mergedTo })
     .from(post)
-    .where(eq(post.id, body.canonicalPostId))
+    .where(and(eq(post.id, body.canonicalPostId), eq(post.orgId, orgId)))
     .limit(1)
 
   if (!canonical) {
@@ -35,7 +35,7 @@ export default defineEventHandler(async (event) => {
   const [merged] = await db
     .select({ id: post.id, mergedTo: post.mergedTo })
     .from(post)
-    .where(eq(post.id, body.mergedPostId))
+    .where(and(eq(post.id, body.mergedPostId), eq(post.orgId, orgId)))
     .limit(1)
 
   if (!merged) {
@@ -68,7 +68,7 @@ export default defineEventHandler(async (event) => {
       WHERE id = ${body.canonicalPostId}
     `)
 
-    // 4. Insert merge comment record
+    // 4. Insert merge comment record (org-scoped via canonical post)
     await tx
       .insert(comment)
       .values({

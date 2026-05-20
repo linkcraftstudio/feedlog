@@ -1,12 +1,20 @@
 import { eq, and, sql } from 'drizzle-orm'
 import { vote, post } from '#layers/feedlog/server/db/schemas'
 
-// DELETE /api/posts/:id/vote — Remove vote (requires auth, idempotent)
+// DELETE /api/posts/:id/vote — Remove own vote (any authenticated user, idempotent).
+// Scoped to the caller's userId, so "own" is implicit — no row check needed.
 export default defineEventHandler(async (event) => {
-  const session = await requireAuth(event)
+  const { session, orgId } = await requireAuthInOrg(event)
   const postId = getRouterParam(event, 'postId')!
 
   const db = useDB()
+
+  // Confirm post belongs to this org (defence in depth)
+  const [p0] = await db.select({ id: post.id }).from(post)
+    .where(and(eq(post.id, postId), eq(post.orgId, orgId))).limit(1)
+  if (!p0) {
+    throw createError({ statusCode: 404, message: 'Post not found' })
+  }
 
   // Delete vote
   const [deleted] = await db

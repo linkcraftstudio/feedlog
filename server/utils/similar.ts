@@ -3,6 +3,7 @@ import { post, postEmbedding, postSearch, vote } from '#layers/feedlog/server/db
 import { user } from '#layers/feedlog/server/db/schemas/auth'
 
 interface SimilarSearchOptions {
+  orgId: string
   excludePostId?: string
   limit?: number
   userId?: string // for hasVoted check
@@ -23,13 +24,13 @@ export interface SimilarPost {
 // Search similar posts using pgvector cosine distance
 export async function searchSimilarByEmbedding(
   embedding: number[],
-  options: SimilarSearchOptions = {},
+  options: SimilarSearchOptions,
 ): Promise<SimilarPost[]> {
-  const { excludePostId, limit = 3, userId } = options
+  const { orgId, excludePostId, limit = 3, userId } = options
   const db = useDB()
   const vectorStr = `[${embedding.join(',')}]`
 
-  const conditions = [isNull(post.mergedTo)]
+  const conditions = [eq(post.orgId, orgId), isNull(post.mergedTo)]
   if (excludePostId) conditions.push(ne(post.id, excludePostId))
 
   const rows = await db
@@ -58,12 +59,12 @@ export async function searchSimilarByEmbedding(
 // Search similar posts using pg_trgm text distance
 export async function searchSimilarByTrgm(
   text: string,
-  options: SimilarSearchOptions = {},
+  options: SimilarSearchOptions,
 ): Promise<SimilarPost[]> {
-  const { excludePostId, limit = 3, userId } = options
+  const { orgId, excludePostId, limit = 3, userId } = options
   const db = useDB()
 
-  const conditions = [isNull(post.mergedTo)]
+  const conditions = [eq(post.orgId, orgId), isNull(post.mergedTo)]
   if (excludePostId) conditions.push(ne(post.id, excludePostId))
 
   const rows = await db
@@ -92,7 +93,7 @@ export async function searchSimilarByTrgm(
 // Search similar posts by existing post ID (uses stored embedding or fallback to trgm)
 export async function searchSimilarByPostId(
   postId: string,
-  options: Omit<SimilarSearchOptions, 'excludePostId'> = {},
+  options: Omit<SimilarSearchOptions, 'excludePostId'>,
 ): Promise<SimilarPost[]> {
   const db = useDB()
 

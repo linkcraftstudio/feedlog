@@ -195,14 +195,28 @@ on `/app/.data` so local uploads survive container restarts.
 | Backblaze B2     | `https://s3.us-west-002.backblazeb2.com`        | `us-west-002`         |
 | Wasabi           | `https://s3.us-east-1.wasabisys.com`            | `us-east-1`           |
 
+Some providers, including Alibaba OSS, may require virtual-hosted style.
+If your provider rejects path-style requests, keep `S3_BUCKET` set and use
+the bucket endpoint directly, for example
+`https://<bucket>.oss-cn-hangzhou.aliyuncs.com`.
+
 The `modules/blob-s3` module is gated to Node / Docker presets — on
 Cloudflare Workers and Vercel builds it is skipped entirely so neither
 the s3 driver nor `aws4fetch` ends up in those bundles.
 
-### `NUXT_PUBLIC_UPLOAD_PREFIX` &nbsp;⬜ optional, default `uploads`
+### `UPLOAD_PREFIX` / `NUXT_PUBLIC_UPLOAD_PREFIX` &nbsp;⬜ optional, default `uploads`
 
 Object key prefix under which uploads are stored. Read at runtime.
 Useful when sharing a bucket between environments.
+
+```bash
+UPLOAD_PREFIX=prod/uploads
+NUXT_PUBLIC_UPLOAD_PREFIX=prod/uploads
+```
+
+`UPLOAD_PREFIX` is the server-only name used by the upload API.
+`NUXT_PUBLIC_UPLOAD_PREFIX` remains supported for deployments that already
+use Nuxt public runtime env naming.
 
 ---
 

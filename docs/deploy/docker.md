@@ -106,6 +106,10 @@ S3_ENDPOINT=https://oss-cn-hangzhou.aliyuncs.com   # non-AWS services
 S3_REGION=oss-cn-hangzhou                          # AWS or strict-region service
 ```
 
+For providers that require virtual-hosted style, keep `S3_BUCKET` set
+and use the bucket endpoint directly, for example
+`S3_ENDPOINT=https://<bucket>.oss-cn-hangzhou.aliyuncs.com`.
+
 Restart the container; on boot the plugin logs
 `Registered blob provider: s3 (bucket=...)`. Rotation is just an
 `.env` edit + restart.

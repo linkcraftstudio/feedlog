@@ -9,6 +9,7 @@ const schema = z.object({
 // POST /api/posts/similar — Search similar posts by input text (for submit modal + merge dialog)
 export default defineEventHandler(async (event) => {
   const session = await requireAuth(event)
+  const orgId = event.context.orgId!
   const body = await readValidatedBody(event, schema.parse)
 
   const text = body.content
@@ -22,7 +23,7 @@ export default defineEventHandler(async (event) => {
   if (isEmbeddingEnabled()) {
     try {
       const embedding = await generateEmbedding(plainText)
-      const data = await searchSimilarByEmbedding(embedding, { limit, userId })
+      const data = await searchSimilarByEmbedding(embedding, { orgId, limit, userId })
       return { data }
     } catch {
       // Embedding failed, fall through to trgm
@@ -30,6 +31,6 @@ export default defineEventHandler(async (event) => {
   }
 
   // Fallback to pg_trgm
-  const data = await searchSimilarByTrgm(plainText, { limit, userId })
+  const data = await searchSimilarByTrgm(plainText, { orgId, limit, userId })
   return { data }
 })

@@ -9,6 +9,17 @@ import { consola } from 'consola'
 
 const logger = consola.withTag('blob')
 
+function isBucketEndpoint(endpoint: string | undefined, bucket: string) {
+  if (!endpoint) return false
+  try {
+    const hostname = new URL(endpoint).hostname
+    return hostname === bucket || hostname.startsWith(`${bucket}.`)
+  }
+  catch {
+    return false
+  }
+}
+
 export default defineNitroPlugin(() => {
   const accessKeyId = process.env.S3_ACCESS_KEY_ID
   const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY
@@ -26,14 +37,15 @@ export default defineNitroPlugin(() => {
     return
   }
 
+  const endpointIncludesBucket = isBucketEndpoint(endpoint, bucket)
   const storage = createBlobStorage(createDriver({
     accessKeyId,
     secretAccessKey,
-    bucket,
+    bucket: endpointIncludesBucket ? '' : bucket,
     region,
     endpoint,
   }))
 
   registerBlobProvider({ name: 's3', storage })
-  logger.info(`Registered blob provider: s3 (bucket=${bucket}${endpoint ? `, endpoint=${endpoint}` : ''})`)
+  logger.info(`Registered blob provider: s3 (bucket=${bucket}${endpoint ? `, endpoint=${endpoint}` : ''}${endpointIncludesBucket ? ', bucketEndpoint=true' : ''})`)
 })

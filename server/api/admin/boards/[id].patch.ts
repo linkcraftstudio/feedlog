@@ -1,10 +1,10 @@
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { board } from '#layers/feedlog/server/db/schemas'
 import { updateBoardSchema } from '#layers/feedlog/shared/schemas/board'
 
-// PATCH /api/boards/:id — Update board (admin)
+// PATCH /api/boards/:id — Update board (feedlog:moderate).
 export default defineEventHandler(async (event) => {
-  await requireAdmin(event)
+  const { orgId } = await requireOrgPermission(event, { feedlog: ['moderate'] })
 
   const id = getRouterParam(event, 'id')!
   const body = await readValidatedBody(event, updateBoardSchema.parse)
@@ -21,7 +21,7 @@ export default defineEventHandler(async (event) => {
   const [updated] = await db
     .update(board)
     .set(updates)
-    .where(eq(board.id, id))
+    .where(and(eq(board.id, id), eq(board.orgId, orgId)))
     .returning()
 
   if (!updated) {

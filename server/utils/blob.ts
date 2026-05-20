@@ -1,10 +1,11 @@
-// Blob storage abstraction — registry pattern (parallel to email.ts)
+// Blob storage abstraction — registry pattern (parallel to email.ts).
 // Auto-imported by Nitro; `blobStorage` is the resolved BlobStorage,
 // forwarded lazily to whichever provider is registered. Named to avoid
 // shadowing `@nuxthub/blob`'s own `blob` / `ensureBlob` server
 // auto-imports (which would trigger a Nitro duplicate-import warning).
-// Providers register in server/plugins/blob.ts (feedlog default) or in
-// downstream layers/modules that want to plug in their own storage.
+// The default provider registers in server/plugins/blob.ts; additional
+// providers (S3, R2, custom OSS) can register via `registerBlobProvider()`
+// from their own Nitro plugin.
 
 import type { BlobStorage } from '@nuxthub/core/blob'
 
@@ -28,9 +29,9 @@ export function resolveBlobProvider(): BlobProvider {
   if (preferred && providers.has(preferred))
     return providers.get(preferred)!
 
-  // 2. Any non-default provider registered by a downstream layer wins over
-  // the built-in nuxthub fallback, so consumers can drop in S3 / R2 / OSS
-  // without having to set NUXT_BLOB_PROVIDER explicitly.
+  // 2. Any non-default provider wins over the built-in nuxthub fallback,
+  // so dropping in S3 / R2 / OSS doesn't require setting NUXT_BLOB_PROVIDER
+  // explicitly.
   for (const [name, provider] of providers) {
     if (name !== 'nuxthub') return provider
   }

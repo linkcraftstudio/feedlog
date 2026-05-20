@@ -1,9 +1,12 @@
 import { eq, and, desc, sql, isNull, isNotNull } from 'drizzle-orm'
 import { post, user } from '#layers/feedlog/server/db/schemas'
 
-// GET /api/admin/posts — Admin post list (page pagination, admin)
+// GET /api/admin/posts — Admin post list (page pagination)
+// Org-member gate only: the list itself is read-only and contributors need
+// it to navigate the dashboard. Moderation actions (delete / merge /
+// change-status / update:any) are gated on their own endpoints.
 export default defineEventHandler(async (event): Promise<PagePaginatedList<PostListItem>> => {
-  await requireAdmin(event)
+  const { orgId } = await requireOrgMember(event)
 
   const query = getQuery(event)
   const boardId = query.boardId as string | undefined
@@ -16,13 +19,13 @@ export default defineEventHandler(async (event): Promise<PagePaginatedList<PostL
 
   const db = useDB()
 
-  const conditions: any[] = []
+  const conditions: any[] = [eq(post.orgId, orgId)]
   if (boardId) conditions.push(eq(post.boardId, boardId))
   if (status) conditions.push(eq(post.status, status))
   if (merged === 'canonical_only') conditions.push(isNull(post.mergedTo))
   else if (merged === 'merged_only') conditions.push(isNotNull(post.mergedTo))
   // 'all' — no merge filter
-  const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+  const whereClause = and(...conditions)
 
   const sortCol = sort === 'votes' ? post.voteCount : sort === 'comments' ? post.commentCount : post.createdAt
 

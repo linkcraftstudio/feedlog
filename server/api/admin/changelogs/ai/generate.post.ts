@@ -1,13 +1,14 @@
 import OpenAI from 'openai'
-import { inArray } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { post } from '#layers/feedlog/server/db/schemas'
 import { aiGenerateSchema } from '#layers/feedlog/shared/schemas/changelog'
 
 const MAX_COMPLETION_TOKENS = 8192
 
-// POST /api/admin/changelogs/ai/generate — AI changelog generation (admin)
+// POST /api/admin/changelogs/ai/generate — AI changelog generation
+// (feedlog:moderate — moderators only).
 export default defineEventHandler(async (event) => {
-  await requireAdmin(event)
+  const { orgId } = await requireOrgPermission(event, { feedlog: ['moderate'] })
 
   const body = await readValidatedBody(event, aiGenerateSchema.parse)
 
@@ -26,7 +27,7 @@ export default defineEventHandler(async (event) => {
     const posts = await db
       .select({ title: post.title, content: post.content })
       .from(post)
-      .where(inArray(post.id, body.feedbackIds))
+      .where(and(eq(post.orgId, orgId), inArray(post.id, body.feedbackIds)))
 
     feedback.push(...posts)
   }

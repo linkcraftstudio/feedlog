@@ -1,9 +1,9 @@
 import { changelog } from '#layers/feedlog/server/db/schemas'
 import { createChangelogSchema } from '#layers/feedlog/shared/schemas/changelog'
 
-// POST /api/admin/changelogs — Create changelog (admin)
+// POST /api/admin/changelogs — Create changelog (feedlog:moderate).
 export default defineEventHandler(async (event) => {
-  const session = await requireAdmin(event)
+  const { session, orgId } = await requireOrgPermission(event, { feedlog: ['moderate'] })
   const body = await readValidatedBody(event, createChangelogSchema.parse)
 
   const db = useDB()
@@ -12,6 +12,7 @@ export default defineEventHandler(async (event) => {
   const [created] = await db
     .insert(changelog)
     .values({
+      orgId,
       authorId: session.user.id,
       slug,
       title: body.title,

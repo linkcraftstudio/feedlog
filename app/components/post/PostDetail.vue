@@ -48,7 +48,7 @@ const loginModal = useLoginModal()
 
 // Permissions
 const postAuthorId = computed(() => post.value?.author?.id)
-const { canEdit: canEditPost, canDelete: canDeletePost, isAdmin, showMenu: showPostMenu } = usePermission(postAuthorId, 'post')
+const { canEdit: canEditPost, canDelete: canDeletePost, isOrgManager, showMenu: showPostMenu } = usePermission(postAuthorId, 'post')
 
 
 function initials(name: string | null) {
@@ -95,7 +95,7 @@ async function saveEditPost() {
   editSaving.value = true
   editError.value = ''
   try {
-    await store.updatePost(props.slug, { title, content }, isAdmin.value)
+    await store.updatePost(props.slug, { title, content }, isOrgManager.value)
     editing.value = false
     emit('updated', { id: post.value.id, slug: post.value.slug, title, content })
   } catch (e: any) {
@@ -128,13 +128,13 @@ async function handleDeletePost() {
 
 // ---- Admin sidebar actions ----
 async function handleStatusChange(status: string) {
-  if (!post.value || !isAdmin.value) return
+  if (!post.value || !isOrgManager.value) return
   await store.updatePost(props.slug, { status }, true)
   emit('updated', { id: post.value.id, slug: post.value.slug, status })
 }
 
 async function handleBoardChange(boardId: string | null) {
-  if (!post.value || !isAdmin.value) return
+  if (!post.value || !isOrgManager.value) return
   await store.updatePost(props.slug, { boardId }, true)
   emit('updated', { id: post.value.id, slug: post.value.slug, boardId })
 }
@@ -354,7 +354,7 @@ watch(commentSort, () => {
                   <span class="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                     <Icon name="lucide:clock" size="14" /> {{ timeAgo(post.createdAt) }}
                   </span>
-                  <DropdownMenu v-if="isAdmin && !isMerged">
+                  <DropdownMenu v-if="isOrgManager && !isMerged">
                     <DropdownMenuTrigger as-child>
                       <button class="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors" title="Merge"><Icon name="lucide:git-merge" size="18" /></button>
                     </DropdownMenuTrigger>
@@ -426,7 +426,7 @@ watch(commentSort, () => {
       <div class="bg-card border border-border rounded-lg p-6 shadow-sm space-y-4">
         <div>
           <h4 class="font-heading text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Board</h4>
-          <DropdownMenu v-if="isAdmin && !isMerged">
+          <DropdownMenu v-if="isOrgManager && !isMerged">
             <DropdownMenuTrigger as-child>
               <button class="flex items-center gap-3 hover:bg-secondary/50 p-2 -ml-2 rounded-md transition-colors">
                 <Icon name="lucide:folder" size="16" class="text-primary shrink-0" /><span class="font-bold text-sm">{{ boardName ?? 'None' }}</span><Icon name="lucide:chevron-down" size="14" class="text-muted-foreground shrink-0" />
@@ -446,7 +446,7 @@ watch(commentSort, () => {
         <!-- Status: hidden for merged posts -->
         <div v-if="!isMerged">
           <h4 class="font-heading text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Status</h4>
-          <DropdownMenu v-if="isAdmin">
+          <DropdownMenu v-if="isOrgManager">
             <DropdownMenuTrigger as-child>
               <button class="flex items-center gap-3 hover:bg-secondary/50 p-2 -ml-2 rounded-md transition-colors">
                 <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: `var(${(STATUS_CONFIG[post.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.open).cssVar})` }" />
@@ -478,7 +478,7 @@ watch(commentSort, () => {
           <Button variant="outline" class="text-primary" :disabled="isMerged" :class="isMerged ? 'opacity-50 cursor-not-allowed' : ''"><Icon name="lucide:share-2" size="18" /> Share Request</Button>
         </div>
       </div>
-      <SimilarPostsPanel v-if="post.id && !isMerged" :post-id="post.id" :is-admin="isAdmin" @merge="handleSimilarMerge" />
+      <SimilarPostsPanel v-if="post.id && !isMerged" :post-id="post.id" :is-admin="isOrgManager" @merge="handleSimilarMerge" />
     </aside>
 
     <!-- Merge dialog -->

@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { z } from 'zod/v4'
 import { post, postSearch } from '#layers/feedlog/server/db/schemas'
 
@@ -8,9 +8,10 @@ const authorUpdateSchema = z.object({
   content: z.string().trim().min(1, 'Content is required').max(10000, 'Content must be 10000 characters or less').optional(),
 })
 
-// PATCH /api/posts/:id — Author edits own post (title/content only)
+// PATCH /api/posts/:id — Edit a post's title/content. Any author can edit
+// their own; moderators can edit anyone's (escalates via feedlog:moderate).
 export default defineEventHandler(async (event) => {
-  const session = await requireAuth(event)
+  const { session, orgId } = await requireAuthInOrg(event)
   const id = getRouterParam(event, 'postId')!
 
   const db = useDB()
@@ -18,7 +19,7 @@ export default defineEventHandler(async (event) => {
   const [existing] = await db
     .select({ id: post.id, authorId: post.authorId, title: post.title, content: post.content })
     .from(post)
-    .where(eq(post.id, id))
+    .where(and(eq(post.id, id), eq(post.orgId, orgId)))
     .limit(1)
 
   if (!existing) {
@@ -26,7 +27,7 @@ export default defineEventHandler(async (event) => {
   }
 
   if (existing.authorId !== session.user.id) {
-    throw createError({ statusCode: 403, message: 'You can only edit your own posts' })
+    await requireOrgPermission(event, { feedlog: ['moderate'] })
   }
 
   const body = await readValidatedBody(event, authorUpdateSchema.parse)
@@ -62,14 +63,14 @@ export default defineEventHandler(async (event) => {
     const searchText = stripMarkdown(newTitle + '\n' + newContent)
     await db
       .insert(postSearch)
-      .values({ postId: id, searchText })
+      .values({ postId: id, orgId, searchText })
       .onConflictDoUpdate({
         target: postSearch.postId,
         set: { searchText },
       })
 
     event.waitUntil(
-      generatePostEmbedding(id, newTitle, newContent, updates.contentHash as string),
+      generatePostEmbedding(id, orgId, newTitle, newContent, updates.contentHash as string),
     )
   }
 

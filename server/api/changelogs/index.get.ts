@@ -4,6 +4,7 @@ import { changelog, changelogReaction } from '#layers/feedlog/server/db/schemas'
 // GET /api/changelogs — Public changelog list (cursor pagination)
 export default defineEventHandler(async (event): Promise<CursorPaginatedList<ChangelogListItem>> => {
   const session = await getUserSession(event)
+  const orgId = event.context.orgId!
   const query = getQuery(event)
 
   const cursor = query.cursor as string | undefined
@@ -11,7 +12,7 @@ export default defineEventHandler(async (event): Promise<CursorPaginatedList<Cha
 
   const db = useDB()
 
-  const conditions: any[] = [isNotNull(changelog.publishedAt)]
+  const conditions: any[] = [eq(changelog.orgId, orgId), isNotNull(changelog.publishedAt)]
 
   if (cursor) {
     const decoded = decodeCursor(cursor)

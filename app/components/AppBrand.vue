@@ -1,8 +1,5 @@
 <!--
   Brand mark (logo + wordmark) rendered in the default layout header.
-  Extracted as its own component so downstream layers (e.g. feedlog-ee) can
-  override the wordmark / link target by shipping their own AppBrand.vue —
-  Nuxt layer merge: consumer layer's component wins for duplicate names.
 -->
 <template>
   <NuxtLink to="/" class="flex items-center gap-2 md:gap-3">

@@ -1,9 +1,11 @@
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { comment, commentLike, post } from '#layers/feedlog/server/db/schemas'
 
-// DELETE /api/comments/:id — Delete comment (author only, hard delete, cascades children)
+// DELETE /api/comments/:id — Delete comment. Author can delete own;
+// moderators can delete anyone's (escalates via feedlog:moderate).
+// Cascades children for top-level.
 export default defineEventHandler(async (event) => {
-  const session = await requireAuth(event)
+  const { session, orgId } = await requireAuthInOrg(event)
   const id = getRouterParam(event, 'id')!
 
   const db = useDB()
@@ -17,14 +19,15 @@ export default defineEventHandler(async (event) => {
       authorId: comment.authorId,
     })
     .from(comment)
-    .where(eq(comment.id, id))
+    .leftJoin(post, eq(comment.postId, post.id))
+    .where(and(eq(comment.id, id), eq(post.orgId, orgId)))
     .limit(1)
 
   if (!existing) {
     throw createError({ statusCode: 404, message: 'Comment not found' })
   }
   if (existing.authorId !== session.user.id) {
-    throw createError({ statusCode: 403, message: 'You can only delete your own comments' })
+    await requireOrgPermission(event, { feedlog: ['moderate'] })
   }
 
   if (!existing.parentId) {

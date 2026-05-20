@@ -3,7 +3,13 @@ const { signOut } = useAuth()
 const { data: session } = await useAuthSession()
 
 const user = computed(() => session.value?.user)
-const isAdmin = computed(() => user.value?.role === 'admin')
+// Dashboard entry visibility matches the /dashboard middleware: any org
+// member (owner / manager / contributor) gets in. Do NOT gate on
+// `user.role === 'admin'` — that's the legacy better-auth admin plugin
+// field, no longer consulted now that access is driven by org-membership
+// role.
+const orgCtx = useOrgContext()
+const canEnterDashboard = computed(() => !!user.value && !!orgCtx.value.role)
 
 // User initials as avatar fallback
 const initials = computed(() => {
@@ -73,7 +79,7 @@ watch(() => route.path, () => { mobileNavOpen.value = false })
           <!-- Dashboard link (admin only) -->
           <!-- Desktop: button with text -->
           <Button
-            v-if="isAdmin"
+            v-if="canEnterDashboard"
             as-child
             variant="secondary"
             class="hidden md:inline-flex"
@@ -85,7 +91,7 @@ watch(() => route.path, () => { mobileNavOpen.value = false })
           </Button>
           <!-- Mobile: icon only -->
           <NuxtLink
-            v-if="isAdmin"
+            v-if="canEnterDashboard"
             to="/dashboard"
             class="md:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-secondary transition-colors text-muted-foreground"
           >

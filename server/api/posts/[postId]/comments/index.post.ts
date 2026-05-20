@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { z } from 'zod/v4'
 import { comment, post, user } from '#layers/feedlog/server/db/schemas'
 
@@ -8,17 +8,18 @@ const createCommentSchema = z.object({
   replyToId: z.uuid().optional(),
 })
 
-// POST /api/posts/:postId/comments — Create a comment (requires auth)
+// POST /api/posts/:postId/comments — Create a comment (any authenticated user).
 export default defineEventHandler(async (event) => {
-  const session = await requireAuth(event)
+  const { session, orgId } = await requireAuthInOrg(event)
   const postId = getRouterParam(event, 'postId')!
 
   const body = await readValidatedBody(event, createCommentSchema.parse)
 
   const db = useDB()
 
-  // Verify post exists and is not merged
-  const [p] = await db.select({ id: post.id, mergedTo: post.mergedTo }).from(post).where(eq(post.id, postId)).limit(1)
+  // Verify post exists, belongs to org, and is not merged.
+  const [p] = await db.select({ id: post.id, mergedTo: post.mergedTo }).from(post)
+    .where(and(eq(post.id, postId), eq(post.orgId, orgId))).limit(1)
   if (!p) {
     throw createError({ statusCode: 404, message: 'Post not found' })
   }

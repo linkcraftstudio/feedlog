@@ -20,15 +20,7 @@ async function handleSignOut() {
   navigateTo('/')
 }
 
-const mainNav = [
-  { label: 'Feedback', to: '/dashboard/feedback', icon: 'lucide:message-square' },
-  { label: 'Roadmap', to: '/dashboard/roadmap', icon: 'lucide:map' },
-  { label: 'Changelog', to: '/dashboard/changelog', icon: 'lucide:newspaper' },
-]
-
-const settingsNav = [
-  { label: 'Board', to: '/dashboard/boards', icon: 'lucide:settings-2' },
-]
+const { mainNav, settingsNav } = useDashboardNav()
 
 // Mobile menu
 const mobileMenuOpen = ref(false)
@@ -150,13 +142,8 @@ watch(() => route.path, () => { mobileMenuOpen.value = false })
 
     <!-- Desktop Sidebar -->
     <aside class="hidden md:flex w-[260px] h-full shrink-0 border-r border-border bg-card flex-col">
-      <!-- Logo -->
-      <div class="p-6">
-        <NuxtLink to="/dashboard" class="flex items-center gap-3">
-          <AppLogo :size="40" />
-          <span class="font-heading text-xl font-bold tracking-tight">FeedLog</span>
-        </NuxtLink>
-      </div>
+      <DashboardSidebarBrand />
+      <DashboardSidebarTop />
 
       <!-- Navigation -->
       <nav class="flex-1 px-4 space-y-8 overflow-y-auto">

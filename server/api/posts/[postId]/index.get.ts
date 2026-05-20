@@ -4,6 +4,7 @@ import { post, user, vote } from '#layers/feedlog/server/db/schemas'
 // GET /api/posts/:slug — Get post detail
 export default defineEventHandler(async (event): Promise<PostDetail> => {
   const session = await getUserSession(event)
+  const orgId = event.context.orgId!
   const slug = getRouterParam(event, 'postId')!
 
   const db = useDB()
@@ -28,7 +29,7 @@ export default defineEventHandler(async (event): Promise<PostDetail> => {
     })
     .from(post)
     .leftJoin(user, eq(post.authorId, user.id))
-    .where(eq(post.slug, slug))
+    .where(and(eq(post.slug, slug), eq(post.orgId, orgId)))
     .limit(1)
 
   if (!row) {

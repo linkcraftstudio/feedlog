@@ -4,6 +4,7 @@ import { changelog, changelogReaction } from '#layers/feedlog/server/db/schemas'
 // GET /api/changelogs/:slug — Public changelog detail
 export default defineEventHandler(async (event): Promise<ChangelogListItem> => {
   const session = await getUserSession(event)
+  const orgId = event.context.orgId!
   const slug = getRouterParam(event, 'slug')!
 
   const db = useDB()
@@ -19,7 +20,7 @@ export default defineEventHandler(async (event): Promise<ChangelogListItem> => {
       publishedAt: changelog.publishedAt,
     })
     .from(changelog)
-    .where(and(eq(changelog.slug, slug), isNotNull(changelog.publishedAt)))
+    .where(and(eq(changelog.slug, slug), eq(changelog.orgId, orgId), isNotNull(changelog.publishedAt)))
     .limit(1)
 
   if (!entry) {

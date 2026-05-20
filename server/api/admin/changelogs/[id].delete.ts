@@ -1,9 +1,9 @@
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { changelog, changelogReaction } from '#layers/feedlog/server/db/schemas'
 
-// DELETE /api/admin/changelogs/:id — Delete changelog (admin)
+// DELETE /api/admin/changelogs/:id — Delete changelog (feedlog:moderate).
 export default defineEventHandler(async (event) => {
-  await requireAdmin(event)
+  const { orgId } = await requireOrgPermission(event, { feedlog: ['moderate'] })
 
   const id = getRouterParam(event, 'id')!
   const db = useDB()
@@ -13,7 +13,7 @@ export default defineEventHandler(async (event) => {
 
   const [deleted] = await db
     .delete(changelog)
-    .where(eq(changelog.id, id))
+    .where(and(eq(changelog.id, id), eq(changelog.orgId, orgId)))
     .returning({ id: changelog.id })
 
   if (!deleted) {
