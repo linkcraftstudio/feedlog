@@ -15,6 +15,10 @@ const picked = reactive<Record<string, boolean>>({})
 const pickerOpen = ref(false)
 const rootRef = ref<HTMLElement | null>(null)
 
+const { data: session } = useAuthSession()
+const isLoggedIn = computed(() => !!session.value?.user)
+const loginModal = useLoginModal()
+
 // Initialize picked state from userReactions
 for (const emoji of props.userReactions) {
   picked[emoji] = true
@@ -29,6 +33,11 @@ const displayedReactions = computed(() =>
 )
 
 async function toggle(emoji: string) {
+  if (!isLoggedIn.value) {
+    pickerOpen.value = false
+    return loginModal.open()
+  }
+
   const wasActive = picked[emoji]
 
   // Optimistic update
