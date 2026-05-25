@@ -381,7 +381,7 @@ async function handleShare() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" class="min-w-[120px]">
                       <DropdownMenuItem v-if="canEditPost" class="text-xs font-bold gap-2" @click="startEditPost"><Icon name="lucide:pencil" size="14" /> Edit</DropdownMenuItem>
-                      <DropdownMenuItem v-if="canDeletePost" class="text-xs font-bold gap-2 text-destructive focus:text-destructive" @click="handleDeletePost"><Icon name="lucide:trash-2" size="14" /> Delete</DropdownMenuItem>
+                      <DropdownMenuItem v-if="canDeletePost" class="text-xs font-bold gap-2 text-destructive" @click="handleDeletePost"><Icon name="lucide:trash-2" size="14" /> Delete</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>

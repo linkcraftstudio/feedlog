@@ -1,16 +1,16 @@
 import { and, eq, sql } from 'drizzle-orm'
 import { post, comment, commentLike, vote } from '#layers/feedlog/server/db/schemas'
 
-// DELETE /api/admin/posts/:id — Hard delete. Author can delete own;
-// moderators can delete anyone's (escalates via feedlog:moderate). The
-// "admin" path is here for the cascade clean-up logic, not for the gate.
+// DELETE /api/admin/posts/:id — Moderator-only hard delete. Once a post is
+// public it belongs to the community (others' upvotes/comments/status); the
+// author has no self-delete path, only edit via PATCH /api/posts/:id.
 export default defineEventHandler(async (event) => {
-  const { session, orgId } = await requireOrgMember(event)
+  const { orgId } = await requireOrgPermission(event, { feedlog: ['moderate'] })
   const id = getRouterParam(event, 'id')!
   const db = useDB()
 
   const [existing] = await db
-    .select({ authorId: post.authorId, mergedTo: post.mergedTo })
+    .select({ mergedTo: post.mergedTo })
     .from(post)
     .where(and(eq(post.id, id), eq(post.orgId, orgId)))
     .limit(1)
@@ -19,10 +19,6 @@ export default defineEventHandler(async (event) => {
   }
   if (existing.mergedTo) {
     throw createError({ statusCode: 400, message: 'Cannot delete a merged post. Unmerge it first.' })
-  }
-
-  if (existing.authorId !== session.user.id) {
-    await requireOrgPermission(event, { feedlog: ['moderate'] })
   }
 
   // Delete associated data (no DB foreign keys, cascade at application level)

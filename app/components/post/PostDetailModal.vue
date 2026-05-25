@@ -30,6 +30,7 @@ watch(open, (isOpen) => {
   <Dialog v-model:open="open" :modal="true">
     <DialogContent
       :show-close-button="false"
+      @open-auto-focus.prevent
       @pointer-down-outside="preventShadcnDialogClose"
       @escape-key-down="preventShadcnDialogClose"
       class="!max-w-[1100px] h-[90vh] !p-0 !gap-0 overflow-hidden border-border bg-background !rounded-2xl flex flex-col"

@@ -7,8 +7,7 @@ type ResourceType = 'post' | 'comment'
 //   - moderator       → `requireOrgPermission({ feedlog: ['moderate'] })`
 //
 // Ownership is a row-level check: `authorId === session.user.id`. Edit/delete
-// is allowed when the caller is the author OR a moderator. Comments follow
-// the same rule.
+// rules differ between resource types — see canEdit / canDelete below.
 export function usePermission(authorId: Ref<string | undefined> | ComputedRef<string | undefined>, type: ResourceType) {
   const { data: session } = useAuthSession()
   const ctx = useOrgContext()
@@ -38,7 +37,13 @@ export function usePermission(authorId: Ref<string | undefined> | ComputedRef<st
     return isOwner.value
   })
 
-  const canDelete = computed(() => isOwner.value || canModerate.value)
+  const canDelete = computed(() => {
+    // Posts: moderator-only. Once shipped, a post belongs to the community
+    // (others' upvotes / comments / status). Authors can edit but not delete.
+    if (type === 'post') return canModerate.value
+    // Comments are conversational — author can delete their own.
+    return isOwner.value || canModerate.value
+  })
 
   const showMenu = computed(() => canEdit.value || canDelete.value)
 

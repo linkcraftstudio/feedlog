@@ -135,7 +135,7 @@ function initials(name: string | null) {
                 <Icon name="lucide:pencil" size="14" />
                 Edit
               </DropdownMenuItem>
-              <DropdownMenuItem v-if="canDelete" class="text-xs font-bold gap-2 text-destructive focus:text-destructive" @click="handleDelete">
+              <DropdownMenuItem v-if="canDelete" class="text-xs font-bold gap-2 text-destructive" @click="handleDelete">
                 <Icon name="lucide:trash-2" size="14" />
                 Delete
               </DropdownMenuItem>
