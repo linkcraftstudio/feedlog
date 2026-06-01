@@ -1,6 +1,6 @@
 <script setup lang="ts">
 
-useHead({ title: 'Changelog' })
+usePageOg({ kind: 'changelogList' })
 
 const pageSize = 10
 

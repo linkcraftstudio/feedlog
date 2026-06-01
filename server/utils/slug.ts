@@ -36,9 +36,3 @@ export async function generateChangelogSlug(title: string, maxRetries = 3): Prom
     return !!existing
   }, maxRetries)
 }
-
-// Generate excerpt from Markdown content (strip syntax, take first 200 characters)
-export function generateExcerpt(content: string, maxLength = 200): string {
-  const plain = stripMarkdown(content)
-  return plain.length > maxLength ? plain.slice(0, maxLength) : plain
-}

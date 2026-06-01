@@ -1,4 +1,6 @@
 <script setup lang="ts">
+usePageOg({ kind: 'roadmap' })
+
 const postDetailStore = usePostDetailStore()
 const showDetail = ref(false)
 const detailSlug = ref<string | null>(null)

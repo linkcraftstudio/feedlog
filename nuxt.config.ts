@@ -45,7 +45,7 @@ export default defineNuxtConfig({
   },
 
   site: {
-    name: 'Feedlog',
+    name: 'FeedLog',
   },
 
   components: [

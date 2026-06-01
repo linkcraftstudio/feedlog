@@ -20,8 +20,11 @@ const { data: entry, error } = await useFetch<ChangelogListItem>(`/api/changelog
 
 const coverUrl = computed(() => resolveAttachmentUrl(entry.value?.cover))
 
-useHead({
-  title: computed(() => entry.value ? `${entry.value.title} · Changelog` : 'Changelog'),
+usePageOg({
+  kind: 'changelogEntry',
+  title: () => entry.value?.title,
+  content: () => entry.value?.content,
+  publishedAt: () => entry.value?.publishedAt,
 })
 
 function badgeClass(cat: string) {

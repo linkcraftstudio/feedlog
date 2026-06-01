@@ -22,8 +22,12 @@ if (commentsData.value) {
   store.setComments(slug, commentsData.value.data, commentsData.value.pagination.nextCursor)
 }
 
-useHead({
-  title: computed(() => store.getPost(slug)?.title ?? 'Loading...'),
+// Bind share-card meta directly to the SSR-fetched post (not the store) so the
+// first SSR paint crawlers see has the real title/description, not "Loading…".
+usePageOg({
+  kind: 'post',
+  title: () => postData.value?.title,
+  content: () => postData.value?.content,
 })
 </script>
 

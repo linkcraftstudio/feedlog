@@ -1,4 +1,7 @@
 <script setup lang="ts">
+usePageOg({ kind: 'home' })
+const portalOrg = usePortalOrg() // for the sr-only <h1> below
+
 // Auth & login modal
 const { data: session } = useAuthSession()
 const isLoggedIn = computed(() => !!session.value?.user)
@@ -156,14 +159,17 @@ async function handleVote(post: PostListItem) {
 </script>
 
 <template>
+  <!-- Sr-only H1: the board layout has no visible page title, but SEO needs one. -->
+  <h1 class="sr-only">{{ portalOrg.name }} Feedback</h1>
+
   <!-- Sidebar: Boards -->
   <aside class="w-full md:w-[280px] shrink-0 space-y-8">
     <div class="space-y-4">
-      <h3 class="font-heading text-lg font-bold mb-4 md:mb-4 hidden md:block">Boards</h3>
+      <div class="font-heading text-lg font-bold mb-4 md:mb-4 hidden md:block">Boards</div>
 
       <!-- Mobile: horizontal scrollable pills with fade edges -->
       <div class="md:hidden relative">
-        <h3 class="font-heading text-sm font-bold text-muted-foreground uppercase tracking-wider mb-2">Boards</h3>
+        <div class="font-heading text-sm font-bold text-muted-foreground uppercase tracking-wider mb-2">Boards</div>
         <div class="relative -mx-4">
           <nav class="flex gap-2 overflow-x-auto px-4" style="-ms-overflow-style: none; scrollbar-width: none;">
         <button
