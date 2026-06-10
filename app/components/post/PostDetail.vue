@@ -1,10 +1,7 @@
 <script setup lang="ts">
-import { MdEditor } from 'md-editor-v3'
-import 'md-editor-v3/lib/style.css'
 import '~/assets/css/md-editor-preview.css'
 import { toast } from 'vue-sonner'
 import { sanitizeAttachmentHtml } from '~/utils/attachment';
-
 
 // Event types for post mutations
 export interface PostUpdatedEvent {
@@ -345,7 +342,7 @@ async function handleShare() {
               <div class="space-y-4">
                 <Input v-model="editTitle" class="h-10 text-lg font-heading font-bold" placeholder="Title" :maxlength="200" />
                 <div class="editor-preview-styled">
-                  <MdEditor v-model="editContent" language="en-US" placeholder="Edit your post..." :preview="false" :max-length="10000" :toolbars="['bold', 'italic', 'strikeThrough', '-', 'title', 'unorderedList', 'orderedList', '-', 'link', 'image', 'code', 'codeRow', '-', 'previewOnly']" :sanitize="sanitizeAttachmentHtml" :style="{ height: '280px' }" @on-upload-img="onUploadImg" />
+                  <ThemedMdEditor v-model="editContent" language="en-US" placeholder="Edit your post..." :preview="false" :max-length="10000" :toolbars="['bold', 'italic', 'strikeThrough', '-', 'title', 'unorderedList', 'orderedList', '-', 'link', 'image', 'code', 'codeRow', '-', 'previewOnly']" :sanitize="sanitizeAttachmentHtml" :style="{ height: '280px' }" @on-upload-img="onUploadImg" />
                 </div>
                 <p v-if="editError" class="text-sm text-destructive">{{ editError }}</p>
                 <div class="flex items-center gap-3 justify-end">
@@ -481,7 +478,7 @@ async function handleShare() {
           <h4 class="font-heading text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-3">Author</h4>
           <div class="flex items-center gap-3">
             <img v-if="post.author?.image" :src="post.author.image" :alt="post.author.name" class="w-8 h-8 rounded-full object-cover shrink-0" referrerpolicy="no-referrer">
-            <div v-else class="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold text-xs shrink-0">{{ initials(post.author?.name) }}</div>
+            <div v-else class="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center text-foreground font-bold text-xs shrink-0">{{ initials(post.author?.name) }}</div>
             <p class="text-sm font-bold">{{ post.author?.name ?? 'Anonymous' }}</p>
           </div>
         </div>

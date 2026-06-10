@@ -22,6 +22,7 @@ export function useDashboardNav(): DashboardNav {
     settingsNav: [
       { label: 'Board',     to: '/dashboard/boards',              icon: 'lucide:settings-2' },
       { label: 'Members',   to: '/dashboard/settings/members',    icon: 'lucide:users' },
+      { label: 'Portal',    to: '/dashboard/settings/portal',     icon: 'lucide:layout-template' },
       { label: 'Workspace', to: '/dashboard/settings/workspace',  icon: 'lucide:building-2' },
     ],
     developerNav: [

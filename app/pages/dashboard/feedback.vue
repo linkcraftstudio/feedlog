@@ -435,7 +435,7 @@ function onPostDeleted(postId: string) {
                 </td>
                 <!-- Board -->
                 <td class="px-4 py-4">
-                  <span v-if="fb.boardId" class="text-xs font-medium text-muted-foreground bg-gray-100 px-2 py-1 rounded">
+                  <span v-if="fb.boardId" class="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded">
                     {{ boardMap.get(fb.boardId) ?? 'Unknown' }}
                   </span>
                   <span v-else class="text-xs italic text-muted-foreground">—</span>

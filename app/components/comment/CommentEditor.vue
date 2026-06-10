@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { MdEditor } from 'md-editor-v3'
-import 'md-editor-v3/lib/style.css'
 import { sanitizeAttachmentHtml } from '~/utils/attachment'
 
 const props = withDefaults(defineProps<{
@@ -45,7 +43,7 @@ defineExpose({ clear })
 
 <template>
   <div class="comment-editor">
-    <MdEditor
+    <ThemedMdEditor
       v-model="content"
       language="en-US"
       :placeholder="placeholder || (isReply ? 'Write a reply...' : 'Add a comment or feedback...')"
@@ -77,7 +75,7 @@ defineExpose({ clear })
         </Button>
         </div>
       </template>
-    </MdEditor>
+    </ThemedMdEditor>
 
     <p v-if="error" class="px-4 py-2 text-sm text-destructive">{{ error }}</p>
   </div>

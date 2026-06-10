@@ -86,6 +86,8 @@ watch(() => route.path, () => { mobileNavOpen.value = false })
 
         <!-- Right side -->
         <div class="flex items-center gap-3 md:gap-4 lg:gap-6">
+          <ThemeSwitcher />
+
           <!-- Dashboard link (admin only) -->
           <!-- Desktop: button with text -->
           <Button
@@ -114,6 +116,8 @@ watch(() => route.path, () => { mobileNavOpen.value = false })
               <button class="flex items-center rounded-full border border-border bg-card hover:border-primary transition-colors focus:outline-none p-1">
                 <Avatar class="w-8 h-8">
                   <img v-if="user.image && !avatarError" :src="user.image" :alt="user.name" class="aspect-square size-full rounded-full object-cover" referrerpolicy="no-referrer" @error="avatarError = true">
+                  <!-- Brand accent (not a neutral gray) so identity chips carry the
+                       brand; derived in deriveBrandVars. -->
                   <AvatarFallback v-else class="bg-accent text-accent-foreground text-sm font-bold">
                     {{ initials }}
                   </AvatarFallback>

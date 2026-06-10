@@ -53,7 +53,7 @@ const selectedLabel = computed(() => {
     <!-- Remove button -->
     <button
       v-if="removable"
-      class="px-1.5 py-1 text-muted-foreground hover:text-accent transition-colors border-l border-border"
+      class="px-1.5 py-1 text-muted-foreground hover:text-foreground transition-colors border-l border-border"
       @click="$emit('remove')"
     >
       <Icon name="lucide:x" size="12" />

@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { MdPreview } from 'md-editor-v3'
-import 'md-editor-v3/lib/preview.css'
 import { resolveAttachmentUrls } from '~/utils/attachment'
 
 const props = defineProps<{
@@ -13,7 +11,7 @@ const resolvedContent = computed(() => resolveAttachmentUrls(props.content))
 
 <template>
   <div class="comment-content">
-    <MdPreview :model-value="resolvedContent" language="en-US" />
+    <ThemedMdPreview :model-value="resolvedContent" language="en-US" />
   </div>
 </template>
 

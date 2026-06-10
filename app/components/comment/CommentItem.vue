@@ -97,7 +97,7 @@ function initials(name: string | null) {
       >
       <div
         v-else
-        class="shrink-0 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold shadow-sm"
+        class="shrink-0 rounded-full bg-foreground/10 flex items-center justify-center text-foreground font-bold shadow-sm"
         :class="depth ? 'w-8 h-8 text-xs' : 'w-10 h-10 text-sm'"
       >
         {{ initials(comment.author?.name) }}

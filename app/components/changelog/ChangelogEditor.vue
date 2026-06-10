@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { MdEditor, NormalToolbar } from 'md-editor-v3'
-import 'md-editor-v3/lib/style.css'
+import { NormalToolbar } from 'md-editor-v3'
 import '~/assets/css/md-editor-preview.css'
 import { sanitizeAttachmentHtml, resolveAttachmentUrl } from '~/utils/attachment'
 import { toast } from 'vue-sonner'
@@ -454,7 +453,7 @@ function handleAiApply(result: ChangelogAiResult) {
         <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
           <ClientOnly>
             <div class="editor-preview-styled min-h-0 flex-1 overflow-hidden [&_.md-editor]:rounded-lg [&_.md-editor]:border-transparent [&_.md-editor]:shadow-[0_0_0_1px_rgba(0,0,0,0.08)] dark:[&_.md-editor]:shadow-[0_0_0_1px_rgba(255,255,255,0.1)]">
-              <MdEditor
+              <ThemedMdEditor
                 v-model="localContent"
                 language="en-US"
                 placeholder="Write your changelog here..."
@@ -476,7 +475,7 @@ function handleAiApply(result: ChangelogAiResult) {
                     </template>
                   </NormalToolbar>
                 </template>
-              </MdEditor>
+              </ThemedMdEditor>
             </div>
           </ClientOnly>
         </div>

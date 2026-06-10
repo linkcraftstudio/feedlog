@@ -48,6 +48,7 @@ const developerOpen = ref(developerNav.some(item => route.path.startsWith(item.t
           <span class="font-heading text-lg font-bold tracking-tight">FeedLog</span>
         </NuxtLink>
       </div>
+      <ThemeSwitcher />
     </header>
 
     <!-- Mobile Sheet -->
@@ -127,7 +128,7 @@ const developerOpen = ref(developerNav.some(item => route.path.startsWith(item.t
         <div class="h-16 px-4 border-t border-border flex items-center">
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
-              <button class="flex items-center gap-3 w-full p-2 rounded-xl hover:bg-background transition-colors">
+              <button class="flex items-center gap-3 flex-1 min-w-0 p-2 rounded-xl hover:bg-background transition-colors">
                 <Avatar class="w-8 h-8 shrink-0">
                   <img v-if="user?.image && !avatarError" :src="user.image" :alt="user?.name" class="aspect-square size-full rounded-full object-cover" referrerpolicy="no-referrer" @error="avatarError = true">
                   <AvatarFallback v-else class="bg-accent text-accent-foreground text-sm font-bold">
@@ -239,10 +240,10 @@ const developerOpen = ref(developerNav.some(item => route.path.startsWith(item.t
       </nav>
 
       <!-- User info (bottom) -->
-      <div class="h-16 px-4 border-t border-border flex items-center">
+      <div class="h-16 px-4 border-t border-border flex items-center gap-1">
         <DropdownMenu>
           <DropdownMenuTrigger as-child>
-            <button class="flex items-center gap-3 w-full p-2 rounded-xl hover:bg-background transition-colors">
+            <button class="flex items-center gap-3 flex-1 min-w-0 p-2 rounded-xl hover:bg-background transition-colors">
               <Avatar class="w-8 h-8 shrink-0">
                 <img v-if="user?.image && !avatarError" :src="user.image" :alt="user?.name" class="aspect-square size-full rounded-full object-cover" referrerpolicy="no-referrer" @error="avatarError = true">
                 <AvatarFallback v-else class="bg-accent text-accent-foreground text-sm font-bold">
@@ -280,6 +281,7 @@ const developerOpen = ref(developerNav.some(item => route.path.startsWith(item.t
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        <ThemeSwitcher />
       </div>
     </aside>
 

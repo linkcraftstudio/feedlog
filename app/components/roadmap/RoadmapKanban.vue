@@ -237,7 +237,8 @@ async function setupDragAndDrop() {
             clone.style.width = `${el.offsetWidth}px`
             clone.style.boxShadow = 'none'
             clone.style.opacity = '0.9'
-            clone.style.background = 'white'
+            // Card surface token, not a fixed white, so the drag preview matches dark mode.
+            clone.style.background = 'var(--card)'
             clone.style.borderRadius = '12px'
             clone.style.border = '2px solid var(--primary)'
             container.appendChild(clone)
@@ -551,7 +552,10 @@ function removeItem(postId: string) {
 
 <style scoped>
 .kanban-column {
-  background-color: oklch(0.94 0.01 55);
+  /* Subtle panel that derives from the foreground so it reads as a recessed
+     column in both light (faint dark wash) and dark (faint light wash) modes —
+     a fixed light beige stayed light against the dark surface. */
+  background-color: color-mix(in oklab, var(--foreground) 5%, transparent);
   border-radius: 16px;
   padding: 12px;
 }

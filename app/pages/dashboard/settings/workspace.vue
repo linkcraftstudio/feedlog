@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { authClient } from '~/lib/auth-client'
+import type { OrgMetadataInput } from '#layers/feedlog/shared/utils/branding'
 
 // /dashboard/settings/workspace — single-tenant workspace settings.
 // Owners can edit the workspace name (surfaced in invitation emails as the
@@ -17,7 +18,7 @@ interface OrgRow {
   name: string
   slug: string
   logo: string | null
-  metadata: string | null
+  metadata: OrgMetadataInput
 }
 
 const org = ref<OrgRow | null>(null)
@@ -25,6 +26,7 @@ const loading = ref(true)
 const form = reactive({ name: '' })
 
 async function loadOrg() {
+  if (!ctx.value.role) return
   loading.value = true
   try {
     const res = await authClient.organization.getFullOrganization({ query: { organizationId: orgId.value } })
@@ -34,9 +36,13 @@ async function loadOrg() {
     loading.value = false
   }
 }
-// Defer to onMounted — same reason as members.vue (authClient hits
-// /api/... with a relative URL; Node fetch can't parse it during SSR).
-onMounted(() => { void loadOrg() })
+// Load on the client only. The dashboard sits behind auth (nothing to SSR for
+// SEO) and the better-auth client is browser-oriented; fetching during SSR would
+// bake the loaded section into the HTML while the client hydrates from the empty
+// initial state, tripping a hydration mismatch.
+watch(() => [orgId.value, ctx.value.role] as const, ([, role]) => {
+  if (role && import.meta.client) void loadOrg()
+}, { immediate: true })
 
 const dirty = computed(() => org.value && form.name !== org.value.name)
 const canSave = computed(() => dirty.value && form.name.trim().length > 0 && isOwner.value)
@@ -51,6 +57,9 @@ async function save() {
       data: { name: form.name.trim() },
     })
     await loadOrg()
+    // Keep the session's orgList (read by the sidebar) in step with the new name
+    // so any name display updates live without a manual reload.
+    await refreshNuxtData('auth-session')
   } finally {
     saving.value = false
   }
@@ -96,6 +105,8 @@ function reset() {
               </div>
             </div>
           </section>
+
+          <OrgBrandingSection :org="org" :is-owner="isOwner" @saved="loadOrg" />
         </template>
       </div>
     </div>

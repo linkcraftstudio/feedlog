@@ -33,7 +33,9 @@
 .editor-preview-styled .md-editor-preview p {
   font-size: 0.9rem;
   line-height: 1.7;
-  color: var(--foreground-80, rgba(0, 0, 0, 0.8));
+  /* Softened foreground that follows light/dark; a fixed rgba(0,0,0,..) was
+     invisible on the dark surface. */
+  color: color-mix(in oklab, var(--foreground) 85%, transparent);
   overflow-wrap: anywhere;
 }
 .editor-preview-styled .md-editor-preview ul,

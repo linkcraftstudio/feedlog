@@ -101,7 +101,7 @@ async function loadLevel2Comments(postId: string) {
           class="w-10 h-10 rounded-full object-cover"
           referrerpolicy="no-referrer"
         >
-        <div v-else class="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold text-sm">
+        <div v-else class="w-10 h-10 rounded-full bg-foreground/10 flex items-center justify-center text-foreground font-bold text-sm">
           {{ initials(comment.author.name) }}
         </div>
       </div>
@@ -155,7 +155,7 @@ async function loadLevel2Comments(postId: string) {
               class="w-10 h-10 rounded-full object-cover"
               referrerpolicy="no-referrer"
             >
-            <div v-else class="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold text-sm">
+            <div v-else class="w-10 h-10 rounded-full bg-foreground/10 flex items-center justify-center text-foreground font-bold text-sm">
               {{ initials(sc.author.name) }}
             </div>
           </div>
@@ -195,7 +195,7 @@ async function loadLevel2Comments(postId: string) {
               <div v-for="l2c in level2Comments[sc.mergedPost.post.id].data" :key="l2c.id" class="flex gap-3">
                 <div class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center shadow-sm">
                   <img v-if="l2c.author.image" :src="l2c.author.image" :alt="l2c.author.name" class="w-8 h-8 rounded-full object-cover" referrerpolicy="no-referrer">
-                  <div v-else class="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold text-xs">{{ initials(l2c.author.name) }}</div>
+                  <div v-else class="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center text-foreground font-bold text-xs">{{ initials(l2c.author.name) }}</div>
                 </div>
                 <div class="flex-1 min-w-0 bg-card border border-border rounded-lg p-3 shadow-sm">
                   <div class="flex items-center gap-2 mb-1">
@@ -230,7 +230,7 @@ async function loadLevel2Comments(postId: string) {
               class="w-10 h-10 rounded-full object-cover"
               referrerpolicy="no-referrer"
             >
-            <div v-else class="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold text-sm">
+            <div v-else class="w-10 h-10 rounded-full bg-foreground/10 flex items-center justify-center text-foreground font-bold text-sm">
               {{ initials(sc.author.name) }}
             </div>
           </div>

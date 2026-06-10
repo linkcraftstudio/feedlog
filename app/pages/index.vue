@@ -1,10 +1,17 @@
 <script setup lang="ts">
 usePageOg({ kind: 'home' })
 const portalOrg = usePortalOrg() // for the sr-only <h1> below
+const branding = computed(() => portalOrg.value.branding)
+const hasWelcome = computed(() => branding.value.welcomeTitle || branding.value.welcomeDescription)
 
 // Auth & login modal
 const { data: session } = useAuthSession()
 const isLoggedIn = computed(() => !!session.value?.user)
+const isSsoSession = computed(
+  () => !!(session.value as { session?: { ssoOrgId?: string | null } } | null)?.session?.ssoOrgId,
+)
+const orgCtx = useOrgContext()
+const canEditPortal = computed(() => !!session.value?.user && !!orgCtx.value.role && !isSsoSession.value)
 const loginModal = useLoginModal()
 
 // Board store
@@ -245,11 +252,31 @@ async function handleVote(post: PostListItem) {
           </span>
         </button>
       </nav>
+
+      <!-- Keep "Powered by FeedLog" as one inline run so the flex gap only spaces
+           the icon (a gap between the text node and the brand span would read as a
+           stray space). Quiet prefix + emphasized brand give the badge hierarchy. -->
+      <a
+        href="https://feedlog.ai"
+        target="_blank"
+        rel="noreferrer"
+        class="group hidden md:inline-flex items-center gap-1.5 px-4 pt-2 text-xs text-muted-foreground/70 hover:text-foreground transition-colors"
+      >
+        <Icon name="lucide:zap" size="12" class="opacity-60 transition-opacity group-hover:opacity-100" />
+        <span>Powered by <span class="font-semibold text-foreground/75 transition-colors group-hover:text-foreground">FeedLog</span></span>
+      </a>
     </div>
   </aside>
 
   <!-- Main content: Feedback area -->
   <section class="flex-1 flex flex-col gap-6">
+    <PortalWelcomeBlock
+      v-if="hasWelcome"
+      :title="branding.welcomeTitle"
+      :description="branding.welcomeDescription"
+      :editable="canEditPortal"
+    />
+
     <!-- Header row -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
       <h2 class="font-heading text-2xl font-bold">
@@ -360,7 +387,7 @@ async function handleVote(post: PostListItem) {
             </div>
             <div class="flex items-center gap-2">
               <img v-if="p.author?.image" :src="p.author.image" :alt="p.author.name" class="w-5 h-5 rounded-full object-cover shrink-0" referrerpolicy="no-referrer">
-              <div v-else class="w-5 h-5 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold text-[9px] shrink-0">
+              <div v-else class="w-5 h-5 rounded-full bg-foreground/10 flex items-center justify-center text-foreground font-bold text-[9px] shrink-0">
                 {{ initials(p.author?.name) }}
               </div>
               <div class="flex items-center gap-1.5">

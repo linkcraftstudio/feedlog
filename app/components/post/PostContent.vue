@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { MdPreview } from 'md-editor-v3'
-import 'md-editor-v3/lib/preview.css'
 import { resolveAttachmentUrls } from '~/utils/attachment'
 
 const props = defineProps<{
@@ -13,7 +11,7 @@ const resolvedContent = computed(() => resolveAttachmentUrls(props.content))
 
 <template>
   <div class="post-content">
-    <MdPreview :model-value="resolvedContent" language="en-US" />
+    <ThemedMdPreview :model-value="resolvedContent" language="en-US" />
   </div>
 </template>
 
@@ -62,7 +60,9 @@ const resolvedContent = computed(() => resolveAttachmentUrls(props.content))
 .post-content :deep(p) {
   font-size: 0.9rem;
   line-height: 1.7;
-  color: var(--foreground-80, rgba(0, 0, 0, 0.8));
+  /* Softened foreground that follows light/dark; a fixed rgba(0,0,0,..) was
+     invisible on the dark surface. */
+  color: color-mix(in oklab, var(--foreground) 85%, transparent);
   overflow-wrap: anywhere;
 }
 

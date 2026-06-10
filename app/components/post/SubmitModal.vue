@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { MdEditor } from 'md-editor-v3'
-import 'md-editor-v3/lib/style.css'
 import '~/assets/css/md-editor-preview.css'
 import { preventShadcnDialogClose } from '~/lib/md-editor-helper';
 import { sanitizeAttachmentHtml } from '~/utils/attachment';
@@ -165,7 +163,7 @@ watch(open, (v) => {
           <!-- Markdown editor: flex-1 shrinks when hint expands -->
           <ClientOnly>
             <div class="editor-preview-styled flex-1 min-h-[120px] transition-all duration-300">
-              <MdEditor
+              <ThemedMdEditor
                 v-model="content"
                 language="en-US"
                 placeholder="Explain your thoughts in detail..."

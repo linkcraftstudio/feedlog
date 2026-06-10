@@ -35,11 +35,16 @@ export default defineNuxtConfig({
 
   app: {
     head: {
+      // Keyed so a configured org logo can override every icon slot at runtime
+      // (app.vue). type/sizes are intentionally omitted: unhead merges keyed
+      // tags by union, so any hint here would leak onto the override and
+      // mislabel a logo of a different format. The browser sniffs the served
+      // content-type either way.
       link: [
-        { rel: 'icon', type: 'image/svg+xml', href: '/logo.svg' },
-        { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon.png' },
-        { rel: 'shortcut icon', href: '/favicon.ico' },
-        { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
+        { key: 'favicon-svg', rel: 'icon', href: '/logo.svg' },
+        { key: 'favicon-png', rel: 'icon', href: '/favicon.png' },
+        { key: 'favicon-ico', rel: 'shortcut icon', href: '/favicon.ico' },
+        { key: 'favicon-apple', rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
       ],
     },
   },
