@@ -13,6 +13,7 @@ const isSsoSession = computed(
 const orgCtx = useOrgContext()
 const canEditPortal = computed(() => !!session.value?.user && !!orgCtx.value.role && !isSsoSession.value)
 const loginModal = useLoginModal()
+const timeAgo = useTimeAgo()
 
 // Board store
 const boardStore = useBoardStore()
@@ -209,11 +210,11 @@ async function handleVote(post: PostListItem) {
   <!-- Sidebar: Boards -->
   <aside class="w-full md:w-[280px] shrink-0 space-y-8">
     <div class="space-y-4">
-      <div class="font-heading text-lg font-bold mb-4 md:mb-4 hidden md:block">Boards</div>
+      <div class="font-heading text-lg font-bold mb-4 md:mb-4 hidden md:block">{{ $t('board.boards') }}</div>
 
       <!-- Mobile: horizontal scrollable pills with fade edges -->
       <div class="md:hidden relative">
-        <div class="font-heading text-sm font-bold text-muted-foreground uppercase tracking-wider mb-2">Boards</div>
+        <div class="font-heading text-sm font-bold text-muted-foreground uppercase tracking-wider mb-2">{{ $t('board.boards') }}</div>
         <div class="relative -mx-4">
           <nav class="flex gap-2 overflow-x-auto px-4" style="-ms-overflow-style: none; scrollbar-width: none;">
         <button
@@ -223,7 +224,7 @@ async function handleVote(post: PostListItem) {
             : 'bg-card text-muted-foreground border-border hover:border-primary hover:text-foreground'"
           @click="selectBoard(null)"
         >
-          All
+          {{ $t('board.allFeedback') }}
           <span class="text-xs opacity-70">{{ totalPostCount }}</span>
         </button>
         <button
@@ -257,7 +258,7 @@ async function handleVote(post: PostListItem) {
         >
           <div class="flex items-center gap-3">
             <Icon name="lucide:layout-grid" size="18" />
-            <span>All Feedback</span>
+            <span>{{ $t('board.allFeedback') }}</span>
           </div>
           <span
             class="text-xs px-2 py-0.5 rounded-full font-bold"
@@ -300,7 +301,7 @@ async function handleVote(post: PostListItem) {
         class="group hidden md:inline-flex items-center gap-1.5 px-4 pt-2 text-xs text-muted-foreground/70 hover:text-foreground transition-colors"
       >
         <Icon name="lucide:zap" size="12" class="opacity-60 transition-opacity group-hover:opacity-100" />
-        <span>Powered by <span class="font-semibold text-foreground/75 transition-colors group-hover:text-foreground">FeedLog</span></span>
+        <span>{{ $t('board.poweredBy') }}<span class="font-semibold text-foreground/75 transition-colors group-hover:text-foreground">FeedLog</span></span>
       </a>
     </div>
   </aside>
@@ -330,19 +331,19 @@ async function handleVote(post: PostListItem) {
       <!-- Search yielded nothing: nudge toward raising it (duplicate-prevention payoff) -->
       <template v-if="searchActive">
         <Icon name="lucide:search-x" size="48" class="mb-4 opacity-50" />
-        <p class="text-lg font-medium">No matches for “{{ searchQuery.trim() }}”</p>
-        <p class="fl-empty__hint">Nobody’s raised this yet — be the first.</p>
+        <p class="text-lg font-medium">{{ $t('board.noMatches', { query: searchQuery.trim() }) }}</p>
+        <p class="fl-empty__hint">{{ $t('board.noMatchesHint') }}</p>
         <Button
           class="h-10 px-4 rounded-lg text-[15px] font-heading font-semibold"
           @click="isLoggedIn ? showSubmit = true : loginModal.open()"
         >
           <Icon name="lucide:plus" size="18" />
-          New Request
+          {{ $t('board.newRequest') }}
         </Button>
       </template>
       <template v-else>
         <Icon name="lucide:inbox" size="48" class="mb-4 opacity-50" />
-        <p class="text-lg font-medium">No feedback yet</p>
+        <p class="text-lg font-medium">{{ $t('board.noFeedback') }}</p>
       </template>
     </div>
 
@@ -379,7 +380,7 @@ async function handleVote(post: PostListItem) {
                 borderColor: `var(${STATUS_CONFIG[p.status as keyof typeof STATUS_CONFIG].cssVar}-border)`,
               }"
             >
-              {{ STATUS_CONFIG[p.status as keyof typeof STATUS_CONFIG]?.label }}
+              {{ $t(statusLabelKey(p.status)) }}
             </span>
             <span v-if="p.boardId && boardMap.get(p.boardId)" class="text-xs font-medium text-muted-foreground">
               {{ p.status && p.status !== 'open' ? '•' : '' }} {{ boardMap.get(p.boardId) }}
@@ -405,7 +406,7 @@ async function handleVote(post: PostListItem) {
           <div class="flex items-center gap-4 mt-3 text-xs text-muted-foreground font-medium">
             <div class="flex items-center gap-1.5">
               <Icon name="lucide:message-square" size="14" />
-              <span>{{ p.commentCount }} comments</span>
+              <span>{{ $t('board.comments', { n: p.commentCount }) }}</span>
             </div>
             <div class="flex items-center gap-2">
               <img v-if="p.author?.image" :src="p.author.image" :alt="p.author.name" class="w-5 h-5 rounded-full object-cover shrink-0" referrerpolicy="no-referrer">
@@ -431,7 +432,7 @@ async function handleVote(post: PostListItem) {
         :disabled="loadingMore"
         @click="loadMore"
       >
-        {{ loadingMore ? 'Loading...' : 'Load More' }}
+        {{ loadingMore ? $t('board.loading') : $t('board.loadMore') }}
       </button>
     </div>
   </section>

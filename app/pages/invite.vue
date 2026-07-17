@@ -17,6 +17,9 @@ definePageMeta({ layout: false, middleware: [] })
 
 const route = useRoute()
 const router = useRouter()
+const localePath = useLocalePath()
+const { t } = useI18n()
+useHead({ title: () => t('auth.invite.joinTitle') })
 // Reuse the project's global LoginModal — popping it in-page (vs navigating
 // to /?login=1) keeps the user on /invite so the page can transition into
 // 'match' / 'mismatch' state the moment the session refreshes.
@@ -86,7 +89,7 @@ async function accept() {
     // Keep `accepting` true through the navigation — there's a microtask
     // gap between `router.push` resolving and this component unmounting
     // where the button label would otherwise flicker back to "Join …".
-    await router.push('/dashboard')
+    await router.push(localePath('/dashboard'))
   } catch (e) {
     error.value = (e as Error)?.message ?? 'invalid'
     accepting.value = false
@@ -121,44 +124,44 @@ const userInitials = computed(() => {
       <AppLogo :size="44" class="mx-auto mb-6" />
 
       <template v-if="state === 'loading'">
-        <p class="text-sm text-muted-foreground">Loading…</p>
+        <p class="text-sm text-muted-foreground">{{ $t('auth.invite.loading') }}</p>
       </template>
 
       <template v-else-if="state === 'invalid'">
-        <h1 class="font-heading text-2xl font-bold tracking-tight">Invitation unavailable</h1>
+        <h1 class="font-heading text-2xl font-bold tracking-tight">{{ $t('auth.invite.unavailableTitle') }}</h1>
         <p class="text-sm text-muted-foreground mt-2 leading-relaxed">
-          This invitation is no longer available.
+          {{ $t('auth.invite.unavailableBody') }}
         </p>
-        <NuxtLink to="/" class="mt-8 inline-flex h-11 px-5 rounded-lg border border-border bg-card text-sm font-semibold hover:bg-secondary transition-colors items-center gap-2">
-          Go to FeedLog
+        <NuxtLink :to="localePath('/')" class="mt-8 inline-flex h-11 px-5 rounded-lg border border-border bg-card text-sm font-semibold hover:bg-secondary transition-colors items-center gap-2">
+          {{ $t('auth.invite.goToApp') }}
           <Icon name="lucide:arrow-right" size="14" />
         </NuxtLink>
       </template>
 
       <template v-else-if="state === 'anonymous'">
-        <h1 class="font-heading text-2xl font-bold tracking-tight">Join FeedLog</h1>
-        <p class="text-sm text-muted-foreground mt-2 leading-relaxed">
-          Join <span class="font-semibold text-foreground">{{ invitation!.organizationName }}</span>'s team on FeedLog
-        </p>
+        <h1 class="font-heading text-2xl font-bold tracking-tight">{{ $t('auth.invite.joinTitle') }}</h1>
+        <i18n-t keypath="auth.invite.joinTeam" tag="p" class="text-sm text-muted-foreground mt-2 leading-relaxed" scope="global">
+          <template #org><span class="font-semibold text-foreground">{{ invitation!.organizationName }}</span></template>
+        </i18n-t>
 
         <button
           class="mt-8 w-full h-11 rounded-lg bg-primary text-primary-foreground text-sm font-heading font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2"
           @click="startSignIn"
         >
-          Sign in to continue
+          {{ $t('auth.invite.signInToContinue') }}
           <Icon name="lucide:arrow-right" size="14" />
         </button>
 
         <p class="mt-3 text-[11px] text-muted-foreground">
-          You'll sign in or create a FeedLog account along the way.
+          {{ $t('auth.invite.anonymousHint') }}
         </p>
       </template>
 
       <template v-else-if="state === 'match'">
-        <h1 class="font-heading text-2xl font-bold tracking-tight">Join FeedLog</h1>
-        <p class="text-sm text-muted-foreground mt-2 leading-relaxed">
-          Join <span class="font-semibold text-foreground">{{ invitation!.organizationName }}</span>'s team on FeedLog
-        </p>
+        <h1 class="font-heading text-2xl font-bold tracking-tight">{{ $t('auth.invite.joinTitle') }}</h1>
+        <i18n-t keypath="auth.invite.joinTeam" tag="p" class="text-sm text-muted-foreground mt-2 leading-relaxed" scope="global">
+          <template #org><span class="font-semibold text-foreground">{{ invitation!.organizationName }}</span></template>
+        </i18n-t>
 
         <div class="mt-6 flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-card text-left">
           <div class="w-10 h-10 rounded-full overflow-hidden bg-accent shrink-0 flex items-center justify-center">
@@ -182,21 +185,21 @@ const userInitials = computed(() => {
           class="mt-4 w-full h-11 rounded-lg bg-primary text-primary-foreground text-sm font-heading font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
           @click="accept"
         >
-          {{ accepting ? 'Joining…' : `Join ${invitation!.organizationName}` }}
+          {{ accepting ? $t('auth.invite.joining') : $t('auth.invite.joinOrg', { org: invitation!.organizationName }) }}
           <Icon name="lucide:arrow-right" size="14" />
         </button>
 
         <p class="mt-3 text-[11px] text-muted-foreground">
-          Not you?
-          <a class="text-foreground font-semibold hover:underline ml-1 cursor-pointer" @click="switchAccount">Sign out</a>
+          {{ $t('auth.invite.notYou') }}
+          <a class="text-foreground font-semibold hover:underline ml-1 cursor-pointer" @click="switchAccount">{{ $t('auth.invite.signOut') }}</a>
         </p>
       </template>
 
       <template v-else-if="state === 'mismatch'">
-        <h1 class="font-heading text-2xl font-bold tracking-tight">Join FeedLog</h1>
-        <p class="text-sm text-muted-foreground mt-2 leading-relaxed">
-          Join <span class="font-semibold text-foreground">{{ invitation!.organizationName }}</span>'s team on FeedLog
-        </p>
+        <h1 class="font-heading text-2xl font-bold tracking-tight">{{ $t('auth.invite.joinTitle') }}</h1>
+        <i18n-t keypath="auth.invite.joinTeam" tag="p" class="text-sm text-muted-foreground mt-2 leading-relaxed" scope="global">
+          <template #org><span class="font-semibold text-foreground">{{ invitation!.organizationName }}</span></template>
+        </i18n-t>
 
         <div class="mt-6 flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-card text-left">
           <div class="w-10 h-10 rounded-full overflow-hidden bg-accent shrink-0 flex items-center justify-center">
@@ -218,8 +221,10 @@ const userInitials = computed(() => {
         <p class="mt-4 text-xs text-red-600 leading-relaxed flex items-center justify-center gap-1.5">
           <Icon name="lucide:alert-circle" size="13" class="shrink-0" />
           <span>
-            This invitation was sent to <span class="font-semibold">{{ invitation!.email }}</span>.
-            <a class="text-foreground font-semibold hover:underline ml-1 cursor-pointer" @click="switchAccount">Switch account</a>
+            <i18n-t keypath="auth.invite.sentToEmail" tag="span" scope="global">
+              <template #email><span class="font-semibold">{{ invitation!.email }}</span></template>
+            </i18n-t>
+            <a class="text-foreground font-semibold hover:underline ml-1 cursor-pointer" @click="switchAccount">{{ $t('auth.invite.switchAccount') }}</a>
           </span>
         </p>
       </template>

@@ -4,6 +4,7 @@ import { mergeBrandingMetadata, type OrgMetadataInput, parseBranding } from '#la
 
 definePageMeta({ layout: 'dashboard', middleware: ['admin'] })
 
+const { t } = useI18n()
 const ctx = useOrgContext()
 const orgId = computed(() => ctx.value.orgId)
 const isOwner = computed(() => ctx.value.role === 'owner')
@@ -80,7 +81,7 @@ async function save() {
     })
     await loadOrg()
   } catch {
-    error.value = 'Failed to save portal settings.'
+    error.value = t('settings.portal.saveFailed')
   } finally {
     saving.value = false
   }
@@ -91,43 +92,43 @@ async function save() {
   <div class="flex flex-col h-full">
     <header class="h-16 px-6 border-b border-border flex items-center shrink-0 bg-card">
       <div>
-        <h2 class="font-heading text-lg font-bold">Portal</h2>
-        <p class="text-xs text-muted-foreground">Content shown on your public feedback portal</p>
+        <h2 class="font-heading text-lg font-bold">{{ $t('settings.portal.title') }}</h2>
+        <p class="text-xs text-muted-foreground">{{ $t('settings.portal.subtitle') }}</p>
       </div>
     </header>
 
     <div class="flex-1 overflow-y-auto">
       <div class="max-w-4xl mx-auto px-6 py-8 space-y-6">
         <template v-if="loading">
-          <p class="text-sm text-muted-foreground">Loading...</p>
+          <p class="text-sm text-muted-foreground">{{ $t('settings.loading') }}</p>
         </template>
 
         <section v-else-if="org" class="rounded-xl border border-border bg-card overflow-hidden">
           <div class="px-6 py-5 border-b border-border">
-            <h3 class="font-heading font-bold text-sm">Welcome message</h3>
-            <p class="text-xs text-muted-foreground mt-0.5">The heading and intro shown at the top of your public portal.</p>
+            <h3 class="font-heading font-bold text-sm">{{ $t('settings.portal.welcomeSection') }}</h3>
+            <p class="text-xs text-muted-foreground mt-0.5">{{ $t('settings.portal.welcomeDesc') }}</p>
           </div>
 
           <div class="px-6 py-6 space-y-6">
             <div>
-              <label class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Title</label>
+              <label class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('settings.portal.titleLabel') }}</label>
               <input
                 v-model="form.welcomeTitle"
                 type="text"
-                :placeholder="`Submit feedback for ${org.name}`"
+                :placeholder="$t('settings.portal.titlePlaceholder', { name: org.name })"
                 :disabled="!isOwner"
                 class="mt-2 w-full h-11 px-3.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:border-primary transition-colors disabled:opacity-60"
               >
-              <p class="text-[11px] text-muted-foreground mt-1.5">Shown as the main heading on your feedback portal.</p>
+              <p class="text-[11px] text-muted-foreground mt-1.5">{{ $t('settings.portal.titleHint') }}</p>
             </div>
 
             <div>
-              <label class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Description</label>
+              <label class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('settings.portal.descriptionLabel') }}</label>
               <ClientOnly>
                 <ThemedMdEditor
                   v-model="form.welcomeDescription"
                   language="en-US"
-                  placeholder="Any bug reports and feature requests are welcome..."
+                  :placeholder="$t('settings.portal.descriptionPlaceholder')"
                   :preview="false"
                   :max-length="10000"
                   :toolbars="toolbars"
@@ -137,14 +138,14 @@ async function save() {
                   class="mt-2 !rounded-lg"
                 />
                 <template #fallback>
-                  <div class="mt-2 h-[220px] rounded-lg border border-border bg-background grid place-items-center text-xs text-muted-foreground">Loading editor...</div>
+                  <div class="mt-2 h-[220px] rounded-lg border border-border bg-background grid place-items-center text-xs text-muted-foreground">{{ $t('settings.portal.loadingEditor') }}</div>
                 </template>
               </ClientOnly>
-              <p class="text-[11px] text-muted-foreground mt-1.5">Shown below the title to provide more context for visitors. Markdown supported.</p>
+              <p class="text-[11px] text-muted-foreground mt-1.5">{{ $t('settings.portal.descriptionHint') }}</p>
             </div>
 
             <div class="pt-4 border-t border-border">
-              <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Preview</p>
+              <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">{{ $t('settings.preview') }}</p>
               <div class="rounded-lg bg-muted/30 p-4">
                 <PortalWelcomeBlock
                   :title="form.welcomeTitle"
@@ -165,14 +166,14 @@ async function save() {
               :disabled="saving"
               @click="reset"
             >
-              Reset
+              {{ $t('settings.reset') }}
             </button>
             <button
               :disabled="!canSave"
               class="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-heading font-bold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               @click="save"
             >
-              {{ saving ? 'Saving...' : 'Save changes' }}
+              {{ saving ? $t('settings.saving') : $t('settings.saveChanges') }}
             </button>
           </div>
         </section>

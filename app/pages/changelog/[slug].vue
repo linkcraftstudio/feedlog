@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { resolveAttachmentUrl } from '~/utils/attachment'
 
-const CATEGORY_LABEL: Record<string, string> = {
-  new: 'New',
-  improved: 'Improved',
-  fixed: 'Fixed',
-}
+const { t } = useI18n()
+const localePath = useLocalePath()
+
+const CATEGORY_LABEL = computed<Record<string, string>>(() => ({
+  new: t('changelog.category.new'),
+  improved: t('changelog.category.improved'),
+  fixed: t('changelog.category.fixed'),
+}))
 
 const CATEGORY_CLASS: Record<string, string> = {
   new: 'bg-primary/10 text-primary border-primary/25',
@@ -19,6 +22,9 @@ const slug = route.params.slug as string
 const { data: entry, error } = await useFetch<ChangelogListItem>(`/api/changelogs/${slug}`)
 
 const coverUrl = computed(() => resolveAttachmentUrl(entry.value?.cover))
+
+const timeAgo = useTimeAgo()
+const formatDate = useFormatDate()
 
 usePageOg({
   kind: 'changelogEntry',
@@ -38,26 +44,26 @@ function badgeClass(cat: string) {
     <div v-if="error || !entry" class="flex flex-col items-center justify-center py-20 text-center gap-4">
       <Icon name="lucide:file-question" size="48" class="text-muted-foreground/40" />
       <div>
-        <p class="font-heading font-bold text-lg">This changelog entry was not found</p>
-        <p class="text-sm text-muted-foreground mt-1">It may have been removed or the link is outdated.</p>
+        <p class="font-heading font-bold text-lg">{{ $t('changelog.notFound') }}</p>
+        <p class="text-sm text-muted-foreground mt-1">{{ $t('changelog.notFoundHint') }}</p>
       </div>
       <NuxtLink
-        to="/changelog"
+        :to="localePath('/changelog')"
         class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-heading font-semibold hover:bg-primary/90 transition-colors"
       >
         <Icon name="lucide:arrow-left" size="16" />
-        Back to Changelog
+        {{ $t('changelog.back') }}
       </NuxtLink>
     </div>
 
     <template v-else>
       <nav class="mb-4 sm:mb-6">
         <NuxtLink
-          to="/changelog"
+          :to="localePath('/changelog')"
           class="inline-flex items-center gap-1.5 min-h-11 -ml-2 pl-2 pr-3 py-2 text-sm font-medium text-muted-foreground hover:text-primary active:text-primary rounded-lg transition-colors touch-manipulation sm:min-h-0 sm:ml-0 sm:px-0 sm:py-0"
         >
           <Icon name="lucide:arrow-left" size="16" />
-          Back to Changelog
+          {{ $t('changelog.back') }}
         </NuxtLink>
       </nav>
 

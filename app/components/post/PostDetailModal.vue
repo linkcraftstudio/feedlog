@@ -14,6 +14,7 @@ const emit = defineEmits<{
   deleted: [postId: string]
 }>()
 
+const localePath = useLocalePath()
 const store = usePostDetailStore()
 
 watch(open, (isOpen) => {
@@ -40,15 +41,15 @@ watch(open, (isOpen) => {
         <div class="flex items-center gap-3">
           <AppLogo :size="32" />
           <DialogTitle class="font-heading text-lg font-bold tracking-tight">
-            Feedback Detail
+            {{ $t('post.detail.modalTitle') }}
           </DialogTitle>
         </div>
         <div class="flex items-center gap-2">
           <NuxtLink
             v-if="slug"
-            :to="`/p/${slug}`"
+            :to="localePath(`/p/${slug}`)"
             class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-secondary transition-colors text-muted-foreground hover:text-primary"
-            title="Open in new page"
+            :title="$t('post.detail.openInPage')"
             @click="open = false"
           >
             <Icon name="lucide:external-link" size="18" />
@@ -72,7 +73,7 @@ watch(open, (isOpen) => {
       </div>
 
       <DialogDescription class="sr-only">
-        Post detail modal
+        {{ $t('post.detail.modalDescription') }}
       </DialogDescription>
     </DialogContent>
   </Dialog>

@@ -1,0 +1,639 @@
+{
+  "a11y": {
+    "language": "Language",
+    "loading": "Loading",
+    "coverImage": "Cover image"
+  },
+  "common": {
+    "email": "Email",
+    "password": "Password",
+    "name": "Name",
+    "cancel": "Cancel",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "signUp": "Sign up",
+    "goHome": "Go to Home",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "anonymous": "Anonymous",
+    "theme": {
+      "label": "Theme",
+      "auto": "Auto",
+      "light": "Light",
+      "dark": "Dark"
+    }
+  },
+  "status": {
+    "open": "Open",
+    "planned": "Planned",
+    "in_progress": "In Progress",
+    "done": "Completed"
+  },
+  "time": {
+    "justNow": "just now",
+    "minutesAgo": "{n}m ago",
+    "hoursAgo": "{n}h ago",
+    "daysAgo": "{n}d ago",
+    "monthsAgo": "{n}mo ago",
+    "yearsAgo": "{n}y ago"
+  },
+  "nav": {
+    "feedback": "Feedback",
+    "roadmap": "Roadmap",
+    "changelog": "Changelog",
+    "board": "Board",
+    "members": "Members",
+    "portal": "Portal",
+    "workspace": "Workspace",
+    "sso": "Single Sign-On",
+    "dashboard": "Dashboard",
+    "changePassword": "Change Password"
+  },
+  "board": {
+    "boards": "Boards",
+    "allFeedback": "All Feedback",
+    "topRequests": "Top Requests",
+    "recentRequests": "Recent Requests",
+    "sortTop": "Top",
+    "sortRecent": "Recent",
+    "search": "Search",
+    "searchPlaceholder": "Search feedback…",
+    "clearSearch": "Clear search",
+    "closeSearch": "Close search",
+    "newRequest": "New Request",
+    "noFeedback": "No feedback yet",
+    "noMatches": "No matches for “{query}”",
+    "noMatchesHint": "Nobody’s raised this yet — be the first.",
+    "comments": "{n} comments",
+    "loading": "Loading...",
+    "loadMore": "Load More",
+    "poweredBy": "Powered by "
+  },
+  "roadmap": {
+    "title": "Roadmap",
+    "subtitle": "Our current strategic roadmap and development status.",
+    "loading": "Loading...",
+    "loadMore": "Load more",
+    "emptyColumn": "No items in {status} yet.",
+    "addItem": "Add item"
+  },
+  "changelog": {
+    "title": "Changelog",
+    "subtitle": "Product updates, fixes, and improvements.",
+    "empty": "No updates yet",
+    "emptyHint": "Check back soon for product updates.",
+    "loading": "Loading...",
+    "loadMore": "Load more",
+    "notFound": "This changelog entry was not found",
+    "notFoundHint": "It may have been removed or the link is outdated.",
+    "back": "Back to Changelog",
+    "showFull": "Show full update",
+    "openFull": "Open full page",
+    "expand": "Expand update",
+    "addReaction": "Add reaction",
+    "reactWith": "React with {emoji}",
+    "category": {
+      "new": "New",
+      "improved": "Improved",
+      "fixed": "Fixed"
+    },
+    "admin": {
+      "title": "Changelogs",
+      "subtitle": "Manage product updates",
+      "create": "Create Log",
+      "filterStatus": "Status",
+      "searchPlaceholder": "Search logs...",
+      "noImage": "No featured image",
+      "noEntries": "No changelog entries match the current filters.",
+      "showing": "Showing {from} to {to} of {total} entries",
+      "entriesShort": "{total} entries",
+      "status": {
+        "all": "All Status",
+        "published": "Published",
+        "draft": "Draft",
+        "needs_update": "Needs update"
+      }
+    },
+    "editor": {
+      "back": "Back",
+      "view": "View",
+      "publish": "Publish",
+      "details": "Details",
+      "featuredImage": "Featured Image",
+      "uploading": "Uploading...",
+      "clickReplace": "Click to replace",
+      "clickUpload": "Click to upload cover image",
+      "coverHint": "Recommended: 1200 × 480 px (2.5:1)",
+      "titleLabel": "Title",
+      "titlePlaceholder": "e.g. What's new in our latest release",
+      "types": "Types",
+      "content": "Content",
+      "contentPlaceholder": "Write your changelog here...",
+      "aiWrite": "AI Write",
+      "loadFailed": "Failed to load changelog",
+      "titleContentRequired": "Title and content are required",
+      "titleContentRequiredPublish": "Title and content are required to publish",
+      "saveFailed": "Failed to save",
+      "publishSuccess": "Changelog published successfully",
+      "publishFailed": "Failed to publish",
+      "deleteTitle": "Delete this changelog?",
+      "deleteDescription": "This action cannot be undone. This will permanently delete this changelog entry and all its reactions.",
+      "deleteFailed": "Failed to delete",
+      "unsavedTitle": "Unsaved changes",
+      "unsavedDescription": "You have unsaved changes. Are you sure you want to leave?",
+      "leave": "Leave",
+      "stay": "Stay"
+    },
+    "ai": {
+      "title": "Changelog AI Assistant",
+      "subtitle": "Generate a draft from your feedback and changes",
+      "selectFeedback": "Select related feedback",
+      "optional": "(Optional)",
+      "pickTooltip": "Search for other posts to include",
+      "pickFeedback": "Pick Feedback",
+      "remove": "Remove",
+      "stylePreset": "Style Preset",
+      "viewExample": "View style example",
+      "describeUpdates": "Describe your updates",
+      "describePlaceholder": "What did you change? (e.g. Added GitHub login, fixed the markdown list bug...)",
+      "provideOne": "Please provide either linked feedback or a description of your updates.",
+      "examplePreview": "Example Preview",
+      "generating": "Generating...",
+      "generate": "Generate",
+      "generateFailed": "AI generation failed",
+      "styles": {
+        "concise": {
+          "name": "Concise",
+          "desc": "Direct and clear tone — good for daily or minor updates"
+        },
+        "structured": {
+          "name": "Structured",
+          "desc": "Categorized and scannable tone — good for large releases with multiple changes"
+        },
+        "benefitLed": {
+          "name": "Benefit-led",
+          "desc": "Value-focused tone — good for major features you want to highlight"
+        },
+        "witty": {
+          "name": "Witty",
+          "desc": "Playful and light tone — good for routine maintenance or bug fixes"
+        }
+      }
+    },
+    "picker": {
+      "title": "Pick Feedback",
+      "subtitle": "Select related posts to include in your changelog.",
+      "searchPlaceholder": "Search by title...",
+      "noResults": "No feedback found",
+      "selectedSuffix": "selected",
+      "limitReached": "(limit reached)",
+      "confirm": "Confirm Selection"
+    }
+  },
+  "post": {
+    "submit": {
+      "selectBoard": "Select Board",
+      "titlePlaceholder": "What's on your mind?",
+      "bodyPlaceholder": "Explain your thoughts in detail...",
+      "submitting": "Submitting...",
+      "submit": "Post Feedback",
+      "dialogTitle": "Submit Feedback",
+      "dialogDescription": "Submit new feedback",
+      "errors": {
+        "selectBoard": "Please select a board",
+        "titleRequired": "Title is required",
+        "contentRequired": "Content is required",
+        "submitFailed": "Failed to submit"
+      }
+    },
+    "similar": {
+      "finding": "Finding Similar Posts",
+      "found": "Found {count} Similar Posts",
+      "panelTitle": "Similar Posts",
+      "empty": "No similar posts found",
+      "expandAll": "Expand All Similar Posts"
+    },
+    "detail": {
+      "upvotes": "Upvotes",
+      "titlePlaceholder": "Title",
+      "editPlaceholder": "Edit your post...",
+      "saving": "Saving...",
+      "saveChanges": "Save Changes",
+      "deleteTitle": "Delete this post?",
+      "deleteDescription": "This action cannot be undone. This will permanently delete the post and all its comments.",
+      "linkCopied": "Link copied to clipboard",
+      "linkCopyFailed": "Failed to copy link",
+      "discussion": "Discussion ({count})",
+      "noComments": "No comments yet",
+      "noCommentsHint": "Be the first to share your thoughts",
+      "loadingMore": "Loading...",
+      "viewMoreComments": "View more comments",
+      "board": "Board",
+      "status": "Status",
+      "author": "Author",
+      "none": "None",
+      "shareRequest": "Share Request",
+      "modalTitle": "Feedback Detail",
+      "modalDescription": "Post detail modal",
+      "openInPage": "Open in new page",
+      "sort": {
+        "newest": "Newest",
+        "oldest": "Oldest",
+        "top": "Top"
+      },
+      "errors": {
+        "titleRequired": "Title is required",
+        "contentRequired": "Content is required",
+        "saveFailed": "Failed to save",
+        "deleteFailed": "Failed to delete"
+      }
+    },
+    "merge": {
+      "tooltip": "Merge",
+      "toThis": "Merge to this post",
+      "thisInto": "Merge this post into...",
+      "intoCurrent": "Merge into current",
+      "currentInto": "Merge current into this",
+      "dialogTitle": "Merge Feedback",
+      "dialogSubtitle": "Consolidate similar requests into a single post to streamline your roadmap.",
+      "searchPlaceholder": "Search for feedback to merge...",
+      "searching": "Searching...",
+      "noResults": "No posts found",
+      "merging": "Merging...",
+      "action": "Merge",
+      "failed": "Merge failed",
+      "dialogDescription": "Search and select a post to merge",
+      "banner": "This post was merged into",
+      "mergedPostBy": "Merged post by {name}",
+      "mergedPost": "Merged post",
+      "unmerge": "Unmerge",
+      "loadMoreComments": "Load more comments",
+      "loadComments": "Load {count} comments"
+    },
+    "comment": {
+      "edited": "(edited)",
+      "reply": "Reply",
+      "comment": "Comment",
+      "editPlaceholder": "Edit your comment...",
+      "replyPlaceholder": "Write a reply...",
+      "addPlaceholder": "Add a comment or feedback...",
+      "viewMoreReplies": "View {count} more replies",
+      "deleteTitle": "Delete this comment?",
+      "deleteDescription": "This action cannot be undone. This will permanently delete the comment and all its replies."
+    }
+  },
+  "auth": {
+    "emailPlaceholder": "you{'@'}example.com",
+    "passwordMinHint": "At least 8 characters",
+    "checkEmail": "Check your email",
+    "backToSignIn": "← Back to sign in",
+    "signingIn": "Signing in...",
+    "fields": {
+      "current": "Current Password",
+      "new": "New Password",
+      "confirm": "Confirm Password"
+    },
+    "signIn": {
+      "title": "Sign in to FeedLog",
+      "subtitle": "Sign in to submit feedback, vote, and comment",
+      "google": "Continue with Google",
+      "github": "Continue with GitHub",
+      "or": "or",
+      "withEmail": "Sign in with email",
+      "noAccount": "Don't have an account?",
+      "otherOptions": "Other sign in options"
+    },
+    "signInEmail": {
+      "title": "Sign in with email",
+      "passwordPlaceholder": "Enter your password"
+    },
+    "signUp": {
+      "title": "Sign up with email",
+      "namePlaceholder": "Your name",
+      "haveAccount": "Already have an account?"
+    },
+    "verifyEmail": {
+      "sentTo": "We've sent a verification link to",
+      "instruction": "Please check your inbox and click the verification link to continue.",
+      "verified": "I've verified my email",
+      "didntReceive": "Didn't receive it?",
+      "resend": "Resend"
+    },
+    "forgot": {
+      "title": "Forgot Password?",
+      "subtitle": "Enter your email to receive a password reset link.",
+      "submit": "Send Reset Link"
+    },
+    "resetSent": {
+      "sentTo": "We've sent a password reset link to",
+      "instruction": "Click the link in the email to reset your password. The link expires in 1 hour."
+    },
+    "changePassword": {
+      "title": "Change Password",
+      "setTitle": "Set Password",
+      "subtitle": "Update your account password",
+      "setSubtitle": "Add a password to your account",
+      "submit": "Update Password"
+    },
+    "resetPage": {
+      "successTitle": "Password Reset",
+      "successBody": "Your password has been reset successfully.",
+      "expiredTitle": "Link Expired",
+      "expiredBody": "This password reset link has expired or is invalid. Please request a new one.",
+      "title": "Reset Your Password",
+      "subtitle": "Enter your new password below.",
+      "submit": "Reset Password",
+      "backHome": "← Back to home"
+    },
+    "verified": {
+      "title": "Email Verified",
+      "body": "Your email has been verified successfully.",
+      "redirecting": "Redirecting..."
+    },
+    "commentPrompt": {
+      "text": "Sign in to join the conversation"
+    },
+    "invite": {
+      "loading": "Loading…",
+      "unavailableTitle": "Invitation unavailable",
+      "unavailableBody": "This invitation is no longer available.",
+      "goToApp": "Go to FeedLog",
+      "joinTitle": "Join FeedLog",
+      "joinTeam": "Join {org}'s team on FeedLog",
+      "signInToContinue": "Sign in to continue",
+      "anonymousHint": "You'll sign in or create a FeedLog account along the way.",
+      "joining": "Joining…",
+      "joinOrg": "Join {org}",
+      "notYou": "Not you?",
+      "signOut": "Sign out",
+      "sentToEmail": "This invitation was sent to {email}.",
+      "switchAccount": "Switch account"
+    },
+    "sso": {
+      "pageTitle": "Sign-in unavailable",
+      "title": "We couldn't sign you in",
+      "body": "Single sign-on didn't complete — the sign-in link may have expired or been misconfigured. If this keeps happening, please contact your administrator.",
+      "continuingIn": "Continuing in {seconds}s…",
+      "continueNow": "Continue now"
+    },
+    "errors": {
+      "emailNotVerified": "Please verify your email before signing in",
+      "invalidCredentials": "Invalid email or password",
+      "signInFailed": "Sign in failed",
+      "passwordTooShort": "Password must be at least 8 characters",
+      "signUpFailed": "Sign up failed",
+      "notYetVerified": "Email not yet verified, please check your inbox",
+      "enterEmail": "Please enter your email",
+      "sendResetFailed": "Failed to send reset email",
+      "resendFailed": "Failed to resend verification email",
+      "passwordsMismatch": "Passwords do not match",
+      "changeFailed": "Failed to change password",
+      "setFailed": "Failed to set password",
+      "resetFailed": "Failed to reset password"
+    },
+    "success": {
+      "verificationResent": "Verification email resent",
+      "passwordUpdated": "Password updated",
+      "passwordSet": "Password set successfully"
+    }
+  },
+  "dashboard": {
+    "all": "All",
+    "allBoards": "All Boards",
+    "backToSite": "Back to site",
+    "filter": {
+      "status": "Status",
+      "board": "Board",
+      "merged": "Merged"
+    },
+    "nav": {
+      "srTitle": "Navigation",
+      "srDescription": "Dashboard navigation menu",
+      "main": "Main",
+      "settings": "Settings",
+      "developer": "Developer"
+    },
+    "roadmap": {
+      "title": "Roadmap",
+      "subtitle": "Feedback by status"
+    },
+    "boards": {
+      "title": "Boards",
+      "subtitle": "Organize feedback by category",
+      "create": "Create Board",
+      "empty": "No boards yet",
+      "noResults": "No boards found",
+      "emptyHint": "Create your first board to start organizing feedback",
+      "posts": "{count} posts",
+      "noDescription": "No description",
+      "deleteTitle": "Delete board “{name}”?",
+      "deleteDescription": "This action cannot be undone. Posts in this board will become uncategorized.",
+      "editTitle": "Edit Board",
+      "nameLabel": "Board Name",
+      "descLabel": "Board Description",
+      "nameRequired": "Board name is required",
+      "saveFailed": "Failed to save board",
+      "saving": "Saving...",
+      "saveChanges": "Save Changes"
+    },
+    "feedback": {
+      "title": "Feedback",
+      "subtitle": "All submissions",
+      "filtersBtn": "Filters",
+      "create": "Create Feedback",
+      "activeFilters": "Active Filters:",
+      "clearAll": "Clear all",
+      "canonicalOnly": "Canonical Only",
+      "mergedOnly": "Merged Only",
+      "noResults": "No feedback found",
+      "noResultsHint": "Try adjusting your filters",
+      "searchNoMatch": "No matches for “{query}”",
+      "searchNoMatchHint": "Try a different term, or clear the search.",
+      "unknownBoard": "Unknown",
+      "colUpvotes": "Upvotes",
+      "colTitle": "Title",
+      "colBoard": "Board",
+      "colAuthor": "Author",
+      "colComments": "Comments",
+      "colCreated": "Created",
+      "colStatus": "Status",
+      "showing": "Showing {from} to {to} of {total} entries",
+      "entriesShort": "{total} entries",
+      "searchPlaceholder": "Search feedback…",
+      "searchAria": "Search feedback",
+      "clearSearch": "Clear search"
+    },
+    "sso": {
+      "title": "Single Sign-On",
+      "subtitle": "Let users from your product sign in without a second login",
+      "createSecret": "Create secret",
+      "limitReached": "Limit of {limit} secrets reached",
+      "signingSecrets": "Signing secrets",
+      "integrationGuide": "Integration guide",
+      "ownersOnly": "Owners only",
+      "ownersOnlyHint": "Only workspace owners can manage SSO signing secrets. Ask an owner if you need access.",
+      "secretsDesc": "Shared JWT secrets your backend uses to sign SSO tokens.",
+      "usedCount": "{used} of {limit} used",
+      "loading": "Loading…",
+      "empty": "No signing secrets yet",
+      "emptyHint": "Create a secret, then use it on your backend to sign SSO tokens for your users.",
+      "rotationLabel": "Rotating a secret:",
+      "rotationMid": " create a new one, switch your product to it, then ",
+      "rotationDisable": "disable",
+      "rotationEnd": " the old one (re-enable if something breaks). Delete it once you're sure. Tokens are verified against every enabled secret.",
+      "deleteTitle": "Delete this secret?",
+      "untitled": "Untitled",
+      "deleteDescription": " will be permanently deleted. Any tokens signed with it stop working immediately. This can't be undone — if you only want to pause it, disable it instead.",
+      "deletePermanently": "Delete permanently",
+      "createFailed": "Failed to create secret",
+      "renameFailed": "Failed to rename secret",
+      "updateFailed": "Failed to update secret",
+      "deleteFailed": "Failed to delete secret",
+      "renameTitle": "Rename secret",
+      "renameDesc": "Update the label used to tell this secret apart. The key itself is unchanged.",
+      "createTitle": "Create signing secret",
+      "createDesc": "A new HS256 secret your backend uses to sign SSO tokens. You can reveal and copy it again any time.",
+      "labelLabel": "Label",
+      "labelOptional": "(optional)",
+      "labelPlaceholder": "e.g. Production, EU region, mobile app",
+      "labelHint": "Helps you tell multiple secrets apart when rotating.",
+      "created": "Created {date}",
+      "new": "New",
+      "reveal": "Reveal",
+      "hide": "Hide",
+      "copy": "Copy",
+      "copied": "Copied",
+      "active": "Active",
+      "disabled": "Disabled",
+      "rename": "Rename",
+      "enable": "Enable",
+      "disable": "Disable",
+      "guideEndpoint": "Endpoint",
+      "guideEndpointDesc": "Redirect signed-in users from your product to this URL.",
+      "guideQueryParams": "Query parameters",
+      "required": "Required",
+      "optional": "Optional",
+      "guideParamJwt": "HS256-signed token (see payload below).",
+      "guideParamReturnTo": "Where to land after sign-in. Same-host path or URL only (host-whitelisted). Defaults to /.",
+      "guideJwtPayload": "JWT payload",
+      "guideJwtPayloadDesc": "The signed-in user's info, carried in the token. FeedLog reads only these fields — any other claims are ignored.",
+      "guidePayloadEmail": "Identity key (globally unique) + notifications.",
+      "guidePayloadName": "Display name.",
+      "guidePayloadPicture": "Avatar URL.",
+      "guidePayloadExp": "Expiry (Unix seconds). Required — see TTL below.",
+      "guideSignTitle": "Sign & redirect (Node.js)",
+      "guideSignDesc": "Build the link on your backend.",
+      "guideTtlPre": "Token expiry (",
+      "guideTtlPost": ") is required",
+      "guideTtlBody": "Recommended ~1 hour; hard cap 24 hours (±60s clock tolerance). Pre-sign tokens when you render the page — not when the user clicks — to avoid an extra round-trip.",
+      "guideMatchedByPre": "Users are matched by ",
+      "guideMatchedByEmail": "email",
+      "guideMatchedByPost": ". A first-time email creates an end-user account (no extra login screen); changing a user's email creates a new account and does not migrate history."
+    }
+  },
+  "settings": {
+    "loading": "Loading…",
+    "reset": "Reset",
+    "saving": "Saving…",
+    "saveChanges": "Save changes",
+    "unsavedChanges": "You have unsaved changes",
+    "preview": "Preview",
+    "workspace": {
+      "title": "Workspace",
+      "subtitle": "Your workspace's identity",
+      "general": "General",
+      "generalDesc": "How your workspace appears to members and in invitation emails.",
+      "nameLabel": "Workspace name",
+      "namePlaceholder": "Acme Corp",
+      "nameHint": "Your team or company name. Shown to members and in invitation emails."
+    },
+    "branding": {
+      "title": "Branding",
+      "subtitle": "How your public feedback portal looks to visitors.",
+      "logo": "Logo",
+      "removeLogo": "Remove",
+      "logoHint": "PNG, JPG or SVG · recommended 256x256",
+      "brandColor": "Brand color",
+      "brandColorHint": "Drives buttons, links and accents.",
+      "defaultTheme": "Default theme",
+      "defaultThemeHint": "Default theme shown to visitors.",
+      "uploadFailed": "Failed to upload logo.",
+      "saveFailed": "Failed to save branding.",
+      "theme": {
+        "system": "System",
+        "light": "Light",
+        "dark": "Dark"
+      }
+    },
+    "portal": {
+      "title": "Portal",
+      "subtitle": "Content shown on your public feedback portal",
+      "saveFailed": "Failed to save portal settings.",
+      "welcomeSection": "Welcome message",
+      "welcomeDesc": "The heading and intro shown at the top of your public portal.",
+      "titleLabel": "Title",
+      "titlePlaceholder": "Submit feedback for {name}",
+      "titleHint": "Shown as the main heading on your feedback portal.",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Any bug reports and feature requests are welcome...",
+      "loadingEditor": "Loading editor...",
+      "descriptionHint": "Shown below the title to provide more context for visitors. Markdown supported."
+    },
+    "members": {
+      "title": "Members",
+      "subtitle": "Manage who can access this workspace",
+      "invite": "Invite",
+      "pending": "Pending invitations",
+      "invitedAs": "Invited as",
+      "expiresIn": "expires in {time}",
+      "expired": "expired",
+      "copyLink": "Copy invitation link",
+      "revoke": "Revoke",
+      "membersSection": "Members",
+      "total": "{count} total",
+      "you": "You",
+      "remove": "Remove from org",
+      "lastOwnerNote": "The last owner of a workspace cannot be demoted or removed. Transfer ownership first.",
+      "inviteTitle": "Invite members",
+      "inviteDesc": "Send an email invitation. Invitations expire in 7 days.",
+      "emailNotConfigured": "Email not configured",
+      "emailNotConfiguredHint": "No Resend API key set. The invitation will be created but no email is sent — copy the link from the list and share it manually.",
+      "emailLabel": "Email addresses",
+      "emailPlaceholder": "alice{'@'}acme.com, bob{'@'}acme.com",
+      "emailHint": "Comma or newline separated",
+      "roleLabel": "Role",
+      "ownerWarning": "Owners have full administrative access — managing members, settings, and ownership. Only invite people you fully trust.",
+      "sending": "Sending…",
+      "creating": "Creating…",
+      "sendInvites": "Send invitations",
+      "createInvites": "Create invitations",
+      "invitationCreated": "Invitation created",
+      "invitationsCreated": "{count} invitations created",
+      "inviteToastEmailOn": "If the email doesn't arrive, copy the link from the list to share it manually.",
+      "inviteToastEmailOff": "No email was sent — copy the link from the list to share it manually.",
+      "roles": {
+        "contributor": {
+          "label": "Contributor",
+          "desc": "View feedback from inside the dashboard and join discussions."
+        },
+        "manager": {
+          "label": "Manager",
+          "desc": "Manage feedback, changelogs, and the roadmap."
+        },
+        "owner": {
+          "label": "Owner",
+          "desc": "Full access. Can manage members, settings, and ownership."
+        }
+      }
+    }
+  },
+  "seo": {
+    "portalTitle": "{name} Feedback",
+    "roadmapTitle": "{name} Roadmap",
+    "changelogTitle": "{name} Changelog",
+    "postFallback": "Feedback",
+    "changelogFallback": "Changelog",
+    "titleWithOrg": "{title} - {name}"
+  }
+}

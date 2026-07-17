@@ -1,6 +1,5 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'dashboard', middleware: 'admin' })
-useHead({ title: 'New Changelog' })
 </script>
 
 <template>

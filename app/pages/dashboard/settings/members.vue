@@ -14,6 +14,7 @@ const orgId = computed(() => ctx.value.orgId)
 const myUserId = computed(() => session.value?.user?.id)
 const canManage = computed(() => ctx.value.role === 'owner' || ctx.value.role === 'manager')
 const canPromoteToOwner = computed(() => ctx.value.role === 'owner')
+const { t } = useI18n()
 
 type Role = 'owner' | 'manager' | 'contributor'
 
@@ -59,14 +60,15 @@ onMounted(() => { void refresh() })
 
 const ownerCount = computed(() => members.value.filter(m => m.role === 'owner').length)
 
-const roleOptions: { key: Role; label: string; icon: string; desc: string }[] = [
-  { key: 'contributor', label: 'Contributor', icon: 'lucide:user', desc: 'View feedback from inside the dashboard and join discussions.' },
-  { key: 'manager', label: 'Manager', icon: 'lucide:shield', desc: 'Manage feedback, changelogs, and the roadmap.' },
-  { key: 'owner', label: 'Owner', icon: 'lucide:crown', desc: 'Full access. Can manage members, settings, and ownership.' },
-]
-const roleIcon = (role: string) => roleOptions.find(r => r.key === role)?.icon ?? 'lucide:user'
+const roleOptions = computed<{ key: Role; label: string; icon: string; desc: string }[]>(() => [
+  { key: 'contributor', label: t('settings.members.roles.contributor.label'), icon: 'lucide:user', desc: t('settings.members.roles.contributor.desc') },
+  { key: 'manager', label: t('settings.members.roles.manager.label'), icon: 'lucide:shield', desc: t('settings.members.roles.manager.desc') },
+  { key: 'owner', label: t('settings.members.roles.owner.label'), icon: 'lucide:crown', desc: t('settings.members.roles.owner.desc') },
+])
+const roleIcon = (role: string) => roleOptions.value.find(r => r.key === role)?.icon ?? 'lucide:user'
+const roleLabel = (role: string) => roleOptions.value.find(r => r.key === role)?.label ?? role
 // Hide 'owner' from non-owners — promoting to owner is owner-only.
-const availableRoles = computed(() => canPromoteToOwner.value ? roleOptions : roleOptions.filter(r => r.key !== 'owner'))
+const availableRoles = computed(() => canPromoteToOwner.value ? roleOptions.value : roleOptions.value.filter(r => r.key !== 'owner'))
 
 // Invite modal
 const showInvite = ref(false)
@@ -82,7 +84,7 @@ const { data: authCfg } = await useFetch<{ emailProvider?: boolean }>('/api/auth
   default: () => ({ emailProvider: false }),
 })
 const emailConfigured = computed(() => !!authCfg.value?.emailProvider)
-const currentInviteRole = computed(() => roleOptions.find(r => r.key === inviteRole.value)!)
+const currentInviteRole = computed(() => roleOptions.value.find(r => r.key === inviteRole.value)!)
 
 async function sendInvite() {
   const emails = inviteEmails.value.split(/[,;\n\s]+/).map(s => s.trim()).filter(Boolean)
@@ -100,10 +102,10 @@ async function sendInvite() {
     inviteEmails.value = ''
     inviteRole.value = 'contributor'
     await refresh()
-    toast.success(emails.length > 1 ? `${emails.length} invitations created` : 'Invitation created', {
+    toast.success(emails.length > 1 ? t('settings.members.invitationsCreated', { count: emails.length }) : t('settings.members.invitationCreated'), {
       description: emailConfigured.value
-        ? 'If the email doesn’t arrive, copy the link from the list to share it manually.'
-        : 'No email was sent — copy the link from the list to share it manually.',
+        ? t('settings.members.inviteToastEmailOn')
+        : t('settings.members.inviteToastEmailOff'),
     })
   } finally {
     inviting.value = false
@@ -143,7 +145,7 @@ function copyInviteLink(invitationId: string) {
 function formatExpiresIn(iso: string | null): string {
   if (!iso) return ''
   const diff = new Date(iso).getTime() - Date.now()
-  if (diff <= 0) return 'expired'
+  if (diff <= 0) return t('settings.members.expired')
   const days = Math.floor(diff / (24 * 60 * 60 * 1000))
   if (days >= 1) return `${days}d`
   const hours = Math.floor(diff / (60 * 60 * 1000))
@@ -161,8 +163,8 @@ function initials(name: string | undefined): string {
   <div class="flex flex-col h-full">
     <header class="h-16 px-6 border-b border-border flex items-center justify-between shrink-0 bg-card">
       <div>
-        <h2 class="font-heading text-lg font-bold">Members</h2>
-        <p class="text-xs text-muted-foreground">Manage who can access this workspace</p>
+        <h2 class="font-heading text-lg font-bold">{{ $t('settings.members.title') }}</h2>
+        <p class="text-xs text-muted-foreground">{{ $t('settings.members.subtitle') }}</p>
       </div>
       <button
         v-if="canManage"
@@ -170,21 +172,21 @@ function initials(name: string | undefined): string {
         @click="showInvite = true"
       >
         <Icon name="lucide:user-plus-2" size="14" />
-        Invite
+        {{ $t('settings.members.invite') }}
       </button>
     </header>
 
     <div class="flex-1 overflow-y-auto">
       <div class="max-w-4xl mx-auto px-6 py-8 space-y-8">
         <template v-if="loading">
-          <p class="text-sm text-muted-foreground">Loading…</p>
+          <p class="text-sm text-muted-foreground">{{ $t('settings.loading') }}</p>
         </template>
 
         <template v-else>
           <!-- Pending invitations -->
           <section v-if="invitations.length" class="rounded-xl border border-border bg-card overflow-hidden">
             <div class="px-5 py-3 border-b border-border">
-              <h3 class="font-heading font-bold text-sm">Pending invitations</h3>
+              <h3 class="font-heading font-bold text-sm">{{ $t('settings.members.pending') }}</h3>
             </div>
             <ul class="divide-y divide-border">
               <li v-for="inv in invitations" :key="inv.id" class="px-5 py-3 flex items-center gap-3">
@@ -194,8 +196,8 @@ function initials(name: string | undefined): string {
                 <div class="flex-1 min-w-0">
                   <p class="text-sm font-semibold truncate">{{ inv.email }}</p>
                   <p class="text-[11px] text-muted-foreground truncate">
-                    Invited as <span class="font-semibold capitalize">{{ inv.role }}</span>
-                    <template v-if="inv.expiresAt"> · expires in {{ formatExpiresIn(inv.expiresAt) }}</template>
+                    {{ $t('settings.members.invitedAs') }} <span class="font-semibold capitalize">{{ roleLabel(inv.role) }}</span>
+                    <template v-if="inv.expiresAt"> · {{ $t('settings.members.expiresIn', { time: formatExpiresIn(inv.expiresAt) }) }}</template>
                   </p>
                 </div>
                 <DropdownMenu v-if="canManage">
@@ -207,12 +209,12 @@ function initials(name: string | undefined): string {
                   <DropdownMenuContent align="end" class="w-[180px]">
                     <DropdownMenuItem @click="copyInviteLink(inv.id)">
                       <Icon name="lucide:link" size="13" class="mr-2" />
-                      Copy invitation link
+                      {{ $t('settings.members.copyLink') }}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem class="text-red-600" @click="cancelInvitation(inv.id)">
                       <Icon name="lucide:x" size="13" class="mr-2" />
-                      Revoke
+                      {{ $t('settings.members.revoke') }}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -223,8 +225,8 @@ function initials(name: string | undefined): string {
           <!-- Members table -->
           <section class="rounded-xl border border-border bg-card overflow-hidden">
             <div class="px-5 py-3 border-b border-border flex items-center justify-between">
-              <h3 class="font-heading font-bold text-sm">Members</h3>
-              <span class="text-[11px] text-muted-foreground">{{ members.length }} total</span>
+              <h3 class="font-heading font-bold text-sm">{{ $t('settings.members.membersSection') }}</h3>
+              <span class="text-[11px] text-muted-foreground">{{ $t('settings.members.total', { count: members.length }) }}</span>
             </div>
             <ul class="divide-y divide-border">
               <li v-for="m in members" :key="m.id" class="px-5 py-3 flex items-center gap-3">
@@ -241,7 +243,7 @@ function initials(name: string | undefined): string {
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-2">
                     <p class="text-sm font-bold truncate">{{ m.user.name }}</p>
-                    <span v-if="m.userId === myUserId" class="text-[10px] font-bold uppercase tracking-wider bg-muted text-muted-foreground px-1.5 py-0.5 rounded">You</span>
+                    <span v-if="m.userId === myUserId" class="text-[10px] font-bold uppercase tracking-wider bg-muted text-muted-foreground px-1.5 py-0.5 rounded">{{ $t('settings.members.you') }}</span>
                   </div>
                   <p class="text-[11px] text-muted-foreground truncate">{{ m.user.email }}</p>
                 </div>
@@ -256,7 +258,7 @@ function initials(name: string | undefined): string {
                   <SelectTrigger class="h-8 w-auto gap-1.5 px-2.5 text-xs font-semibold capitalize">
                     <span class="flex items-center gap-1.5">
                       <Icon :name="roleIcon(m.role)" size="12" class="text-muted-foreground" />
-                      <span>{{ m.role }}</span>
+                      <span>{{ roleLabel(m.role) }}</span>
                     </span>
                   </SelectTrigger>
                   <SelectContent align="end">
@@ -273,7 +275,7 @@ function initials(name: string | undefined): string {
                 </Select>
                 <span v-else class="inline-flex items-center gap-1.5 h-8 px-2.5 text-xs font-semibold capitalize text-muted-foreground">
                   <Icon :name="roleIcon(m.role)" size="12" />
-                  {{ m.role }}
+                  {{ roleLabel(m.role) }}
                 </span>
 
                 <!-- More -->
@@ -290,7 +292,7 @@ function initials(name: string | undefined): string {
                       @click="removeMember(m)"
                     >
                       <Icon name="lucide:user-x" size="13" class="mr-2" />
-                      Remove from org
+                      {{ $t('settings.members.remove') }}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -301,7 +303,7 @@ function initials(name: string | undefined): string {
           <!-- Footnote about last owner safeguard -->
           <p class="text-[11px] text-muted-foreground leading-relaxed">
             <Icon name="lucide:shield-check" size="11" class="inline mr-1" />
-            The last owner of a workspace cannot be demoted or removed. Transfer ownership first.
+            {{ $t('settings.members.lastOwnerNote') }}
           </p>
         </template>
       </div>
@@ -310,9 +312,9 @@ function initials(name: string | undefined): string {
     <Dialog v-model:open="showInvite">
       <DialogContent class="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle class="font-heading">Invite members</DialogTitle>
+          <DialogTitle class="font-heading">{{ $t('settings.members.inviteTitle') }}</DialogTitle>
           <DialogDescription class="text-sm">
-            Send an email invitation. Invitations expire in 7 days.
+            {{ $t('settings.members.inviteDesc') }}
           </DialogDescription>
         </DialogHeader>
 
@@ -321,27 +323,27 @@ function initials(name: string | undefined): string {
           <div v-if="!emailConfigured" class="p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2">
             <Icon name="lucide:mail-x" size="14" class="mt-0.5 shrink-0" />
             <div>
-              <p class="font-bold">Email not configured</p>
-              <p class="mt-0.5 leading-relaxed">No Resend API key set. The invitation will be created but no email is sent — copy the link from the list and share it manually.</p>
+              <p class="font-bold">{{ $t('settings.members.emailNotConfigured') }}</p>
+              <p class="mt-0.5 leading-relaxed">{{ $t('settings.members.emailNotConfiguredHint') }}</p>
             </div>
           </div>
 
           <!-- Emails input -->
           <div>
-            <label class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Email addresses</label>
+            <label class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('settings.members.emailLabel') }}</label>
             <textarea
               v-model="inviteEmails"
               rows="2"
               :disabled="inviting"
-              placeholder="alice@acme.com, bob@acme.com"
+              :placeholder="$t('settings.members.emailPlaceholder')"
               class="mt-2 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:border-primary transition-colors resize-none disabled:opacity-60 disabled:cursor-not-allowed"
             />
-            <p class="text-[11px] text-muted-foreground mt-1">Comma or newline separated</p>
+            <p class="text-[11px] text-muted-foreground mt-1">{{ $t('settings.members.emailHint') }}</p>
           </div>
 
           <!-- Role -->
           <div>
-            <label class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Role</label>
+            <label class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('settings.members.roleLabel') }}</label>
             <Select v-model="inviteRole" :disabled="inviting">
               <SelectTrigger class="mt-2 w-full h-10 text-sm">
                 <SelectValue>
@@ -368,21 +370,21 @@ function initials(name: string | undefined): string {
             <!-- In-context warning when Owner is selected -->
             <div v-if="inviteRole === 'owner'" class="mt-3 flex items-start gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-900 leading-relaxed">
               <Icon name="lucide:alert-triangle" size="13" class="mt-0.5 shrink-0 text-amber-600" />
-              <span>Owners have full administrative access — managing members, settings, and ownership. Only invite people you fully trust.</span>
+              <span>{{ $t('settings.members.ownerWarning') }}</span>
             </div>
           </div>
         </div>
 
         <DialogFooter>
           <button class="h-9 px-4 rounded-lg border border-border bg-background text-xs font-semibold hover:bg-secondary transition-colors" @click="showInvite = false">
-            Cancel
+            {{ $t('common.cancel') }}
           </button>
           <button
             :disabled="!inviteEmails.trim() || inviting"
             class="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-heading font-bold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
             @click="sendInvite"
           >
-            {{ inviting ? (emailConfigured ? 'Sending…' : 'Creating…') : (emailConfigured ? 'Send invitations' : 'Create invitations') }}
+            {{ inviting ? (emailConfigured ? $t('settings.members.sending') : $t('settings.members.creating')) : (emailConfigured ? $t('settings.members.sendInvites') : $t('settings.members.createInvites')) }}
           </button>
         </DialogFooter>
       </DialogContent>

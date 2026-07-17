@@ -1,6 +1,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'dashboard', middleware: 'admin' })
 
+const { t } = useI18n()
 const boardStore = useBoardStore()
 const postDetailStore = usePostDetailStore()
 await callOnce(() => boardStore.fetchBoards())
@@ -8,7 +9,7 @@ const { boards } = storeToRefs(boardStore)
 
 const selectedBoard = ref('all')
 const boardOptions = computed(() => [
-  { value: 'all', label: 'All Boards' },
+  { value: 'all', label: t('dashboard.allBoards') },
   ...boards.value.map(b => ({ value: b.id, label: b.name })),
 ])
 
@@ -58,9 +59,9 @@ function openPostDetail(item: PostListItem) {
   <!-- Top bar -->
   <header class="h-16 px-6 border-b border-border flex items-center justify-between shrink-0 bg-card backdrop-blur-sm">
     <div class="flex items-center gap-4">
-      <h2 class="font-heading text-lg font-bold">Roadmap</h2>
+      <h2 class="font-heading text-lg font-bold">{{ $t('dashboard.roadmap.title') }}</h2>
       <div class="h-4 w-[1px] bg-border" />
-      <span class="text-xs font-medium text-muted-foreground">Feedback by status</span>
+      <span class="text-xs font-medium text-muted-foreground">{{ $t('dashboard.roadmap.subtitle') }}</span>
     </div>
   </header>
 
@@ -68,7 +69,7 @@ function openPostDetail(item: PostListItem) {
   <div class="px-6 py-4 border-b border-border flex items-center bg-background/30">
     <FilterTag
       v-model="selectedBoard"
-      label="Board"
+      :label="$t('dashboard.filter.board')"
       icon="lucide:layers"
       :options="boardOptions"
       :removable="false"

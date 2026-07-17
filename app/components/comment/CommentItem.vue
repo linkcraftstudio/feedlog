@@ -56,12 +56,15 @@ const replyToName = computed(() => {
 
 // Delete confirmation
 const { confirm } = useConfirmDialog()
+const { t } = useI18n()
+const timeAgo = useTimeAgo()
 
 async function handleDelete() {
   const ok = await confirm({
-    title: 'Delete this comment?',
-    description: 'This action cannot be undone. This will permanently delete the comment and all its replies.',
-    confirmText: 'Delete',
+    title: t('post.comment.deleteTitle'),
+    description: t('post.comment.deleteDescription'),
+    cancelText: t('common.cancel'),
+    confirmText: t('common.delete'),
     variant: 'destructive',
   })
   if (!ok) return
@@ -110,7 +113,7 @@ function initials(name: string | null) {
       >
         <div class="flex items-center gap-2 mb-2">
           <span class="font-heading font-bold" :class="depth ? 'text-xs' : 'text-sm'">
-            {{ comment.author?.name ?? 'Anonymous' }}
+            {{ comment.author?.name ?? $t('common.anonymous') }}
           </span>
           <span v-if="replyToName" class="inline-flex items-center gap-0.5 text-muted-foreground" :class="depth ? 'text-[10px]' : 'text-xs'">
             <Icon name="lucide:corner-down-right" :size="depth ? '10' : '12'" />
@@ -120,7 +123,7 @@ function initials(name: string | null) {
             {{ timeAgo(comment.createdAt) }}
           </span>
           <span v-if="comment.editedAt" class="text-[10px] text-muted-foreground italic">
-            (edited)
+            {{ $t('post.comment.edited') }}
           </span>
 
           <!-- Three-dot menu -->
@@ -133,11 +136,11 @@ function initials(name: string | null) {
             <DropdownMenuContent align="end" class="min-w-[120px]">
               <DropdownMenuItem v-if="canEdit" class="text-xs font-bold gap-2" @click="$emit('edit', comment.id)">
                 <Icon name="lucide:pencil" size="14" />
-                Edit
+                {{ $t('common.edit') }}
               </DropdownMenuItem>
               <DropdownMenuItem v-if="canDelete" class="text-xs font-bold gap-2 text-destructive" @click="handleDelete">
                 <Icon name="lucide:trash-2" size="14" />
-                Delete
+                {{ $t('common.delete') }}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -147,7 +150,7 @@ function initials(name: string | null) {
         <template v-if="isEditing">
           <CommentEditor
             :initial-content="comment.content"
-            :placeholder="'Edit your comment...'"
+            :placeholder="$t('post.comment.editPlaceholder')"
             :loading="submitting"
             @submit="$emit('editSubmit', comment.id, $event)"
             @cancel="$emit('editCancel')"
@@ -165,7 +168,7 @@ function initials(name: string | null) {
               :class="depth ? 'text-[11px]' : ''"
               @click="$emit('reply', comment.id)"
             >
-              <Icon name="lucide:reply" :size="depth ? '12' : '14'" /> Reply
+              <Icon name="lucide:reply" :size="depth ? '12' : '14'" /> {{ $t('post.comment.reply') }}
             </Button>
             <Button
               variant="subtle"
@@ -189,7 +192,7 @@ function initials(name: string | null) {
       <CommentEditor
         :parent-id="comment.id"
         :reply-to-id="comment.id"
-        placeholder="Write a reply..."
+        :placeholder="$t('post.comment.replyPlaceholder')"
         :loading="submitting"
         @submit="$emit('replySubmit', $event)"
         @cancel="$emit('replyCancel')"
@@ -221,7 +224,7 @@ function initials(name: string | null) {
         <CommentEditor
           :parent-id="comment.id"
           :reply-to-id="reply.id"
-          placeholder="Write a reply..."
+          :placeholder="$t('post.comment.replyPlaceholder')"
           :loading="submitting"
           @submit="$emit('replySubmit', $event)"
           @cancel="$emit('replyCancel')"
@@ -235,7 +238,7 @@ function initials(name: string | null) {
         class="text-xs font-bold text-muted-foreground hover:text-primary transition-colors"
         @click="$emit('loadMoreChildren', comment.id)"
       >
-        View {{ (comment.replyCount ?? 0) - (comment.children?.length ?? 0) }} more replies
+        {{ $t('post.comment.viewMoreReplies', { count: (comment.replyCount ?? 0) - (comment.children?.length ?? 0) }) }}
       </button>
     </div>
 

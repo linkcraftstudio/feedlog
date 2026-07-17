@@ -44,22 +44,49 @@ useSeoMeta({
   twitterCard: 'summary_large_image',
 })
 
+const localeHead = useLocaleHead()
+
+// i18n emits hreflang/canonical/og:url as relative paths (empty for the
+// unprefixed default locale) because i18n.baseUrl can't carry a per-request
+// value under multi-tenant hosting. Search engines require absolute URLs, so
+// resolve them against the request origin — same origin used for og:image.
+const seoOrigin = useRequestURL().origin
+const absoluteSeoUrl = (href?: string) => {
+  try { return new URL(href || '/', seoOrigin).href }
+  catch { return href }
+}
+const seoLink = computed(() =>
+  (localeHead.value.link ?? []).map(l =>
+    (l.rel === 'alternate' || l.rel === 'canonical') && typeof l.href === 'string'
+      ? { ...l, href: absoluteSeoUrl(l.href) }
+      : l))
+const seoMeta = computed(() =>
+  (localeHead.value.meta ?? []).map(m =>
+    m.property === 'og:url' && typeof m.content === 'string'
+      ? { ...m, content: absoluteSeoUrl(m.content) }
+      : m))
+
 useHead(() => ({
   htmlAttrs: {
+    ...localeHead.value.htmlAttrs,
     class: themeClass.value,
   },
   // A configured org logo is the favicon on every surface (dashboard included),
   // so the tab mirrors the brand the admin just set. Override each keyed static
   // icon slot rather than appending — otherwise the browser keeps preferring the
   // bundled SVG. All slots point at the one logo so selection is deterministic.
-  link: portal.value.logo
-    ? [
-        { key: 'favicon-svg', rel: 'icon', href: portal.value.logo },
-        { key: 'favicon-png', rel: 'icon', href: portal.value.logo },
-        { key: 'favicon-ico', rel: 'shortcut icon', href: portal.value.logo },
-        { key: 'favicon-apple', rel: 'apple-touch-icon', href: portal.value.logo },
-      ]
-    : [],
+  link: [
+    ...seoLink.value,
+    ...(portal.value.logo
+      ? [
+          { key: 'favicon-svg', rel: 'icon', href: portal.value.logo },
+          { key: 'favicon-png', rel: 'icon', href: portal.value.logo },
+          { key: 'favicon-ico', rel: 'shortcut icon', href: portal.value.logo },
+          { key: 'favicon-apple', rel: 'apple-touch-icon', href: portal.value.logo },
+        ]
+      : []),
+  ],
+  meta: seoMeta.value,
   style: brandCss.value
     ? [{ key: 'portal-brand-vars', innerHTML: brandCss.value }]
     : [],

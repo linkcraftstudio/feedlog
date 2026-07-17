@@ -46,7 +46,7 @@ defineExpose({ clear })
     <ThemedMdEditor
       v-model="content"
       language="en-US"
-      :placeholder="placeholder || (isReply ? 'Write a reply...' : 'Add a comment or feedback...')"
+      :placeholder="placeholder || (isReply ? $t('post.comment.replyPlaceholder') : $t('post.comment.addPlaceholder'))"
       :preview="false"
       :max-length="5000"
       :toolbars="['bold', 'italic', '-', 'link', 'unorderedList', 'code', 'codeRow', 'image']"
@@ -63,7 +63,7 @@ defineExpose({ clear })
             v-if="isReply || isEditing"
             @click="$emit('cancel')"
           >
-            Cancel
+            {{ $t('common.cancel') }}
           </Button>
           <Button
             variant="default"
@@ -71,7 +71,7 @@ defineExpose({ clear })
             :disabled="!content.trim() || loading"
             @click="handleSubmit"
           >
-            {{ isEditing ? 'Save' : (isReply ? 'Reply' : 'Comment') }}
+            {{ isEditing ? $t('common.save') : (isReply ? $t('post.comment.reply') : $t('post.comment.comment')) }}
         </Button>
         </div>
       </template>

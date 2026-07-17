@@ -9,6 +9,6 @@ if (import.meta.client) {
 
 <template>
   <div class="flex min-h-[60vh] items-center justify-center">
-    <p class="text-muted-foreground">Signing in...</p>
+    <p class="text-muted-foreground">{{ $t('auth.signingIn') }}</p>
   </div>
 </template>

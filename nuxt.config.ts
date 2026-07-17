@@ -92,10 +92,18 @@ export default defineNuxtConfig({
     ],
   },
   i18n: {
-    locales: [
-      { code: 'en', language: 'en-US' },
-    ],
+    strategy: 'prefix_except_default',
     defaultLocale: 'en',
+    vueI18n: 'i18n.config.ts',
+    detectBrowserLanguage: {
+      useCookie: true,
+      cookieKey: 'feedlog_locale',
+      redirectOn: 'root',
+    },
+    locales: [
+      { code: 'en', language: 'en-US', name: 'English', file: 'en.json' },
+      { code: 'zh', language: 'zh-CN', name: '中文', file: 'zh.json' },
+    ],
   },
   hub: {
     blob: true,

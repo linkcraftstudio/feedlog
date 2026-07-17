@@ -71,7 +71,7 @@ defineExpose({ reset })
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
     <Transition name="fl-left" mode="out-in" @after-enter="onSearchRevealed">
       <h2 v-if="!searchOpenDesktop" class="font-heading text-2xl font-bold">
-        {{ sortBy === 'top' ? 'Top Requests' : 'Recent Requests' }}
+        {{ sortBy === 'top' ? $t('board.topRequests') : $t('board.recentRequests') }}
       </h2>
       <div v-else class="fl-search">
         <Icon name="lucide:search" size="18" class="fl-search__icon" />
@@ -79,7 +79,7 @@ defineExpose({ reset })
           ref="searchInput"
           v-model="rawQuery"
           type="text"
-          placeholder="Search feedback…"
+          :placeholder="$t('board.searchPlaceholder')"
           autocomplete="off"
           class="fl-search__input"
           @keydown.esc="closeSearch"
@@ -87,7 +87,7 @@ defineExpose({ reset })
         <button
           type="button"
           class="fl-search__clear"
-          :aria-label="searchActive ? 'Clear search' : 'Close search'"
+          :aria-label="searchActive ? $t('board.clearSearch') : $t('board.closeSearch')"
           @click="clearOrClose"
         >
           <Icon name="lucide:x" size="16" />
@@ -106,7 +106,7 @@ defineExpose({ reset })
                 : 'text-muted-foreground hover:text-foreground'"
               @click="sortBy = 'top'"
             >
-              Top
+              {{ $t('board.sortTop') }}
             </button>
             <button
               class="px-4 py-1.5 rounded-[12px] text-sm font-medium transition-colors"
@@ -115,18 +115,18 @@ defineExpose({ reset })
                 : 'text-muted-foreground hover:text-foreground'"
               @click="sortBy = 'recent'"
             >
-              Recent
+              {{ $t('board.sortRecent') }}
             </button>
           </div>
           <button
             ref="searchTrigger"
             type="button"
             class="fl-toolbtn fl-toolbtn--search"
-            aria-label="Search"
+            :aria-label="$t('board.search')"
             @click="openSearch"
           >
             <Icon name="lucide:search" size="18" />
-            <span class="hidden sm:inline">Search</span>
+            <span class="hidden sm:inline">{{ $t('board.search') }}</span>
           </button>
         </div>
       </Transition>
@@ -137,7 +137,7 @@ defineExpose({ reset })
           @click="emit('new-request')"
         >
           <Icon name="lucide:plus" size="18" />
-          New Request
+          {{ $t('board.newRequest') }}
         </Button>
       </Transition>
 
@@ -148,7 +148,7 @@ defineExpose({ reset })
             ref="searchInput"
             v-model="rawQuery"
             type="text"
-            placeholder="Search feedback…"
+            :placeholder="$t('board.searchPlaceholder')"
             autocomplete="off"
             class="fl-search__input"
             @keydown.esc="closeSearch"
@@ -156,7 +156,7 @@ defineExpose({ reset })
           <button
             type="button"
             class="fl-search__clear"
-            :aria-label="searchActive ? 'Clear search' : 'Close search'"
+            :aria-label="searchActive ? $t('board.clearSearch') : $t('board.closeSearch')"
             @click="clearOrClose"
           >
             <Icon name="lucide:x" size="16" />

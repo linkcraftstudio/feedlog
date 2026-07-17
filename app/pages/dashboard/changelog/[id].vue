@@ -3,8 +3,6 @@ definePageMeta({ layout: 'dashboard', middleware: 'admin' })
 
 const route = useRoute()
 const changelogId = route.params.id as string
-
-useHead({ title: 'Edit Changelog' })
 </script>
 
 <template>

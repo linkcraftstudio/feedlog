@@ -6,19 +6,20 @@
 // serving this dashboard — so the integrator always copies a working URL.
 
 const origin = useRequestURL().origin
+const { t } = useI18n()
 const endpoint = computed(() => `${origin}/api/sso/jwt`)
 
-const queryParams = [
-  { name: 'jwt', required: true, desc: 'HS256-signed token (see payload below).' },
-  { name: 'return_to', required: false, desc: 'Where to land after sign-in. Same-host path or URL only (host-whitelisted). Defaults to /.' },
-]
+const queryParams = computed(() => [
+  { name: 'jwt', required: true, desc: t('dashboard.sso.guideParamJwt') },
+  { name: 'return_to', required: false, desc: t('dashboard.sso.guideParamReturnTo') },
+])
 
-const payloadFields = [
-  { name: 'email', required: true, desc: 'Identity key (globally unique) + notifications.' },
-  { name: 'name', required: true, desc: 'Display name.' },
-  { name: 'picture', required: false, desc: 'Avatar URL.' },
-  { name: 'exp', required: true, desc: 'Expiry (Unix seconds). Required — see TTL below.' },
-]
+const payloadFields = computed(() => [
+  { name: 'email', required: true, desc: t('dashboard.sso.guidePayloadEmail') },
+  { name: 'name', required: true, desc: t('dashboard.sso.guidePayloadName') },
+  { name: 'picture', required: false, desc: t('dashboard.sso.guidePayloadPicture') },
+  { name: 'exp', required: true, desc: t('dashboard.sso.guidePayloadExp') },
+])
 
 const snippet = computed(() => `import jwt from 'jsonwebtoken'
 
@@ -53,8 +54,8 @@ function copy(key: string, text: string) {
     <!-- Endpoint -->
     <section class="rounded-xl border border-border bg-card overflow-hidden">
       <div class="px-5 py-3 border-b border-border">
-        <h3 class="font-heading font-bold text-sm">Endpoint</h3>
-        <p class="text-[11px] text-muted-foreground mt-0.5">Redirect signed-in users from your product to this URL.</p>
+        <h3 class="font-heading font-bold text-sm">{{ $t('dashboard.sso.guideEndpoint') }}</h3>
+        <p class="text-[11px] text-muted-foreground mt-0.5">{{ $t('dashboard.sso.guideEndpointDesc') }}</p>
       </div>
       <div class="px-5 py-4 space-y-4">
         <div class="flex items-center gap-2">
@@ -71,14 +72,14 @@ function copy(key: string, text: string) {
 
         <!-- Query params -->
         <div>
-          <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Query parameters</p>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">{{ $t('dashboard.sso.guideQueryParams') }}</p>
           <ul class="divide-y divide-border rounded-lg border border-border overflow-hidden">
             <li v-for="q in queryParams" :key="q.name" class="px-3 py-2.5 flex items-start gap-3 bg-background">
               <code class="text-xs font-mono font-bold text-foreground shrink-0 w-[88px]">{{ q.name }}</code>
               <span
                 class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0"
                 :class="q.required ? 'bg-secondary text-primary' : 'bg-muted text-muted-foreground'"
-              >{{ q.required ? 'Required' : 'Optional' }}</span>
+              >{{ q.required ? $t('dashboard.sso.required') : $t('dashboard.sso.optional') }}</span>
               <span class="text-xs text-muted-foreground leading-snug">{{ q.desc }}</span>
             </li>
           </ul>
@@ -89,8 +90,8 @@ function copy(key: string, text: string) {
     <!-- JWT payload -->
     <section class="rounded-xl border border-border bg-card overflow-hidden">
       <div class="px-5 py-3 border-b border-border">
-        <h3 class="font-heading font-bold text-sm">JWT payload</h3>
-        <p class="text-[11px] text-muted-foreground mt-0.5">The signed-in user's info, carried in the token. FeedLog reads only these fields — any other claims are ignored.</p>
+        <h3 class="font-heading font-bold text-sm">{{ $t('dashboard.sso.guideJwtPayload') }}</h3>
+        <p class="text-[11px] text-muted-foreground mt-0.5">{{ $t('dashboard.sso.guideJwtPayloadDesc') }}</p>
       </div>
       <ul class="divide-y divide-border">
         <li v-for="f in payloadFields" :key="f.name" class="px-5 py-2.5 flex items-start gap-3">
@@ -98,7 +99,7 @@ function copy(key: string, text: string) {
           <span
             class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0"
             :class="f.required ? 'bg-secondary text-primary' : 'bg-muted text-muted-foreground'"
-          >{{ f.required ? 'Required' : 'Optional' }}</span>
+          >{{ f.required ? $t('dashboard.sso.required') : $t('dashboard.sso.optional') }}</span>
           <span class="text-xs text-muted-foreground leading-snug">{{ f.desc }}</span>
         </li>
       </ul>
@@ -108,8 +109,8 @@ function copy(key: string, text: string) {
     <section class="rounded-xl border border-border bg-card overflow-hidden">
       <div class="px-5 py-3 border-b border-border flex items-center justify-between">
         <div>
-          <h3 class="font-heading font-bold text-sm">Sign &amp; redirect (Node.js)</h3>
-          <p class="text-[11px] text-muted-foreground mt-0.5">Build the link on your backend.</p>
+          <h3 class="font-heading font-bold text-sm">{{ $t('dashboard.sso.guideSignTitle') }}</h3>
+          <p class="text-[11px] text-muted-foreground mt-0.5">{{ $t('dashboard.sso.guideSignDesc') }}</p>
         </div>
         <button
           class="h-8 px-2.5 rounded-md border border-border bg-background hover:bg-secondary transition-colors flex items-center gap-1.5 text-xs font-semibold"
@@ -117,7 +118,7 @@ function copy(key: string, text: string) {
           @click="copy('snippet', snippet)"
         >
           <Icon :name="copiedKey === 'snippet' ? 'lucide:check' : 'lucide:copy'" size="13" />
-          {{ copiedKey === 'snippet' ? 'Copied' : 'Copy' }}
+          {{ copiedKey === 'snippet' ? $t('dashboard.sso.copied') : $t('dashboard.sso.copy') }}
         </button>
       </div>
       <pre class="px-5 py-4 overflow-x-auto text-xs font-mono leading-relaxed text-foreground bg-muted/40"><code>{{ snippet }}</code></pre>
@@ -127,10 +128,9 @@ function copy(key: string, text: string) {
     <div class="flex items-start gap-2.5 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900">
       <Icon name="lucide:clock" size="15" class="mt-0.5 shrink-0 text-amber-600" />
       <div class="text-xs leading-relaxed">
-        <p class="font-bold">Token expiry (<code class="font-mono">exp</code>) is required</p>
+        <p class="font-bold">{{ $t('dashboard.sso.guideTtlPre') }}<code class="font-mono">exp</code>{{ $t('dashboard.sso.guideTtlPost') }}</p>
         <p class="mt-1">
-          Recommended ~1 hour; hard cap 24 hours (±60s clock tolerance). Pre-sign tokens when you render the page —
-          not when the user clicks — to avoid an extra round-trip.
+          {{ $t('dashboard.sso.guideTtlBody') }}
         </p>
       </div>
     </div>
@@ -138,8 +138,7 @@ function copy(key: string, text: string) {
     <!-- How it works footnote -->
     <p class="text-[11px] text-muted-foreground leading-relaxed">
       <Icon name="lucide:info" size="11" class="inline mr-1" />
-      Users are matched by <span class="font-semibold">email</span>. A first-time email creates an end-user account (no
-      extra login screen); changing a user's email creates a new account and does not migrate history.
+      {{ $t('dashboard.sso.guideMatchedByPre') }}<span class="font-semibold">{{ $t('dashboard.sso.guideMatchedByEmail') }}</span>{{ $t('dashboard.sso.guideMatchedByPost') }}
     </p>
   </div>
 </template>

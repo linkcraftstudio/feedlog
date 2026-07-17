@@ -2,7 +2,10 @@
 import { toast } from 'vue-sonner'
 
 const { resetPassword } = useAuth()
+const { t } = useI18n()
+useHead({ title: () => t('auth.resetPage.title') })
 const route = useRoute()
+const localePath = useLocalePath()
 
 const token = computed(() => route.query.token as string | undefined)
 const error = computed(() => route.query.error as string | undefined)
@@ -20,11 +23,11 @@ const showConfirmPassword = ref(false)
 async function onSubmit() {
   if (!token.value) return
   if (form.newPassword !== form.confirmPassword) {
-    toast.error('Passwords do not match')
+    toast.error(t('auth.errors.passwordsMismatch'))
     return
   }
   if (form.newPassword.length < 8) {
-    toast.error('Password must be at least 8 characters')
+    toast.error(t('auth.errors.passwordTooShort'))
     return
   }
 
@@ -35,7 +38,7 @@ async function onSubmit() {
       token: token.value,
     })
     if (resetError) {
-      toast.error(resetError.message || 'Failed to reset password')
+      toast.error(resetError.message || t('auth.errors.resetFailed'))
       return
     }
     success.value = true
@@ -54,12 +57,12 @@ async function onSubmit() {
           <div class="mx-auto w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
             <Icon name="lucide:check" size="24" class="text-green-600 dark:text-green-400" />
           </div>
-          <CardTitle class="font-heading text-xl">Password Reset</CardTitle>
-          <CardDescription>Your password has been reset successfully.</CardDescription>
+          <CardTitle class="font-heading text-xl">{{ $t('auth.resetPage.successTitle') }}</CardTitle>
+          <CardDescription>{{ $t('auth.resetPage.successBody') }}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button class="w-full" size="lg" @click="navigateTo('/')">
-            Go to Home
+          <Button class="w-full" size="lg" @click="navigateTo(localePath('/'))">
+            {{ $t('common.goHome') }}
           </Button>
         </CardContent>
       </template>
@@ -70,14 +73,14 @@ async function onSubmit() {
           <div class="mx-auto w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
             <Icon name="lucide:alert-circle" size="24" class="text-destructive" />
           </div>
-          <CardTitle class="font-heading text-xl">Link Expired</CardTitle>
+          <CardTitle class="font-heading text-xl">{{ $t('auth.resetPage.expiredTitle') }}</CardTitle>
           <CardDescription>
-            This password reset link has expired or is invalid. Please request a new one.
+            {{ $t('auth.resetPage.expiredBody') }}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button class="w-full" size="lg" @click="navigateTo('/')">
-            Go to Home
+          <Button class="w-full" size="lg" @click="navigateTo(localePath('/'))">
+            {{ $t('common.goHome') }}
           </Button>
         </CardContent>
       </template>
@@ -88,19 +91,19 @@ async function onSubmit() {
           <div class="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
             <Icon name="lucide:key-round" size="24" class="text-primary" />
           </div>
-          <CardTitle class="font-heading text-xl">Reset Your Password</CardTitle>
-          <CardDescription>Enter your new password below.</CardDescription>
+          <CardTitle class="font-heading text-xl">{{ $t('auth.resetPage.title') }}</CardTitle>
+          <CardDescription>{{ $t('auth.resetPage.subtitle') }}</CardDescription>
         </CardHeader>
         <CardContent>
           <form class="space-y-4" @submit.prevent="onSubmit">
             <div class="space-y-2">
-              <label class="text-sm font-medium" for="reset-new-password">New Password</label>
+              <label class="text-sm font-medium" for="reset-new-password">{{ $t('auth.fields.new') }}</label>
               <div class="relative">
                 <Input
                   id="reset-new-password"
                   v-model="form.newPassword"
                   :type="showNewPassword ? 'text' : 'password'"
-                  placeholder="At least 8 characters"
+                  :placeholder="$t('auth.passwordMinHint')"
                   required
                   minlength="8"
                   class="pr-10"
@@ -115,7 +118,7 @@ async function onSubmit() {
               </div>
             </div>
             <div class="space-y-2">
-              <label class="text-sm font-medium" for="reset-confirm-password">Confirm Password</label>
+              <label class="text-sm font-medium" for="reset-confirm-password">{{ $t('auth.fields.confirm') }}</label>
               <div class="relative">
                 <Input
                   id="reset-confirm-password"
@@ -136,12 +139,12 @@ async function onSubmit() {
             </div>
             <Button type="submit" class="w-full" size="lg" :disabled="loading">
               <Spinner v-if="loading" class="mr-2 size-4" />
-              Reset Password
+              {{ $t('auth.resetPage.submit') }}
             </Button>
           </form>
           <p class="text-center text-sm text-muted-foreground mt-4">
-            <NuxtLink to="/" class="text-primary hover:underline font-medium">
-              ← Back to home
+            <NuxtLink :to="localePath('/')" class="text-primary hover:underline font-medium">
+              {{ $t('auth.resetPage.backHome') }}
             </NuxtLink>
           </p>
         </CardContent>

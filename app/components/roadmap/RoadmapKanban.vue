@@ -32,6 +32,7 @@ const boardStore = useBoardStore()
 await callOnce(() => boardStore.fetchBoards())
 
 const roadmapStatuses = ROADMAP_STATUSES
+const { t } = useI18n()
 
 // Fetch roadmap data (deep: true to track nested mutations)
 const { data: roadmapData, refresh } = await useFetch('/api/roadmap', {
@@ -45,7 +46,7 @@ const { data: roadmapData, refresh } = await useFetch('/api/roadmap', {
 const columns = computed(() =>
   roadmapStatuses.map(status => ({
     id: status,
-    label: STATUS_CONFIG[status].label,
+    label: t(statusLabelKey(status)),
     cssVar: STATUS_CONFIG[status].cssVar,
     items: roadmapData.value?.[status]?.data ?? [],
     total: roadmapData.value?.[status]?.total ?? 0,
@@ -525,7 +526,7 @@ function removeItem(postId: string) {
             :disabled="loadingMore === col.id"
             @click.stop="loadMore(col.id)"
           >
-            {{ loadingMore === col.id ? 'Loading...' : 'Load more' }}
+            {{ loadingMore === col.id ? $t('roadmap.loading') : $t('roadmap.loadMore') }}
           </button>
         </div>
       </div>
@@ -536,14 +537,14 @@ function removeItem(postId: string) {
         class="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-border/60 rounded-xl p-8 text-center bg-card/30"
       >
         <Icon name="lucide:puzzle" size="48" class="text-border mb-3" />
-        <p class="text-xs font-medium text-muted-foreground">No items in {{ col.label.toLowerCase() }} yet.</p>
+        <p class="text-xs font-medium text-muted-foreground">{{ $t('roadmap.emptyColumn', { status: col.label.toLowerCase() }) }}</p>
         <button
           v-if="editable"
           class="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-primary bg-primary/5 hover:bg-primary/10 transition-colors text-xs font-bold border border-primary/20"
           @click="emit('add', col.id)"
         >
           <Icon name="lucide:plus-circle" size="16" />
-          Add item
+          {{ $t('roadmap.addItem') }}
         </button>
       </div>
     </div>

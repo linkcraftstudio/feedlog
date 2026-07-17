@@ -9,6 +9,7 @@ const props = defineProps<{
 
 const open = defineModel<boolean>('open', { default: false })
 const emit = defineEmits<{ merged: [] }>()
+const { t } = useI18n()
 
 const searchQuery = ref('')
 const results = ref<SimilarPost[]>([])
@@ -79,7 +80,7 @@ async function handleMerge() {
     open.value = false
     emit('merged')
   } catch (e: any) {
-    error.value = e.data?.message || 'Merge failed'
+    error.value = e.data?.message || t('post.merge.failed')
   } finally {
     merging.value = false
   }
@@ -100,8 +101,8 @@ function statusConfig(status: string) {
       <div class="px-8 pt-8 pb-6 shrink-0">
         <div class="flex items-start justify-between mb-1">
           <div class="flex flex-col gap-1">
-            <DialogTitle class="text-[26px] font-bold font-heading leading-tight tracking-tight">Merge Feedback</DialogTitle>
-            <p class="text-[14px] text-muted-foreground">Consolidate similar requests into a single post to streamline your roadmap.</p>
+            <DialogTitle class="text-[26px] font-bold font-heading leading-tight tracking-tight">{{ $t('post.merge.dialogTitle') }}</DialogTitle>
+            <p class="text-[14px] text-muted-foreground">{{ $t('post.merge.dialogSubtitle') }}</p>
           </div>
           <DialogClose class="text-muted-foreground hover:text-foreground transition-colors p-2 -mr-2 -mt-1">
             <Icon name="lucide:x" size="24" />
@@ -116,7 +117,7 @@ function statusConfig(status: string) {
           <Input
             v-model="searchQuery"
             class="pl-12 pr-12 py-3 h-auto bg-background/50 border-border rounded-xl text-[15px] focus-visible:ring-2 focus-visible:ring-primary/10 focus-visible:border-primary"
-            placeholder="Search for feedback to merge..."
+            :placeholder="$t('post.merge.searchPlaceholder')"
           />
         </div>
       </div>
@@ -125,10 +126,10 @@ function statusConfig(status: string) {
       <div class="flex-1 overflow-y-auto px-6 min-h-0">
         <div v-if="loading" class="flex flex-col items-center py-12">
           <Spinner class="w-5 h-5 mb-2" />
-          <p class="text-sm text-muted-foreground">Searching...</p>
+          <p class="text-sm text-muted-foreground">{{ $t('post.merge.searching') }}</p>
         </div>
         <div v-else-if="results.length === 0" class="flex flex-col items-center py-12 text-sm text-muted-foreground">
-          No posts found
+          {{ $t('post.merge.noResults') }}
         </div>
         <div v-else class="flex flex-col pb-4">
           <div
@@ -177,7 +178,7 @@ function statusConfig(status: string) {
                   }"
                 >
                   <span class="w-1.5 h-1.5 rounded-full" :style="{ backgroundColor: `var(${statusConfig(r.status).cssVar})` }" />
-                  {{ statusConfig(r.status).label }}
+                  {{ $t(statusLabelKey(r.status)) }}
                 </span>
               </div>
             </div>
@@ -195,20 +196,20 @@ function statusConfig(status: string) {
               class="px-8 py-2.5 text-[14px] font-bold text-muted-foreground border border-border hover:bg-background transition-all rounded-xl"
               @click="open = false"
             >
-              Cancel
+              {{ $t('common.cancel') }}
             </button>
             <button
               class="px-8 py-2.5 bg-primary text-primary-foreground text-[14px] font-bold font-heading rounded-xl hover:bg-primary/90 active:scale-[0.98] transition-all shadow-lg shadow-primary/10 disabled:opacity-50 disabled:cursor-not-allowed"
               :disabled="!selectedId || merging"
               @click="handleMerge"
             >
-              {{ merging ? 'Merging...' : 'Merge' }}
+              {{ merging ? $t('post.merge.merging') : $t('post.merge.action') }}
             </button>
           </div>
         </div>
       </div>
 
-      <DialogDescription class="sr-only">Search and select a post to merge</DialogDescription>
+      <DialogDescription class="sr-only">{{ $t('post.merge.dialogDescription') }}</DialogDescription>
     </DialogContent>
   </Dialog>
 </template>

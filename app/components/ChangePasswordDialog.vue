@@ -2,6 +2,7 @@
 import { toast } from 'vue-sonner'
 
 const { changePassword, listAccounts } = useAuth()
+const { t } = useI18n()
 
 const open = defineModel<boolean>('open', { default: false })
 
@@ -43,11 +44,11 @@ function resetForm() {
 
 async function onSubmit() {
   if (form.newPassword !== form.confirmPassword) {
-    toast.error('Passwords do not match')
+    toast.error(t('auth.errors.passwordsMismatch'))
     return
   }
   if (form.newPassword.length < 8) {
-    toast.error('Password must be at least 8 characters')
+    toast.error(t('auth.errors.passwordTooShort'))
     return
   }
 
@@ -61,7 +62,7 @@ async function onSubmit() {
         revokeOtherSessions: true,
       })
       if (error) {
-        toast.error(error.message || 'Failed to change password')
+        toast.error(error.message || t('auth.errors.changeFailed'))
         return
       }
     } else {
@@ -72,11 +73,11 @@ async function onSubmit() {
           body: { newPassword: form.newPassword },
         })
       } catch (e: any) {
-        toast.error(e.data?.message || 'Failed to set password')
+        toast.error(e.data?.message || t('auth.errors.setFailed'))
         return
       }
     }
-    toast.success(hasPassword.value ? 'Password updated' : 'Password set successfully')
+    toast.success(hasPassword.value ? t('auth.success.passwordUpdated') : t('auth.success.passwordSet'))
     open.value = false
   } finally {
     loading.value = false
@@ -89,10 +90,10 @@ async function onSubmit() {
     <DialogContent class="sm:max-w-sm">
       <DialogHeader>
         <DialogTitle class="font-heading text-lg">
-          {{ hasPassword ? 'Change Password' : 'Set Password' }}
+          {{ hasPassword ? $t('auth.changePassword.title') : $t('auth.changePassword.setTitle') }}
         </DialogTitle>
         <DialogDescription>
-          {{ hasPassword ? 'Update your account password' : 'Add a password to your account' }}
+          {{ hasPassword ? $t('auth.changePassword.subtitle') : $t('auth.changePassword.setSubtitle') }}
         </DialogDescription>
       </DialogHeader>
 
@@ -104,7 +105,7 @@ async function onSubmit() {
       <form v-else class="space-y-4" @submit.prevent="onSubmit">
         <!-- Current password (only for users who already have one) -->
         <div v-if="hasPassword" class="space-y-2">
-          <label class="text-sm font-medium" for="current-password">Current Password</label>
+          <label class="text-sm font-medium" for="current-password">{{ $t('auth.fields.current') }}</label>
           <div class="relative">
             <Input
               id="current-password"
@@ -124,13 +125,13 @@ async function onSubmit() {
         </div>
 
         <div class="space-y-2">
-          <label class="text-sm font-medium" for="new-password">New Password</label>
+          <label class="text-sm font-medium" for="new-password">{{ $t('auth.fields.new') }}</label>
           <div class="relative">
             <Input
               id="new-password"
               v-model="form.newPassword"
               :type="showNewPassword ? 'text' : 'password'"
-              placeholder="At least 8 characters"
+              :placeholder="$t('auth.passwordMinHint')"
               required
               minlength="8"
               class="pr-10"
@@ -146,7 +147,7 @@ async function onSubmit() {
         </div>
 
         <div class="space-y-2">
-          <label class="text-sm font-medium" for="confirm-password">Confirm Password</label>
+          <label class="text-sm font-medium" for="confirm-password">{{ $t('auth.fields.confirm') }}</label>
           <div class="relative">
             <Input
               id="confirm-password"
@@ -168,11 +169,11 @@ async function onSubmit() {
 
         <Button type="submit" class="w-full" size="lg" :disabled="loading">
           <Spinner v-if="loading" class="mr-2 size-4" />
-          {{ hasPassword ? 'Update Password' : 'Set Password' }}
+          {{ hasPassword ? $t('auth.changePassword.submit') : $t('auth.changePassword.setTitle') }}
         </Button>
         <p class="text-center">
           <button type="button" class="text-sm text-muted-foreground hover:text-foreground transition-colors" @click="open = false">
-            Cancel
+            {{ $t('common.cancel') }}
           </button>
         </p>
       </form>

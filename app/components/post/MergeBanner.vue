@@ -2,6 +2,8 @@
 defineProps<{
   canonicalPost: { slug: string; title: string }
 }>()
+
+const localePath = useLocalePath()
 </script>
 
 <template>
@@ -11,10 +13,10 @@ defineProps<{
     </div>
     <div class="flex-1 min-w-0 flex flex-col items-start justify-center">
       <p class="text-xs font-medium text-muted-foreground">
-        This post was merged into
+        {{ $t('post.merge.banner') }}
       </p>
       <NuxtLink
-        :to="`/p/${canonicalPost.slug}`"
+        :to="localePath(`/p/${canonicalPost.slug}`)"
         class="text-sm font-bold text-primary hover:underline underline-offset-4 transition-all flex items-center gap-1 group"
       >
         {{ canonicalPost.title }}

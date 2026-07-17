@@ -2,17 +2,25 @@
 import { resolveAttachmentUrl } from '~/utils/attachment'
 
 definePageMeta({ layout: 'dashboard', middleware: 'admin' })
-useHead({ title: 'Changelogs' })
+
+const { t } = useI18n()
+const localePath = useLocalePath()
 
 const listSearch = ref('')
 const listStatus = ref<'all' | string>('all')
 
-const statusOptions = [
-  { value: 'all', label: 'All Status' },
-  { value: 'published', label: 'Published' },
-  { value: 'draft', label: 'Draft' },
-  { value: 'needs_update', label: 'Needs update' },
-]
+const statusOptions = computed(() => [
+  { value: 'all', label: t('changelog.admin.status.all') },
+  { value: 'published', label: t('changelog.admin.status.published') },
+  { value: 'draft', label: t('changelog.admin.status.draft') },
+  { value: 'needs_update', label: t('changelog.admin.status.needs_update') },
+])
+
+const categoryLabel = computed<Record<string, string>>(() => ({
+  new: t('changelog.category.new'),
+  improved: t('changelog.category.improved'),
+  fixed: t('changelog.category.fixed'),
+}))
 
 const pageSize = 10
 const currentPage = ref(1)
@@ -74,8 +82,7 @@ function displayDate(item: ChangelogAdminListItem) {
 }
 
 function statusLabel(status: string) {
-  if (status === 'needs_update') return 'Needs update'
-  return status.charAt(0).toUpperCase() + status.slice(1)
+  return t(`changelog.admin.status.${status}`)
 }
 
 function statusBadgeClass(status: string) {
@@ -95,11 +102,11 @@ function typeBadgeClass(type: string) {
 }
 
 function handleCreate() {
-  navigateTo('/dashboard/changelog/new')
+  navigateTo(localePath('/dashboard/changelog/new'))
 }
 
 function handleSelect(id: string) {
-  navigateTo(`/dashboard/changelog/${id}`)
+  navigateTo(localePath(`/dashboard/changelog/${id}`))
 }
 </script>
 
@@ -108,9 +115,9 @@ function handleSelect(id: string) {
     <!-- Top bar -->
     <header class="h-16 px-6 border-b border-border flex items-center justify-between shrink-0 bg-card backdrop-blur-sm">
       <div class="flex items-center gap-4">
-        <h2 class="font-heading text-lg font-bold">Changelogs</h2>
+        <h2 class="font-heading text-lg font-bold">{{ $t('changelog.admin.title') }}</h2>
         <div class="h-4 w-[1px] bg-border" />
-        <span class="text-xs font-medium text-muted-foreground">Manage product updates</span>
+        <span class="text-xs font-medium text-muted-foreground">{{ $t('changelog.admin.subtitle') }}</span>
       </div>
       <button
         type="button"
@@ -118,7 +125,7 @@ function handleSelect(id: string) {
         @click="handleCreate"
       >
         <Icon name="lucide:plus" size="16" />
-        Create Log
+        {{ $t('changelog.admin.create') }}
       </button>
     </header>
 
@@ -126,7 +133,7 @@ function handleSelect(id: string) {
     <div class="px-6 py-4 border-b border-border flex flex-wrap items-center justify-between gap-3 bg-background/30 shrink-0">
       <FilterTag
         v-model="listStatus"
-        label="Status"
+        :label="$t('changelog.admin.filterStatus')"
         icon="lucide:filter"
         :options="statusOptions"
         :removable="false"
@@ -136,7 +143,7 @@ function handleSelect(id: string) {
         <input
           v-model="listSearch"
           type="text"
-          placeholder="Search logs..."
+          :placeholder="$t('changelog.admin.searchPlaceholder')"
           class="h-7 w-full rounded-md border border-border bg-background pl-8 pr-3 text-xs outline-none focus:ring-2 focus:ring-primary/30"
         >
       </div>
@@ -170,7 +177,7 @@ function handleSelect(id: string) {
               v-else
               class="flex size-full items-center justify-center px-[8px] text-center text-[11px] font-medium leading-[16px] text-muted-foreground"
             >
-              No featured image
+              {{ $t('changelog.admin.noImage') }}
             </div>
           </div>
 
@@ -186,7 +193,7 @@ function handleSelect(id: string) {
                   class="inline-flex h-[22px] items-center rounded-[6px] border px-[8px] text-[11px] font-bold capitalize leading-[16px]"
                   :class="typeBadgeClass(type)"
                 >
-                  {{ type }}
+                  {{ categoryLabel[type] ?? type }}
                 </span>
               </div>
             </div>
@@ -229,17 +236,17 @@ function handleSelect(id: string) {
           v-if="fetchStatus !== 'pending' && items.length === 0"
           class="px-[24px] py-[32px] text-center text-[14px] leading-[22px] text-muted-foreground"
         >
-          No changelog entries match the current filters.
+          {{ $t('changelog.admin.noEntries') }}
         </p>
       </div>
 
       <!-- Pagination -->
       <div v-if="total > 0" class="h-14 md:h-16 px-4 md:px-6 border-t border-border flex items-center justify-between bg-card shrink-0">
         <span class="hidden md:block text-xs text-muted-foreground font-medium">
-          Showing {{ (currentPage - 1) * pageSize + 1 }} to {{ Math.min(currentPage * pageSize, total) }} of {{ total }} entries
+          {{ $t('changelog.admin.showing', { from: (currentPage - 1) * pageSize + 1, to: Math.min(currentPage * pageSize, total), total }) }}
         </span>
         <span class="md:hidden text-xs text-muted-foreground font-medium">
-          {{ total }} entries
+          {{ $t('changelog.admin.entriesShort', { total }) }}
         </span>
         <div class="flex items-center gap-2">
           <button

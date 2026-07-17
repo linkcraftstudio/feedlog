@@ -48,7 +48,7 @@ function statusConfig(status: string) {
       <div class="flex items-center gap-2 text-primary">
         <Icon name="lucide:sparkles" size="16" />
         <h3 class="text-[12px] font-bold tracking-wide font-heading">
-          {{ loading && similarPosts.length === 0 ? 'Finding Similar Posts' : `Found ${similarPosts.length} Similar Posts` }}
+          {{ loading && similarPosts.length === 0 ? $t('post.similar.finding') : $t('post.similar.found', { count: similarPosts.length }) }}
         </h3>
         <Spinner v-if="loading" class="w-3 h-3 text-primary/50" />
       </div>
@@ -97,7 +97,7 @@ function statusConfig(status: string) {
               borderColor: `var(${statusConfig(sp.status).cssVar}-border)`,
             }"
           >
-            {{ statusConfig(sp.status).label }}
+            {{ $t(statusLabelKey(sp.status)) }}
           </span>
         </div>
         <p v-if="sp.excerpt" class="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">{{ sp.excerpt }}</p>

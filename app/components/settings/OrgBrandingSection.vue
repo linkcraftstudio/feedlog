@@ -33,12 +33,13 @@ const emit = defineEmits<{
   saved: []
 }>()
 
+const { t } = useI18n()
 const presets = ['#C45A46', '#2563EB', '#7C3AED', '#059669', '#DB2777', '#0F172A']
-const themeOptions = [
-  { value: 'system' as const, label: 'System', icon: 'lucide:monitor' },
-  { value: 'light' as const, label: 'Light', icon: 'lucide:sun' },
-  { value: 'dark' as const, label: 'Dark', icon: 'lucide:moon' },
-]
+const themeOptions = computed(() => [
+  { value: 'system' as const, label: t('settings.branding.theme.system'), icon: 'lucide:monitor' },
+  { value: 'light' as const, label: t('settings.branding.theme.light'), icon: 'lucide:sun' },
+  { value: 'dark' as const, label: t('settings.branding.theme.dark'), icon: 'lucide:moon' },
+])
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const saving = ref(false)
@@ -93,7 +94,7 @@ async function uploadLogo(file: File) {
     const result = await $fetch<{ key: string }>('/api/upload', { method: 'POST', body })
     form.logo = result.key
   } catch {
-    error.value = 'Failed to upload logo.'
+    error.value = t('settings.branding.uploadFailed')
   } finally {
     uploading.value = false
   }
@@ -126,7 +127,7 @@ async function save() {
     })
     emit('saved')
   } catch {
-    error.value = 'Failed to save branding.'
+    error.value = t('settings.branding.saveFailed')
   } finally {
     saving.value = false
   }
@@ -136,8 +137,8 @@ async function save() {
 <template>
   <section class="rounded-xl border border-border bg-card overflow-hidden">
     <div class="px-6 py-5 border-b border-border">
-      <h3 class="font-heading font-bold text-sm">Branding</h3>
-      <p class="text-xs text-muted-foreground mt-0.5">How your public feedback portal looks to visitors.</p>
+      <h3 class="font-heading font-bold text-sm">{{ $t('settings.branding.title') }}</h3>
+      <p class="text-xs text-muted-foreground mt-0.5">{{ $t('settings.branding.subtitle') }}</p>
     </div>
 
     <div class="px-6 py-6">
@@ -148,7 +149,7 @@ async function save() {
         <div class="space-y-6">
           <!-- Logo -->
           <div>
-            <label class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Logo</label>
+            <label class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('settings.branding.logo') }}</label>
             <div class="mt-2 flex items-center gap-4">
               <input ref="fileInput" type="file" accept="image/*" class="hidden" :disabled="!isOwner || uploading" @change="onFileChange">
               <!-- Logo doubles as the upload trigger: hover reveals an edit overlay. -->
@@ -175,17 +176,17 @@ async function save() {
                 @click="form.logo = null"
               >
                 <Icon name="lucide:trash-2" size="14" />
-                Remove
+                {{ $t('settings.branding.removeLogo') }}
               </button>
             </div>
             <!-- Helper on its own full-width line so it stays one line in the
                  narrow split column instead of wrapping beside the buttons. -->
-            <p class="text-[11px] text-muted-foreground mt-2">PNG, JPG or SVG · recommended 256x256</p>
+            <p class="text-[11px] text-muted-foreground mt-2">{{ $t('settings.branding.logoHint') }}</p>
           </div>
 
           <!-- Brand color -->
           <div>
-            <label class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Brand color</label>
+            <label class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('settings.branding.brandColor') }}</label>
             <div class="mt-2 flex flex-wrap items-center gap-3">
               <label class="relative w-11 h-11 rounded-lg border border-border overflow-hidden cursor-pointer shrink-0" :style="{ backgroundColor: form.primaryColor }">
                 <input v-model="form.primaryColor" type="color" class="absolute inset-0 opacity-0 cursor-pointer" :disabled="!isOwner">
@@ -209,12 +210,12 @@ async function save() {
                 />
               </div>
             </div>
-            <p class="text-[11px] text-muted-foreground mt-1.5">Drives buttons, links and accents.</p>
+            <p class="text-[11px] text-muted-foreground mt-1.5">{{ $t('settings.branding.brandColorHint') }}</p>
           </div>
 
           <!-- Default theme -->
           <div>
-            <label class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Default theme</label>
+            <label class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('settings.branding.defaultTheme') }}</label>
             <!-- flex (block-level) + w-fit so it drops below the inline <label> like
                  the Logo/Brand-color rows; inline-flex would stay on the label's line. -->
             <div class="mt-2 flex w-fit rounded-lg border border-border bg-background p-1">
@@ -231,14 +232,14 @@ async function save() {
                 {{ opt.label }}
               </button>
             </div>
-            <p class="text-[11px] text-muted-foreground mt-1.5">Default theme shown to visitors.</p>
+            <p class="text-[11px] text-muted-foreground mt-1.5">{{ $t('settings.branding.defaultThemeHint') }}</p>
           </div>
         </div>
 
         <!-- Preview -->
         <div :class="layoutMode === 'split' ? '' : 'pt-2 border-t border-border'">
           <div class="flex items-center justify-between mb-2">
-            <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Preview</p>
+            <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('settings.preview') }}</p>
             <div class="inline-flex rounded-md border border-border bg-background p-0.5">
               <button type="button" class="w-7 h-6 rounded grid place-items-center transition-colors" :class="previewMode === 'light' ? 'bg-secondary text-primary' : 'text-muted-foreground'" @click="previewMode = 'light'">
                 <Icon name="lucide:sun" size="13" />
@@ -272,14 +273,14 @@ async function save() {
         :disabled="saving"
         @click="hydrate"
       >
-        Reset
+        {{ $t('settings.reset') }}
       </button>
       <button
         :disabled="!canSave"
         class="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-heading font-bold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
         @click="save"
       >
-        {{ saving ? 'Saving...' : 'Save changes' }}
+        {{ saving ? $t('settings.saving') : $t('settings.saveChanges') }}
       </button>
     </div>
   </section>

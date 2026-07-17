@@ -1,6 +1,6 @@
 <script setup lang="ts">
 definePageMeta({
   middleware: 'admin',
-  redirect: '/dashboard/feedback',
+  redirect: (to) => `${to.path.replace(/\/$/, '')}/feedback`,
 })
 </script>

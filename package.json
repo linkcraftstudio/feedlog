@@ -11,6 +11,7 @@
     "generate": "nuxt generate",
     "generate:auth": "pnpm dlx auth@latest generate",
     "generate:migration": "drizzle-kit generate",
+    "i18n:check": "node scripts/i18n-check.mjs",
     "migrate": "drizzle-kit migrate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare"

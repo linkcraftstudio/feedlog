@@ -28,6 +28,10 @@ export const STATUS_OPTIONS = POST_STATUSES.map(s => ({
   ...STATUS_CONFIG[s],
 }))
 
+export function statusLabelKey(status: string): string {
+  return `status.${status in STATUS_CONFIG ? status : 'open'}`
+}
+
 // Compact author info for API responses
 export interface PostAuthor {
   id: string

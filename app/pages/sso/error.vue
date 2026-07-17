@@ -8,7 +8,9 @@
 // `layout: false` keeps the public-board chrome off this standalone shell.
 definePageMeta({ layout: false, middleware: [] })
 
-useHead({ title: 'Sign-in unavailable' })
+const { t } = useI18n()
+const localePath = useLocalePath()
+useHead({ title: () => t('auth.sso.pageTitle') })
 
 // Re-validate return_to client-side (the page is directly reachable): only a
 // same-origin relative path, never protocol-relative (`//evil.com`).
@@ -26,7 +28,7 @@ onMounted(() => {
     seconds.value -= 1
     if (seconds.value <= 0) {
       if (timer) clearInterval(timer)
-      navigateTo(returnTo)
+      navigateTo(localePath(returnTo))
     }
   }, 1000)
 })
@@ -43,20 +45,19 @@ onBeforeUnmount(() => {
         <Icon name="lucide:shield-alert" size="26" class="text-primary" />
       </div>
 
-      <h1 class="font-heading text-2xl font-bold tracking-tight">We couldn't sign you in</h1>
+      <h1 class="font-heading text-2xl font-bold tracking-tight">{{ $t('auth.sso.title') }}</h1>
       <p class="mt-3 text-sm text-muted-foreground leading-relaxed">
-        Single sign-on didn't complete — the sign-in link may have expired or been misconfigured.
-        If this keeps happening, please contact your administrator.
+        {{ $t('auth.sso.body') }}
       </p>
 
       <p class="mt-6 text-xs text-muted-foreground">
-        Continuing in {{ seconds }}s…
+        {{ $t('auth.sso.continuingIn', { seconds }) }}
       </p>
       <NuxtLink
-        :to="returnTo"
+        :to="localePath(returnTo)"
         class="mt-3 inline-flex h-9 px-4 rounded-lg border border-border bg-card text-xs font-semibold hover:bg-secondary transition-colors items-center gap-1.5"
       >
-        Continue now
+        {{ $t('auth.sso.continueNow') }}
         <Icon name="lucide:arrow-right" size="13" />
       </NuxtLink>
     </div>

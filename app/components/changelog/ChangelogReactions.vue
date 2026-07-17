@@ -113,7 +113,7 @@ function handleDocumentClick(event: MouseEvent) {
         type="button"
         class="inline-flex min-h-10 min-w-10 items-center justify-center rounded-full border border-border bg-background px-2 py-1.5 text-muted-foreground hover:text-foreground hover:border-primary/50 active:bg-secondary/40 transition-colors touch-manipulation sm:min-h-0 sm:min-w-0 sm:px-2 sm:py-1"
         :aria-expanded="pickerOpen"
-        aria-label="Add reaction"
+        :aria-label="$t('changelog.addReaction')"
         @click.stop="pickerOpen = !pickerOpen"
       >
         <Icon name="lucide:smile-plus" size="14" />
@@ -144,7 +144,7 @@ function handleDocumentClick(event: MouseEvent) {
           type="button"
           class="inline-flex h-8 w-8 items-center justify-center rounded-md text-lg hover:bg-secondary/70 active:bg-secondary touch-manipulation transition-colors"
           :class="picked[emoji] ? 'bg-primary/12 text-foreground ring-1 ring-primary/35' : ''"
-          :aria-label="`React with ${emoji}`"
+          :aria-label="$t('changelog.reactWith', { emoji })"
           @click="toggleFromPicker(emoji)"
         >
           {{ emoji }}

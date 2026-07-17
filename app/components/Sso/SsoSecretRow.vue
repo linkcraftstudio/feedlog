@@ -17,10 +17,11 @@ const emit = defineEmits<{
   delete: []
 }>()
 
+const { t } = useI18n()
 const revealed = ref(props.justCreated ?? false)
 const copied = ref(false)
 
-const displayLabel = computed(() => props.secret.label || 'Untitled')
+const displayLabel = computed(() => props.secret.label || t('dashboard.sso.untitled'))
 
 const masked = computed(() => {
   const s = props.secret.secret
@@ -50,9 +51,9 @@ function formatDate(iso: string): string {
           <p class="text-sm font-bold truncate" :class="secret.enabled ? '' : 'text-muted-foreground'">
             {{ displayLabel }}
           </p>
-          <span v-if="justCreated" class="text-[10px] font-bold uppercase tracking-wider text-primary bg-secondary px-1.5 py-0.5 rounded">New</span>
+          <span v-if="justCreated" class="text-[10px] font-bold uppercase tracking-wider text-primary bg-secondary px-1.5 py-0.5 rounded">{{ $t('dashboard.sso.new') }}</span>
         </div>
-        <p class="text-[11px] text-muted-foreground mt-0.5">Created {{ formatDate(secret.createdAt) }}</p>
+        <p class="text-[11px] text-muted-foreground mt-0.5">{{ $t('dashboard.sso.created', { date: formatDate(secret.createdAt) }) }}</p>
       </div>
 
       <!-- Secret value: masked / revealed + reveal + copy -->
@@ -63,7 +64,7 @@ function formatDate(iso: string): string {
         >{{ revealed ? secret.secret : masked }}</code>
         <button
           class="w-8 h-8 rounded-md hover:bg-secondary transition-colors flex items-center justify-center text-muted-foreground shrink-0"
-          :title="revealed ? 'Hide' : 'Reveal'"
+          :title="revealed ? $t('dashboard.sso.hide') : $t('dashboard.sso.reveal')"
           @click="revealed = !revealed"
         >
           <Icon :name="revealed ? 'lucide:eye-off' : 'lucide:eye'" size="14" />
@@ -71,7 +72,7 @@ function formatDate(iso: string): string {
         <button
           class="w-8 h-8 rounded-md hover:bg-secondary transition-colors flex items-center justify-center shrink-0"
           :class="copied ? 'text-[var(--status-done)]' : 'text-muted-foreground'"
-          :title="copied ? 'Copied' : 'Copy'"
+          :title="copied ? $t('dashboard.sso.copied') : $t('dashboard.sso.copy')"
           @click="copy"
         >
           <Icon :name="copied ? 'lucide:check' : 'lucide:copy'" size="14" />
@@ -90,7 +91,7 @@ function formatDate(iso: string): string {
           class="w-1.5 h-1.5 rounded-full"
           :style="{ backgroundColor: secret.enabled ? 'var(--status-done)' : 'var(--status-open)' }"
         />
-        {{ secret.enabled ? 'Active' : 'Disabled' }}
+        {{ secret.enabled ? $t('dashboard.sso.active') : $t('dashboard.sso.disabled') }}
       </span>
 
       <!-- More menu -->
@@ -103,16 +104,16 @@ function formatDate(iso: string): string {
         <DropdownMenuContent align="end" class="w-[180px]">
           <DropdownMenuItem @click="emit('rename')">
             <Icon name="lucide:pencil" size="13" class="mr-2" />
-            Rename
+            {{ $t('dashboard.sso.rename') }}
           </DropdownMenuItem>
           <DropdownMenuItem @click="emit('toggle')">
             <Icon :name="secret.enabled ? 'lucide:pause' : 'lucide:play'" size="13" class="mr-2" />
-            {{ secret.enabled ? 'Disable' : 'Enable' }}
+            {{ secret.enabled ? $t('dashboard.sso.disable') : $t('dashboard.sso.enable') }}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem class="text-red-600" @click="emit('delete')">
             <Icon name="lucide:trash-2" size="13" class="mr-2" />
-            Delete
+            {{ $t('common.delete') }}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

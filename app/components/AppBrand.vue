@@ -2,7 +2,7 @@
   Brand mark (logo + wordmark) rendered in the default layout header.
 -->
 <template>
-  <NuxtLink to="/" class="flex items-center gap-2 md:gap-3 min-w-0">
+  <NuxtLink :to="localePath('/')" class="flex items-center gap-2 md:gap-3 min-w-0">
     <img
       v-if="portal.logo"
       :src="portal.logo"
@@ -18,4 +18,5 @@
 
 <script setup lang="ts">
 const portal = usePortalOrg()
+const localePath = useLocalePath()
 </script>

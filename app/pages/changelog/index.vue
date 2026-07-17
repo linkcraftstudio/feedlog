@@ -44,10 +44,10 @@ function collapseDefaultForIndex(index: number) {
       <div class="flex flex-col gap-1.5 sm:gap-2 md:flex-row md:items-baseline md:justify-between md:gap-4">
         <div class="min-w-0">
           <h1 class="font-heading text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">
-            Changelog
+            {{ $t('changelog.title') }}
           </h1>
           <p class="text-xs sm:text-sm text-muted-foreground mt-1 max-w-xl leading-relaxed">
-            Product updates, fixes, and improvements.
+            {{ $t('changelog.subtitle') }}
           </p>
         </div>
       </div>
@@ -61,8 +61,8 @@ function collapseDefaultForIndex(index: number) {
     <!-- Empty -->
     <div v-else-if="allItems.length === 0" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
       <Icon name="lucide:newspaper" size="48" class="mb-4 opacity-50" />
-      <p class="text-lg font-medium">No updates yet</p>
-      <p class="text-sm mt-1">Check back soon for product updates.</p>
+      <p class="text-lg font-medium">{{ $t('changelog.empty') }}</p>
+      <p class="text-sm mt-1">{{ $t('changelog.emptyHint') }}</p>
     </div>
 
     <template v-else>
@@ -83,7 +83,7 @@ function collapseDefaultForIndex(index: number) {
           :disabled="loadingMore"
           @click="loadMore"
         >
-          {{ loadingMore ? 'Loading...' : 'Load more' }}
+          {{ loadingMore ? $t('changelog.loading') : $t('changelog.loadMore') }}
         </button>
       </div>
     </template>

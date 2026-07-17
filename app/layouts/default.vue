@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const { signOut } = useAuth()
 const { data: session } = await useAuthSession()
+const localePath = useLocalePath()
 
 const user = computed(() => session.value?.user)
 // SSO sessions (signed in via the customer's product) are end-user only.
@@ -35,15 +36,15 @@ const showChangePassword = ref(false)
 // etc. Hide the control instead of offering an action that 403s.
 
 const navItems = [
-  { label: 'Feedback', to: '/', icon: 'lucide:message-square' },
-  { label: 'Roadmap', to: '/roadmap', icon: 'lucide:map' },
-  { label: 'Changelog', to: '/changelog', icon: 'lucide:newspaper' },
+  { key: 'nav.feedback', to: '/', icon: 'lucide:message-square' },
+  { key: 'nav.roadmap', to: '/roadmap', icon: 'lucide:map' },
+  { key: 'nav.changelog', to: '/changelog', icon: 'lucide:newspaper' },
 ]
 
 async function handleSignOut() {
   await signOut()
   session.value = null
-  navigateTo('/')
+  navigateTo(localePath('/'))
 }
 
 // Mobile expandable nav
@@ -74,12 +75,12 @@ watch(() => route.path, () => { mobileNavOpen.value = false })
             <NuxtLink
               v-for="item in navItems"
               :key="item.to"
-              :to="item.to"
+              :to="localePath(item.to)"
               class="flex items-center text-sm font-bold tracking-wide text-muted-foreground hover:text-foreground transition-colors"
               active-class="!text-primary"
             >
               <Icon :name="item.icon" size="18" class="mr-2" />
-              {{ item.label }}
+              {{ $t(item.key) }}
             </NuxtLink>
           </nav>
         </div>
@@ -87,6 +88,7 @@ watch(() => route.path, () => { mobileNavOpen.value = false })
         <!-- Right side -->
         <div class="flex items-center gap-3 md:gap-4 lg:gap-6">
           <ThemeSwitcher />
+          <LocaleSwitcher />
 
           <!-- Dashboard link (admin only) -->
           <!-- Desktop: button with text -->
@@ -96,15 +98,15 @@ watch(() => route.path, () => { mobileNavOpen.value = false })
             variant="secondary"
             class="hidden md:inline-flex"
           >
-            <NuxtLink to="/dashboard">
+            <NuxtLink :to="localePath('/dashboard')">
               <Icon name="lucide:layout-dashboard" size="18" />
-              Dashboard
+              {{ $t('nav.dashboard') }}
             </NuxtLink>
           </Button>
           <!-- Mobile: icon only -->
           <NuxtLink
             v-if="canEnterDashboard"
-            to="/dashboard"
+            :to="localePath('/dashboard')"
             class="md:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-secondary transition-colors text-muted-foreground"
           >
             <Icon name="lucide:layout-dashboard" size="20" />
@@ -134,11 +136,11 @@ watch(() => route.path, () => { mobileNavOpen.value = false })
               <DropdownMenuSeparator />
               <DropdownMenuItem v-if="!isSsoSession" @click="showChangePassword = true">
                 <Icon name="lucide:key-round" size="16" class="mr-2" />
-                Change Password
+                {{ $t('nav.changePassword') }}
               </DropdownMenuItem>
               <DropdownMenuItem @click="handleSignOut">
                 <Icon name="lucide:log-out" size="16" class="mr-2" />
-                Sign out
+                {{ $t('common.signOut') }}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -150,7 +152,7 @@ watch(() => route.path, () => { mobileNavOpen.value = false })
             @click="showLoginModal = true"
           >
             <Icon name="lucide:log-in" size="16" />
-            <span class="hidden sm:inline">Sign in</span>
+            <span class="hidden sm:inline">{{ $t('common.signIn') }}</span>
           </button>
         </div>
       </div>
@@ -164,12 +166,12 @@ watch(() => route.path, () => { mobileNavOpen.value = false })
           <NuxtLink
             v-for="item in navItems"
             :key="item.to"
-            :to="item.to"
+            :to="localePath(item.to)"
             class="flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors"
             active-class="!text-primary"
           >
             <Icon :name="item.icon" size="16" />
-            {{ item.label }}
+            {{ $t(item.key) }}
           </NuxtLink>
         </nav>
       </div>

@@ -2,13 +2,14 @@
 // Auto / Light / Dark switcher. Reads & writes the active surface's preference
 // via useThemeMode (portal vs dashboard handled there).
 const { mode } = useThemeMode()
+const { t } = useI18n()
 
-const options = [
-  { value: 'system' as const, label: 'Auto', icon: 'lucide:monitor' },
-  { value: 'light' as const, label: 'Light', icon: 'lucide:sun' },
-  { value: 'dark' as const, label: 'Dark', icon: 'lucide:moon' },
-]
-const currentIcon = computed(() => options.find(o => o.value === mode.value)?.icon ?? 'lucide:monitor')
+const options = computed(() => [
+  { value: 'system' as const, label: t('common.theme.auto'), icon: 'lucide:monitor' },
+  { value: 'light' as const, label: t('common.theme.light'), icon: 'lucide:sun' },
+  { value: 'dark' as const, label: t('common.theme.dark'), icon: 'lucide:moon' },
+])
+const currentIcon = computed(() => options.value.find(o => o.value === mode.value)?.icon ?? 'lucide:monitor')
 </script>
 
 <template>
@@ -16,7 +17,7 @@ const currentIcon = computed(() => options.find(o => o.value === mode.value)?.ic
     <DropdownMenuTrigger as-child>
       <button
         type="button"
-        aria-label="Theme"
+        :aria-label="$t('common.theme.label')"
         class="w-9 h-9 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors focus:outline-none"
       >
         <Icon :name="currentIcon" size="18" />

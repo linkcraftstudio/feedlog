@@ -5,6 +5,8 @@ const boardStore = useBoardStore()
 const postDetailStore = usePostDetailStore()
 await callOnce(() => boardStore.fetchBoards())
 const { boards, boardMap } = storeToRefs(boardStore)
+const formatDate = useFormatDate()
+const { t } = useI18n()
 
 // ---- Filter system ----
 
@@ -16,26 +18,26 @@ interface FilterType {
 }
 
 
-const statusOptions = [
-  { value: 'all', label: 'All' },
-  ...STATUS_OPTIONS.map(s => ({ value: s.value, label: s.label })),
-]
+const statusOptions = computed(() => [
+  { value: 'all', label: t('dashboard.all') },
+  ...STATUS_OPTIONS.map(s => ({ value: s.value, label: t(statusLabelKey(s.value)) })),
+])
 
 const boardOptions = computed(() => [
-  { value: 'all', label: 'All' },
+  { value: 'all', label: t('dashboard.all') },
   ...boards.value.map(b => ({ value: b.id, label: b.name })),
 ])
 
-const mergedOptions = [
-  { value: 'canonical_only', label: 'Canonical Only' },
-  { value: 'merged_only', label: 'Merged Only' },
-  { value: 'all', label: 'All' },
-]
+const mergedOptions = computed(() => [
+  { value: 'canonical_only', label: t('dashboard.feedback.canonicalOnly') },
+  { value: 'merged_only', label: t('dashboard.feedback.mergedOnly') },
+  { value: 'all', label: t('dashboard.all') },
+])
 
 const filterTypes = computed<FilterType[]>(() => [
-  { key: 'status', label: 'Status', icon: 'lucide:activity', options: statusOptions },
-  { key: 'boardId', label: 'Board', icon: 'lucide:layers', options: boardOptions.value },
-  { key: 'merged', label: 'Merged', icon: 'lucide:git-merge', options: mergedOptions },
+  { key: 'status', label: t('dashboard.filter.status'), icon: 'lucide:activity', options: statusOptions.value },
+  { key: 'boardId', label: t('dashboard.filter.board'), icon: 'lucide:layers', options: boardOptions.value },
+  { key: 'merged', label: t('dashboard.filter.merged'), icon: 'lucide:git-merge', options: mergedOptions.value },
 ])
 
 // Active filters: Map<key, value>
@@ -228,9 +230,9 @@ function onPostDeleted(postId: string) {
   <!-- Top bar -->
   <header class="h-14 md:h-16 px-4 md:px-6 border-b border-border flex items-center justify-between shrink-0 bg-card backdrop-blur-sm">
     <div class="flex items-center gap-4">
-      <h2 class="font-heading text-lg font-bold">Feedback</h2>
+      <h2 class="font-heading text-lg font-bold">{{ $t('dashboard.feedback.title') }}</h2>
       <div class="hidden md:block h-4 w-[1px] bg-border" />
-      <span class="hidden md:block text-xs font-medium text-muted-foreground">All submissions</span>
+      <span class="hidden md:block text-xs font-medium text-muted-foreground">{{ $t('dashboard.feedback.subtitle') }}</span>
     </div>
     <div class="flex items-center gap-3">
       <!-- Search: persistent, filters the table in place -->
@@ -244,7 +246,7 @@ function onPostDeleted(postId: string) {
             @click="openAddFilter"
           >
             <Icon name="lucide:filter" size="16" />
-            Filters
+            {{ $t('dashboard.feedback.filtersBtn') }}
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" class="w-48">
@@ -280,7 +282,7 @@ function onPostDeleted(postId: string) {
         @click="showSubmit = true"
       >
         <Icon name="lucide:plus" size="16" />
-        Create Feedback
+        {{ $t('dashboard.feedback.create') }}
       </button>
     </div>
   </header>
@@ -291,7 +293,7 @@ function onPostDeleted(postId: string) {
       <!-- Filter bar -->
       <div v-if="activeFilterEntries.length > 0" class="px-6 py-4 border-b border-border flex items-center justify-between bg-background/30">
         <div class="flex flex-wrap items-center gap-2">
-          <span class="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mr-2">Active Filters:</span>
+          <span class="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mr-2">{{ $t('dashboard.feedback.activeFilters') }}</span>
           <div class="flex items-center gap-2">
             <FilterTag
               v-for="entry in activeFilterEntries"
@@ -308,7 +310,7 @@ function onPostDeleted(postId: string) {
             class="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors ml-2 underline underline-offset-2"
             @click="clearAllFilters"
           >
-            Clear all
+            {{ $t('dashboard.feedback.clearAll') }}
           </button>
         </div>
       </div>
@@ -324,10 +326,10 @@ function onPostDeleted(postId: string) {
         <div v-else-if="posts.length === 0" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
           <Icon :name="searchActive ? 'lucide:search-x' : 'lucide:inbox'" size="48" class="mb-4 opacity-50" />
           <p class="text-lg font-medium">
-            {{ searchActive ? `No matches for “${searchTerm}”` : 'No feedback found' }}
+            {{ searchActive ? $t('dashboard.feedback.searchNoMatch', { query: searchTerm }) : $t('dashboard.feedback.noResults') }}
           </p>
           <p class="text-sm mt-1">
-            {{ searchActive ? 'Try a different term, or clear the search.' : 'Try adjusting your filters' }}
+            {{ searchActive ? $t('dashboard.feedback.searchNoMatchHint') : $t('dashboard.feedback.noResultsHint') }}
           </p>
         </div>
 
@@ -357,10 +359,10 @@ function onPostDeleted(postId: string) {
                         borderColor: `var(${(STATUS_CONFIG[fb.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.open).cssVar}-border)`,
                       }"
                     >
-                      {{ (STATUS_CONFIG[fb.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.open).label }}
+                      {{ $t(statusLabelKey(fb.status)) }}
                     </span>
                     <span v-if="fb.boardId" class="text-[10px] font-medium text-muted-foreground">
-                      {{ boardMap.get(fb.boardId) ?? 'Unknown' }}
+                      {{ boardMap.get(fb.boardId) ?? $t('dashboard.feedback.unknownBoard') }}
                     </span>
                   </div>
                   <h4 class="text-sm font-bold truncate">{{ fb.title }}</h4>
@@ -380,7 +382,7 @@ function onPostDeleted(postId: string) {
                       >
                         {{ initials(fb.author?.name) }}
                       </div>
-                      <span class="font-medium">{{ fb.author?.name ?? 'Anonymous' }}</span>
+                      <span class="font-medium">{{ fb.author?.name ?? $t('common.anonymous') }}</span>
                     </div>
                     <span>{{ formatDate(fb.createdAt) }}</span>
                     <div class="flex items-center gap-0.5">
@@ -402,19 +404,19 @@ function onPostDeleted(postId: string) {
                   @click="toggleSort('votes')"
                 >
                   <div class="flex items-center gap-1">
-                    Upvotes
+                    {{ $t('dashboard.feedback.colUpvotes') }}
                     <Icon v-if="sortBy === 'votes'" name="lucide:arrow-down" size="14" class="text-primary" />
                   </div>
                 </th>
-                <th class="w-1/4 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Title</th>
-                <th class="w-32 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Board</th>
-                <th class="w-40 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Author</th>
+                <th class="w-1/4 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('dashboard.feedback.colTitle') }}</th>
+                <th class="w-32 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('dashboard.feedback.colBoard') }}</th>
+                <th class="w-40 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('dashboard.feedback.colAuthor') }}</th>
                 <th
                   class="w-32 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-primary transition-colors"
                   @click="toggleSort('comments')"
                 >
                   <div class="flex items-center gap-1">
-                    Comments
+                    {{ $t('dashboard.feedback.colComments') }}
                     <Icon v-if="sortBy === 'comments'" name="lucide:arrow-down" size="14" class="text-primary" />
                   </div>
                 </th>
@@ -423,11 +425,11 @@ function onPostDeleted(postId: string) {
                   @click="toggleSort('createdAt')"
                 >
                   <div class="flex items-center gap-1">
-                    Created
+                    {{ $t('dashboard.feedback.colCreated') }}
                     <Icon v-if="sortBy === 'createdAt'" name="lucide:arrow-down" size="14" class="text-primary" />
                   </div>
                 </th>
-                <th class="w-32 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Status</th>
+                <th class="w-32 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('dashboard.feedback.colStatus') }}</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-border">
@@ -454,7 +456,7 @@ function onPostDeleted(postId: string) {
                 <!-- Board -->
                 <td class="px-4 py-4">
                   <span v-if="fb.boardId" class="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded">
-                    {{ boardMap.get(fb.boardId) ?? 'Unknown' }}
+                    {{ boardMap.get(fb.boardId) ?? $t('dashboard.feedback.unknownBoard') }}
                   </span>
                   <span v-else class="text-xs italic text-muted-foreground">—</span>
                 </td>
@@ -474,7 +476,7 @@ function onPostDeleted(postId: string) {
                     >
                       {{ initials(fb.author?.name) }}
                     </div>
-                    <span class="text-xs font-medium truncate">{{ fb.author?.name ?? 'Anonymous' }}</span>
+                    <span class="text-xs font-medium truncate">{{ fb.author?.name ?? $t('common.anonymous') }}</span>
                   </div>
                 </td>
                 <!-- Comments -->
@@ -498,7 +500,7 @@ function onPostDeleted(postId: string) {
                       borderColor: `var(${(STATUS_CONFIG[fb.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.open).cssVar}-border)`,
                     }"
                   >
-                    {{ (STATUS_CONFIG[fb.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.open).label }}
+                    {{ $t(statusLabelKey(fb.status)) }}
                   </span>
                 </td>
               </tr>
@@ -510,10 +512,10 @@ function onPostDeleted(postId: string) {
       <!-- Pagination -->
       <div v-if="pagination.total > 0" class="h-14 md:h-16 px-4 md:px-6 border-t border-border flex items-center justify-between bg-card">
         <span class="hidden md:block text-xs text-muted-foreground font-medium">
-          Showing {{ (pagination.page - 1) * pagination.pageSize + 1 }} to {{ Math.min(pagination.page * pagination.pageSize, pagination.total) }} of {{ pagination.total }} entries
+          {{ $t('dashboard.feedback.showing', { from: (pagination.page - 1) * pagination.pageSize + 1, to: Math.min(pagination.page * pagination.pageSize, pagination.total), total: pagination.total }) }}
         </span>
         <span class="md:hidden text-xs text-muted-foreground font-medium">
-          {{ pagination.total }} entries
+          {{ $t('dashboard.feedback.entriesShort', { total: pagination.total }) }}
         </span>
         <div class="flex items-center gap-2">
           <button

@@ -10,6 +10,7 @@ const emit = defineEmits<{
   merge: [direction: 'bring' | 'push', targetPost: SimilarPost]
 }>()
 
+const localePath = useLocalePath()
 const similarPosts = ref<SimilarPost[]>([])
 const loading = ref(false)
 const expanded = ref(false)
@@ -40,7 +41,7 @@ function statusConfig(status: string) {
 
 <template>
   <div class="bg-card border border-border rounded-lg p-6 shadow-sm flex flex-col gap-4">
-    <h3 class="font-heading text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Similar Posts</h3>
+    <h3 class="font-heading text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{{ $t('post.similar.panelTitle') }}</h3>
 
     <!-- Loading -->
     <div v-if="loading && similarPosts.length === 0" class="space-y-3">
@@ -56,7 +57,7 @@ function statusConfig(status: string) {
 
     <!-- Empty -->
     <p v-else-if="similarPosts.length === 0 && !loading" class="text-xs text-muted-foreground py-2">
-      No similar posts found
+      {{ $t('post.similar.empty') }}
     </p>
 
     <!-- List -->
@@ -67,7 +68,7 @@ function statusConfig(status: string) {
         class="group py-4 first:pt-0 border-b border-border/40 last:border-b-0"
       >
         <div class="flex items-start justify-between gap-2">
-          <NuxtLink :to="`/p/${sp.slug}`" class="text-sm font-bold hover:text-primary transition-colors leading-relaxed flex-1 min-w-0 break-words">
+          <NuxtLink :to="localePath(`/p/${sp.slug}`)" class="text-sm font-bold hover:text-primary transition-colors leading-relaxed flex-1 min-w-0 break-words">
             {{ sp.title }}
           </NuxtLink>
           <!-- Admin merge button -->
@@ -75,7 +76,7 @@ function statusConfig(status: string) {
             <DropdownMenuTrigger as-child>
               <button
                 class="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
-                title="Merge"
+                :title="$t('post.merge.tooltip')"
               >
                 <Icon name="lucide:git-merge" size="18" />
               </button>
@@ -83,11 +84,11 @@ function statusConfig(status: string) {
             <DropdownMenuContent align="end" class="min-w-[180px]">
               <DropdownMenuItem class="text-xs font-bold gap-2" @click="emit('merge', 'bring', sp)">
                 <Icon name="lucide:arrow-down-left" size="14" />
-                Merge into current
+                {{ $t('post.merge.intoCurrent') }}
               </DropdownMenuItem>
               <DropdownMenuItem class="text-xs font-bold gap-2" @click="emit('merge', 'push', sp)">
                 <Icon name="lucide:arrow-up-right" size="14" />
-                Merge current into this
+                {{ $t('post.merge.currentInto') }}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -108,7 +109,7 @@ function statusConfig(status: string) {
               borderColor: `var(${statusConfig(sp.status).cssVar}-border)`,
             }"
           >
-            {{ statusConfig(sp.status).label }}
+            {{ $t(statusLabelKey(sp.status)) }}
           </span>
         </div>
       </div>
@@ -120,7 +121,7 @@ function statusConfig(status: string) {
         class="inline-flex items-center gap-1 text-xs font-bold text-muted-foreground hover:text-primary transition-colors py-1 group/link"
         @click="handleExpand"
       >
-        Expand All Similar Posts
+        {{ $t('post.similar.expandAll') }}
         <Icon name="lucide:chevron-right" size="16" class="group-hover/link:translate-x-0.5 transition-transform" />
       </button>
     </div>

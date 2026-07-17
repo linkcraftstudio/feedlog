@@ -16,15 +16,15 @@ watch(raw, (v) => {
     <input
       v-model="raw"
       type="text"
-      placeholder="Search feedback…"
+      :placeholder="$t('dashboard.feedback.searchPlaceholder')"
       autocomplete="off"
-      aria-label="Search feedback"
+      :aria-label="$t('dashboard.feedback.searchAria')"
       class="fl-search__input"
     >
     <button
       v-if="raw"
       type="button"
-      aria-label="Clear search"
+      :aria-label="$t('dashboard.feedback.clearSearch')"
       class="fl-search__clear"
       @click="raw = ''"
     >

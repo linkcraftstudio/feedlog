@@ -2,6 +2,7 @@
 import { toast } from 'vue-sonner'
 
 const { signIn, signUp, requestPasswordReset } = useAuth()
+const { t } = useI18n()
 
 const open = defineModel<boolean>('open', { default: false })
 
@@ -150,11 +151,11 @@ async function handleSignIn() {
     })
     if (error) {
       if (error.code === 'EMAIL_NOT_VERIFIED') {
-        toast.error('Please verify your email before signing in')
+        toast.error(t('auth.errors.emailNotVerified'))
       } else if (error.code === 'INVALID_EMAIL_OR_PASSWORD') {
-        toast.error('Invalid email or password')
+        toast.error(t('auth.errors.invalidCredentials'))
       } else {
-        toast.error(error.message || 'Sign in failed')
+        toast.error(error.message || t('auth.errors.signInFailed'))
       }
       return
     }
@@ -169,7 +170,7 @@ async function handleSignIn() {
 async function handleSignUp() {
   if (!form.name || !form.email || !form.password) return
   if (form.password.length < 8) {
-    toast.error('Password must be at least 8 characters')
+    toast.error(t('auth.errors.passwordTooShort'))
     return
   }
   loading.value = true
@@ -180,7 +181,7 @@ async function handleSignUp() {
       password: form.password,
     })
     if (error) {
-      toast.error(error.message || 'Sign up failed')
+      toast.error(error.message || t('auth.errors.signUpFailed'))
       return
     }
     if (authCfg.value?.emailVerification) {
@@ -248,9 +249,9 @@ async function handleVerified() {
     })
     if (error) {
       if (error.code === 'EMAIL_NOT_VERIFIED') {
-        toast.error('Email not yet verified, please check your inbox')
+        toast.error(t('auth.errors.notYetVerified'))
       } else {
-        toast.error(error.message || 'Sign in failed')
+        toast.error(error.message || t('auth.errors.signInFailed'))
       }
       return
     }
@@ -273,7 +274,7 @@ async function resendVerification() {
       method: 'POST',
       body: { email: form.email },
     })
-    toast.success('Verification email resent')
+    toast.success(t('auth.success.verificationResent'))
     resendCooldown.value = 60
     resendTimer = setInterval(() => {
       resendCooldown.value--
@@ -283,14 +284,14 @@ async function resendVerification() {
       }
     }, 1000)
   } catch {
-    toast.error('Failed to resend verification email')
+    toast.error(t('auth.errors.resendFailed'))
   }
 }
 
 // --- Forgot Password ---
 async function handleForgotPassword() {
   if (!form.email) {
-    toast.error('Please enter your email')
+    toast.error(t('auth.errors.enterEmail'))
     return
   }
   loading.value = true
@@ -301,7 +302,7 @@ async function handleForgotPassword() {
     })
     state.value = 'reset-sent'
   } catch {
-    toast.error('Failed to send reset email')
+    toast.error(t('auth.errors.sendResetFailed'))
   } finally {
     loading.value = false
   }
@@ -318,8 +319,8 @@ const showPassword = ref(false)
       <template v-if="state === 'sign-in'">
         <DialogHeader class="text-center space-y-2">
           <AppLogo :size="48" class="mx-auto" />
-          <DialogTitle class="font-heading text-xl">Sign in to FeedLog</DialogTitle>
-          <DialogDescription>Sign in to submit feedback, vote, and comment</DialogDescription>
+          <DialogTitle class="font-heading text-xl">{{ $t('auth.signIn.title') }}</DialogTitle>
+          <DialogDescription>{{ $t('auth.signIn.subtitle') }}</DialogDescription>
         </DialogHeader>
 
         <div v-if="hasOAuth" class="space-y-2 pt-2">
@@ -332,7 +333,7 @@ const showPassword = ref(false)
             @click="loginWithSocial('google')"
           >
             <Icon name="logos:google-icon" class="mr-2 size-5" />
-            Continue with Google
+            {{ $t('auth.signIn.google') }}
           </Button>
           <Button
             v-if="authCfg?.github"
@@ -343,13 +344,13 @@ const showPassword = ref(false)
             @click="loginWithSocial('github')"
           >
             <Icon name="mdi:github" class="mr-2 size-5" />
-            Continue with GitHub
+            {{ $t('auth.signIn.github') }}
           </Button>
         </div>
 
         <div v-if="showSeparator" class="relative my-2">
           <Separator />
-          <span class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-xs text-muted-foreground">or</span>
+          <span class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-xs text-muted-foreground">{{ $t('auth.signIn.or') }}</span>
         </div>
 
         <Button
@@ -361,12 +362,12 @@ const showPassword = ref(false)
           @click="switchTo('sign-in-email')"
         >
           <Icon name="lucide:mail" class="mr-2 size-5" />
-          Sign in with email
+          {{ $t('auth.signIn.withEmail') }}
         </Button>
 
         <p v-if="emailEnabled" class="text-center text-sm text-muted-foreground">
-          Don't have an account?
-          <button class="text-primary hover:underline font-medium" @click="switchTo('sign-up-email')">Sign up</button>
+          {{ $t('auth.signIn.noAccount') }}
+          <button class="text-primary hover:underline font-medium" @click="switchTo('sign-up-email')">{{ $t('common.signUp') }}</button>
         </p>
       </template>
 
@@ -374,28 +375,28 @@ const showPassword = ref(false)
       <template v-if="state === 'sign-in-email'">
         <DialogHeader class="text-center space-y-2">
           <AppLogo :size="48" class="mx-auto" />
-          <DialogTitle class="font-heading text-xl">Sign in with email</DialogTitle>
+          <DialogTitle class="font-heading text-xl">{{ $t('auth.signInEmail.title') }}</DialogTitle>
         </DialogHeader>
         <form class="space-y-4 pt-2" @submit.prevent="handleSignIn">
           <div class="space-y-2">
-            <label class="text-sm font-medium" for="signin-email">Email</label>
+            <label class="text-sm font-medium" for="signin-email">{{ $t('common.email') }}</label>
             <Input
               id="signin-email"
               v-model="form.email"
               type="email"
-              placeholder="you@example.com"
+              :placeholder="$t('auth.emailPlaceholder')"
               required
             />
           </div>
           <div class="space-y-2">
             <div class="flex items-center justify-between">
-              <label class="text-sm font-medium" for="signin-password">Password</label>
+              <label class="text-sm font-medium" for="signin-password">{{ $t('common.password') }}</label>
               <button
                 type="button"
                 class="text-xs text-muted-foreground hover:text-primary transition-colors"
                 @click="switchTo('forgot-password')"
               >
-                Forgot Password?
+                {{ $t('auth.forgot.title') }}
               </button>
             </div>
             <div class="relative">
@@ -403,7 +404,7 @@ const showPassword = ref(false)
                 id="signin-password"
                 v-model="form.password"
                 :type="showPassword ? 'text' : 'password'"
-                placeholder="Enter your password"
+                :placeholder="$t('auth.signInEmail.passwordPlaceholder')"
                 required
                 class="pr-10"
               />
@@ -418,7 +419,7 @@ const showPassword = ref(false)
           </div>
           <Button type="submit" class="w-full" size="lg" :disabled="loading">
             <Spinner v-if="loading" class="mr-2 size-4" />
-            Sign in
+            {{ $t('common.signIn') }}
           </Button>
         </form>
 
@@ -428,12 +429,12 @@ const showPassword = ref(false)
           @click="switchTo('sign-in')"
         >
           <Icon name="lucide:arrow-left" size="14" />
-          Other sign in options
+          {{ $t('auth.signIn.otherOptions') }}
         </button>
 
         <p class="text-center text-sm text-muted-foreground">
-          Don't have an account?
-          <button class="text-primary hover:underline font-medium" @click="switchTo('sign-up-email')">Sign up</button>
+          {{ $t('auth.signIn.noAccount') }}
+          <button class="text-primary hover:underline font-medium" @click="switchTo('sign-up-email')">{{ $t('common.signUp') }}</button>
         </p>
       </template>
 
@@ -441,37 +442,37 @@ const showPassword = ref(false)
       <template v-if="state === 'sign-up-email'">
         <DialogHeader class="text-center space-y-2">
           <AppLogo :size="48" class="mx-auto" />
-          <DialogTitle class="font-heading text-xl">Sign up with email</DialogTitle>
+          <DialogTitle class="font-heading text-xl">{{ $t('auth.signUp.title') }}</DialogTitle>
         </DialogHeader>
         <form class="space-y-4 pt-2" @submit.prevent="handleSignUp">
           <div class="space-y-2">
-            <label class="text-sm font-medium" for="signup-name">Name</label>
+            <label class="text-sm font-medium" for="signup-name">{{ $t('common.name') }}</label>
             <Input
               id="signup-name"
               v-model="form.name"
               type="text"
-              placeholder="Your name"
+              :placeholder="$t('auth.signUp.namePlaceholder')"
               required
             />
           </div>
           <div class="space-y-2">
-            <label class="text-sm font-medium" for="signup-email">Email</label>
+            <label class="text-sm font-medium" for="signup-email">{{ $t('common.email') }}</label>
             <Input
               id="signup-email"
               v-model="form.email"
               type="email"
-              placeholder="you@example.com"
+              :placeholder="$t('auth.emailPlaceholder')"
               required
             />
           </div>
           <div class="space-y-2">
-            <label class="text-sm font-medium" for="signup-password">Password</label>
+            <label class="text-sm font-medium" for="signup-password">{{ $t('common.password') }}</label>
             <div class="relative">
               <Input
                 id="signup-password"
                 v-model="form.password"
                 :type="showPassword ? 'text' : 'password'"
-                placeholder="At least 8 characters"
+                :placeholder="$t('auth.passwordMinHint')"
                 required
                 minlength="8"
                 class="pr-10"
@@ -487,13 +488,13 @@ const showPassword = ref(false)
           </div>
           <Button type="submit" class="w-full" size="lg" :disabled="loading">
             <Spinner v-if="loading" class="mr-2 size-4" />
-            Sign up
+            {{ $t('common.signUp') }}
           </Button>
         </form>
 
         <p class="text-center text-sm text-muted-foreground">
-          Already have an account?
-          <button class="text-primary hover:underline font-medium" @click="switchTo('sign-in')">Sign in</button>
+          {{ $t('auth.signUp.haveAccount') }}
+          <button class="text-primary hover:underline font-medium" @click="switchTo('sign-in')">{{ $t('common.signIn') }}</button>
         </p>
       </template>
 
@@ -503,29 +504,29 @@ const showPassword = ref(false)
           <div class="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
             <Icon name="lucide:mail" size="24" class="text-primary" />
           </div>
-          <DialogTitle class="font-heading text-xl">Check your email</DialogTitle>
+          <DialogTitle class="font-heading text-xl">{{ $t('auth.checkEmail') }}</DialogTitle>
           <DialogDescription>
-            We've sent a verification link to
+            {{ $t('auth.verifyEmail.sentTo') }}
             <span class="font-medium text-foreground">{{ form.email }}</span>
           </DialogDescription>
         </DialogHeader>
         <div class="space-y-4 pt-2">
           <p class="text-sm text-center text-muted-foreground">
-            Please check your inbox and click the verification link to continue.
+            {{ $t('auth.verifyEmail.instruction') }}
           </p>
           <Button class="w-full" size="lg" :disabled="loading" @click="handleVerified">
             <Spinner v-if="loading" class="mr-2 size-4" />
-            I've verified my email
+            {{ $t('auth.verifyEmail.verified') }}
           </Button>
           <p class="text-center text-sm text-muted-foreground">
-            Didn't receive it?
+            {{ $t('auth.verifyEmail.didntReceive') }}
             <button
               class="text-primary hover:underline font-medium"
               :class="{ 'opacity-50 cursor-not-allowed': resendCooldown > 0 }"
               :disabled="resendCooldown > 0"
               @click="resendVerification"
             >
-              Resend{{ resendCooldown > 0 ? ` (${resendCooldown}s)` : '' }}
+              {{ $t('auth.verifyEmail.resend') }}{{ resendCooldown > 0 ? ` (${resendCooldown}s)` : '' }}
             </button>
           </p>
         </div>
@@ -537,28 +538,28 @@ const showPassword = ref(false)
           <div class="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
             <Icon name="lucide:key-round" size="24" class="text-primary" />
           </div>
-          <DialogTitle class="font-heading text-xl">Forgot Password?</DialogTitle>
-          <DialogDescription>Enter your email to receive a password reset link.</DialogDescription>
+          <DialogTitle class="font-heading text-xl">{{ $t('auth.forgot.title') }}</DialogTitle>
+          <DialogDescription>{{ $t('auth.forgot.subtitle') }}</DialogDescription>
         </DialogHeader>
         <form class="space-y-4 pt-2" @submit.prevent="handleForgotPassword">
           <div class="space-y-2">
-            <label class="text-sm font-medium" for="forgot-email">Email</label>
+            <label class="text-sm font-medium" for="forgot-email">{{ $t('common.email') }}</label>
             <Input
               id="forgot-email"
               v-model="form.email"
               type="email"
-              placeholder="you@example.com"
+              :placeholder="$t('auth.emailPlaceholder')"
               required
             />
           </div>
           <Button type="submit" class="w-full" size="lg" :disabled="loading">
             <Spinner v-if="loading" class="mr-2 size-4" />
-            Send Reset Link
+            {{ $t('auth.forgot.submit') }}
           </Button>
         </form>
         <p class="text-center text-sm text-muted-foreground">
           <button class="text-primary hover:underline font-medium" @click="switchTo('sign-in-email')">
-            ← Back to sign in
+            {{ $t('auth.backToSignIn') }}
           </button>
         </p>
       </template>
@@ -569,15 +570,15 @@ const showPassword = ref(false)
           <div class="mx-auto w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
             <Icon name="lucide:mail-check" size="24" class="text-green-600 dark:text-green-400" />
           </div>
-          <DialogTitle class="font-heading text-xl">Check your email</DialogTitle>
+          <DialogTitle class="font-heading text-xl">{{ $t('auth.checkEmail') }}</DialogTitle>
           <DialogDescription>
-            We've sent a password reset link to
+            {{ $t('auth.resetSent.sentTo') }}
             <span class="font-medium text-foreground">{{ form.email }}</span>
           </DialogDescription>
         </DialogHeader>
         <div class="space-y-4 pt-2">
           <p class="text-sm text-center text-muted-foreground">
-            Click the link in the email to reset your password. The link expires in 1 hour.
+            {{ $t('auth.resetSent.instruction') }}
           </p>
           <p class="text-center text-sm text-muted-foreground">
             <button class="text-primary hover:underline font-medium" @click="switchTo('sign-in')">

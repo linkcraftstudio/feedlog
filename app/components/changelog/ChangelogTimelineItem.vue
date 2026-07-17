@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { resolveAttachmentUrl } from '~/utils/attachment'
 
-const CATEGORY_LABEL: Record<string, string> = {
-  new: 'New',
-  improved: 'Improved',
-  fixed: 'Fixed',
-}
+const { t } = useI18n()
+const localePath = useLocalePath()
+
+const CATEGORY_LABEL = computed<Record<string, string>>(() => ({
+  new: t('changelog.category.new'),
+  improved: t('changelog.category.improved'),
+  fixed: t('changelog.category.fixed'),
+}))
 
 const CATEGORY_CLASS: Record<string, string> = {
   new: 'bg-primary/10 text-primary border-primary/25',
@@ -23,6 +26,9 @@ const expanded = ref(!props.collapseBodyByDefault)
 const mobileExpanded = ref(false)
 
 const coverUrl = computed(() => resolveAttachmentUrl(props.entry.cover))
+
+const timeAgo = useTimeAgo()
+const formatDate = useFormatDate()
 
 function badgeClass(cat: string) {
   return `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${CATEGORY_CLASS[cat] ?? 'bg-secondary text-secondary-foreground border-border'}`
@@ -69,7 +75,7 @@ function badgeClass(cat: string) {
         <!-- Cover image -->
         <NuxtLink
           v-if="coverUrl"
-          :to="`/changelog/${entry.slug}`"
+          :to="localePath(`/changelog/${entry.slug}`)"
           class="block aspect-[2.5/1] w-full overflow-hidden bg-muted touch-manipulation"
         >
           <img
@@ -83,7 +89,7 @@ function badgeClass(cat: string) {
         <div class="relative">
           <div class="p-3 sm:p-4 md:p-5 space-y-2.5 sm:space-y-3" :class="mobileExpanded ? '' : 'max-sm:max-h-[32rem] max-sm:overflow-hidden'">
             <!-- Title + categories -->
-            <NuxtLink :to="`/changelog/${entry.slug}`" class="group block touch-manipulation">
+            <NuxtLink :to="localePath(`/changelog/${entry.slug}`)" class="group block touch-manipulation">
               <h2 class="font-heading text-base sm:text-lg md:text-xl font-bold leading-snug break-words">
                 <span v-if="entry.categories.length > 0" class="mr-2 inline-flex flex-wrap items-center gap-1.5 align-middle">
                   <span v-for="cat in entry.categories" :key="cat" :class="badgeClass(cat)">
@@ -108,7 +114,7 @@ function badgeClass(cat: string) {
                 class="min-h-11 sm:min-h-0 w-full sm:w-auto px-1 -mx-1 sm:mx-0 text-sm font-heading font-semibold text-primary hover:underline touch-manipulation text-left rounded-md active:bg-primary/5"
                 @click="expanded = true"
               >
-                Show full update
+                {{ $t('changelog.showFull') }}
               </button>
             </div>
 
@@ -126,10 +132,10 @@ function badgeClass(cat: string) {
 
             <div class="flex justify-end pt-1">
               <NuxtLink
-                :to="`/changelog/${entry.slug}`"
+                :to="localePath(`/changelog/${entry.slug}`)"
                 class="inline-flex items-center justify-center gap-1 min-h-11 sm:min-h-0 sm:justify-end px-2 -mx-2 sm:mx-0 py-2 sm:py-0 text-xs font-bold text-muted-foreground hover:text-primary active:text-primary transition-colors touch-manipulation rounded-md active:bg-secondary/60"
               >
-                Open full page
+                {{ $t('changelog.openFull') }}
                 <Icon name="lucide:arrow-right" size="14" />
               </NuxtLink>
             </div>
@@ -143,7 +149,7 @@ function badgeClass(cat: string) {
               class="w-full min-h-11 rounded-lg border border-border bg-background text-sm font-heading font-semibold text-foreground active:bg-secondary/60 transition-colors touch-manipulation"
               @click="mobileExpanded = true"
             >
-              Expand update
+              {{ $t('changelog.expand') }}
             </button>
           </div>
         </div>

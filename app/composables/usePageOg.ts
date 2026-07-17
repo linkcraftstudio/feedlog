@@ -25,6 +25,7 @@ interface PageMeta {
 
 export function usePageOg(page: OgPage) {
   const portal = usePortalOrg()
+  const { t } = useI18n()
 
   const meta = computed<PageMeta>(() => {
     const name = portal.value.name
@@ -33,7 +34,7 @@ export function usePageOg(page: OgPage) {
     switch (page.kind) {
       case 'home':
         return {
-          title: `${name} Feedback`,
+          title: t('seo.portalTitle', { name }),
           description: isDefault
             ? "Give us feedback, vote on feature requests, and help shape what we're building next."
             : `Give feedback to ${name}, vote on feature requests, and help shape the roadmap.`,
@@ -41,7 +42,7 @@ export function usePageOg(page: OgPage) {
         }
       case 'roadmap':
         return {
-          title: `${name} Roadmap`,
+          title: t('seo.roadmapTitle', { name }),
           description: isDefault
             ? "See what we're working on, what's planned, and what's shipped."
             : `See what ${name} is building, what's planned, and what's shipped.`,
@@ -49,28 +50,28 @@ export function usePageOg(page: OgPage) {
         }
       case 'changelogList':
         return {
-          title: `${name} Changelog`,
+          title: t('seo.changelogTitle', { name }),
           description: isDefault
             ? 'The latest product updates, improvements, and fixes.'
             : `The latest product updates, improvements, and fixes from ${name}.`,
           ogType: 'website',
         }
       case 'post': {
-        const t = (toValue(page.title) ?? '') || 'Feedback'
+        const pageTitle = (toValue(page.title) ?? '') || t('seo.postFallback')
         const body = toValue(page.content) ?? ''
         const excerpt = body ? generateExcerpt(body) : ''
         return {
-          title: isDefault ? t : `${t} - ${name}`,
+          title: isDefault ? pageTitle : t('seo.titleWithOrg', { title: pageTitle, name }),
           description: excerpt || (isDefault ? 'Vote and join the discussion.' : `Vote and join the discussion on ${name}.`),
           ogType: 'article',
         }
       }
       case 'changelogEntry': {
-        const t = (toValue(page.title) ?? '') || 'Changelog'
+        const pageTitle = (toValue(page.title) ?? '') || t('seo.changelogFallback')
         const body = toValue(page.content) ?? ''
         const excerpt = body ? generateExcerpt(body) : ''
         return {
-          title: isDefault ? t : `${t} - ${name}`,
+          title: isDefault ? pageTitle : t('seo.titleWithOrg', { title: pageTitle, name }),
           description: excerpt || (isDefault ? "What's new." : `What's new at ${name}.`),
           ogType: 'article',
           publishedTime: toValue(page.publishedAt),

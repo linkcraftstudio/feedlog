@@ -1,0 +1,639 @@
+{
+  "a11y": {
+    "language": "语言",
+    "loading": "加载中",
+    "coverImage": "封面图片"
+  },
+  "common": {
+    "email": "邮箱",
+    "password": "密码",
+    "name": "姓名",
+    "cancel": "取消",
+    "signIn": "登录",
+    "signOut": "退出登录",
+    "signUp": "注册",
+    "goHome": "返回首页",
+    "edit": "编辑",
+    "delete": "删除",
+    "save": "保存",
+    "anonymous": "匿名",
+    "theme": {
+      "label": "主题",
+      "auto": "自动",
+      "light": "浅色",
+      "dark": "深色"
+    }
+  },
+  "status": {
+    "open": "开放",
+    "planned": "计划中",
+    "in_progress": "进行中",
+    "done": "已完成"
+  },
+  "time": {
+    "justNow": "刚刚",
+    "minutesAgo": "{n} 分钟前",
+    "hoursAgo": "{n} 小时前",
+    "daysAgo": "{n} 天前",
+    "monthsAgo": "{n} 个月前",
+    "yearsAgo": "{n} 年前"
+  },
+  "nav": {
+    "feedback": "反馈",
+    "roadmap": "路线图",
+    "changelog": "更新日志",
+    "board": "看板",
+    "members": "成员",
+    "portal": "门户",
+    "workspace": "工作区",
+    "sso": "单点登录",
+    "dashboard": "控制台",
+    "changePassword": "修改密码"
+  },
+  "board": {
+    "boards": "看板",
+    "allFeedback": "全部反馈",
+    "topRequests": "热门请求",
+    "recentRequests": "最新请求",
+    "sortTop": "热门",
+    "sortRecent": "最新",
+    "search": "搜索",
+    "searchPlaceholder": "搜索反馈…",
+    "clearSearch": "清除搜索",
+    "closeSearch": "关闭搜索",
+    "newRequest": "新建反馈",
+    "noFeedback": "还没有反馈",
+    "noMatches": "没有匹配“{query}”的结果",
+    "noMatchesHint": "还没有人提过 —— 来做第一个吧。",
+    "comments": "{n} 条评论",
+    "loading": "加载中……",
+    "loadMore": "加载更多",
+    "poweredBy": "技术支持 "
+  },
+  "roadmap": {
+    "title": "路线图",
+    "subtitle": "我们当前的战略路线图与开发进度。",
+    "loading": "加载中……",
+    "loadMore": "加载更多",
+    "emptyColumn": "还没有{status}的条目。",
+    "addItem": "添加条目"
+  },
+  "changelog": {
+    "title": "更新日志",
+    "subtitle": "产品更新、修复与改进。",
+    "empty": "还没有更新",
+    "emptyHint": "稍后再来看看产品更新吧。",
+    "loading": "加载中……",
+    "loadMore": "加载更多",
+    "notFound": "未找到该更新日志",
+    "notFoundHint": "它可能已被删除,或链接已失效。",
+    "back": "返回更新日志",
+    "showFull": "查看完整更新",
+    "openFull": "打开完整页面",
+    "expand": "展开更新",
+    "addReaction": "添加回应",
+    "reactWith": "用 {emoji} 回应",
+    "category": {
+      "new": "新增",
+      "improved": "改进",
+      "fixed": "修复"
+    },
+    "admin": {
+      "title": "更新日志",
+      "subtitle": "管理产品更新",
+      "create": "新建日志",
+      "filterStatus": "状态",
+      "searchPlaceholder": "搜索日志……",
+      "noImage": "暂无封面图",
+      "noEntries": "没有符合当前筛选条件的更新日志。",
+      "showing": "显示第 {from}–{to} 条,共 {total} 条",
+      "entriesShort": "共 {total} 条",
+      "status": {
+        "all": "全部状态",
+        "published": "已发布",
+        "draft": "草稿",
+        "needs_update": "待更新"
+      }
+    },
+    "editor": {
+      "back": "返回",
+      "view": "查看",
+      "publish": "发布",
+      "details": "详情",
+      "featuredImage": "封面图",
+      "uploading": "上传中……",
+      "clickReplace": "点击替换",
+      "clickUpload": "点击上传封面图",
+      "coverHint": "推荐尺寸:1200 × 480 px(2.5:1)",
+      "titleLabel": "标题",
+      "titlePlaceholder": "例如:我们最新版本的新功能",
+      "types": "类型",
+      "content": "正文",
+      "contentPlaceholder": "在此撰写更新日志……",
+      "aiWrite": "AI 撰写",
+      "loadFailed": "加载更新日志失败",
+      "titleContentRequired": "标题和内容不能为空",
+      "titleContentRequiredPublish": "发布前必须填写标题和内容",
+      "saveFailed": "保存失败",
+      "publishSuccess": "更新日志发布成功",
+      "publishFailed": "发布失败",
+      "deleteTitle": "删除这条更新日志?",
+      "deleteDescription": "此操作无法撤销,将永久删除该更新日志及其所有回应。",
+      "deleteFailed": "删除失败",
+      "unsavedTitle": "有未保存的更改",
+      "unsavedDescription": "你有未保存的更改。确定要离开吗?",
+      "leave": "离开",
+      "stay": "留下"
+    },
+    "ai": {
+      "title": "更新日志 AI 助手",
+      "subtitle": "根据你的反馈和改动生成草稿",
+      "selectFeedback": "选择相关反馈",
+      "optional": "(可选)",
+      "pickTooltip": "搜索要加入的其他反馈",
+      "pickFeedback": "选择反馈",
+      "remove": "移除",
+      "stylePreset": "风格预设",
+      "viewExample": "查看风格示例",
+      "describeUpdates": "描述你的更新",
+      "describePlaceholder": "你改了什么?(例如:新增 GitHub 登录,修复 Markdown 列表的 bug……)",
+      "provideOne": "请至少提供关联反馈或更新描述其中之一。",
+      "examplePreview": "示例预览",
+      "generating": "生成中……",
+      "generate": "生成",
+      "generateFailed": "AI 生成失败",
+      "styles": {
+        "concise": {
+          "name": "简洁",
+          "desc": "直接清晰的语气——适合日常或小改动"
+        },
+        "structured": {
+          "name": "结构化",
+          "desc": "分类清晰、便于浏览——适合包含多项改动的大版本"
+        },
+        "benefitLed": {
+          "name": "价值导向",
+          "desc": "聚焦价值的语气——适合想重点突出的重要功能"
+        },
+        "witty": {
+          "name": "俏皮",
+          "desc": "轻松活泼的语气——适合日常维护或 bug 修复"
+        }
+      }
+    },
+    "picker": {
+      "title": "选择反馈",
+      "subtitle": "选择要加入更新日志的相关反馈。",
+      "searchPlaceholder": "按标题搜索……",
+      "noResults": "没有找到反馈",
+      "selectedSuffix": "已选",
+      "limitReached": "(已达上限)",
+      "confirm": "确认选择"
+    }
+  },
+  "post": {
+    "submit": {
+      "selectBoard": "选择看板",
+      "titlePlaceholder": "你在想什么?",
+      "bodyPlaceholder": "详细描述你的想法……",
+      "submitting": "提交中……",
+      "submit": "发布反馈",
+      "dialogTitle": "提交反馈",
+      "dialogDescription": "提交新反馈",
+      "errors": {
+        "selectBoard": "请选择一个看板",
+        "titleRequired": "请填写标题",
+        "contentRequired": "请填写内容",
+        "submitFailed": "提交失败"
+      }
+    },
+    "similar": {
+      "finding": "正在查找相似反馈",
+      "found": "找到 {count} 条相似反馈",
+      "panelTitle": "相似反馈",
+      "empty": "没有找到相似反馈",
+      "expandAll": "展开全部相似反馈"
+    },
+    "detail": {
+      "upvotes": "赞成票",
+      "titlePlaceholder": "标题",
+      "editPlaceholder": "编辑你的反馈……",
+      "saving": "保存中……",
+      "saveChanges": "保存修改",
+      "deleteTitle": "删除这条反馈?",
+      "deleteDescription": "此操作无法撤销,将永久删除该反馈及其所有评论。",
+      "linkCopied": "链接已复制到剪贴板",
+      "linkCopyFailed": "复制链接失败",
+      "discussion": "讨论({count})",
+      "noComments": "还没有评论",
+      "noCommentsHint": "来发表第一条评论吧",
+      "loadingMore": "加载中……",
+      "viewMoreComments": "查看更多评论",
+      "board": "看板",
+      "status": "状态",
+      "author": "作者",
+      "none": "无",
+      "shareRequest": "分享反馈",
+      "modalTitle": "反馈详情",
+      "modalDescription": "反馈详情弹窗",
+      "openInPage": "在新页面打开",
+      "sort": {
+        "newest": "最新",
+        "oldest": "最早",
+        "top": "最热"
+      },
+      "errors": {
+        "titleRequired": "请填写标题",
+        "contentRequired": "请填写内容",
+        "saveFailed": "保存失败",
+        "deleteFailed": "删除失败"
+      }
+    },
+    "merge": {
+      "tooltip": "合并",
+      "toThis": "合并到这条反馈",
+      "thisInto": "将这条反馈合并到……",
+      "intoCurrent": "合并到当前反馈",
+      "currentInto": "将当前反馈合并到此",
+      "dialogTitle": "合并反馈",
+      "dialogSubtitle": "将相似的反馈合并为一条,让路线图更清晰。",
+      "searchPlaceholder": "搜索要合并的反馈……",
+      "searching": "搜索中……",
+      "noResults": "没有找到反馈",
+      "merging": "合并中……",
+      "action": "合并",
+      "failed": "合并失败",
+      "dialogDescription": "搜索并选择要合并的反馈",
+      "banner": "这条反馈已被合并到",
+      "mergedPostBy": "由 {name} 合并的反馈",
+      "mergedPost": "合并的反馈",
+      "unmerge": "取消合并",
+      "loadMoreComments": "加载更多评论",
+      "loadComments": "加载 {count} 条评论"
+    },
+    "comment": {
+      "edited": "(已编辑)",
+      "reply": "回复",
+      "comment": "评论",
+      "editPlaceholder": "编辑你的评论……",
+      "replyPlaceholder": "写下回复……",
+      "addPlaceholder": "添加评论或反馈……",
+      "viewMoreReplies": "查看另外 {count} 条回复",
+      "deleteTitle": "删除这条评论?",
+      "deleteDescription": "此操作无法撤销,将永久删除该评论及其所有回复。"
+    }
+  },
+  "auth": {
+    "emailPlaceholder": "you{'@'}example.com",
+    "passwordMinHint": "至少 8 个字符",
+    "checkEmail": "查收邮件",
+    "backToSignIn": "← 返回登录",
+    "signingIn": "登录中……",
+    "fields": {
+      "current": "当前密码",
+      "new": "新密码",
+      "confirm": "确认密码"
+    },
+    "signIn": {
+      "title": "登录 FeedLog",
+      "subtitle": "登录后即可提交反馈、投票和评论",
+      "google": "使用 Google 登录",
+      "github": "使用 GitHub 登录",
+      "or": "或",
+      "withEmail": "使用邮箱登录",
+      "noAccount": "还没有账号?",
+      "otherOptions": "其他登录方式"
+    },
+    "signInEmail": {
+      "title": "使用邮箱登录",
+      "passwordPlaceholder": "输入密码"
+    },
+    "signUp": {
+      "title": "使用邮箱注册",
+      "namePlaceholder": "你的名字",
+      "haveAccount": "已有账号?"
+    },
+    "verifyEmail": {
+      "sentTo": "我们已发送验证链接至",
+      "instruction": "请查收邮件并点击验证链接以继续。",
+      "verified": "我已验证邮箱",
+      "didntReceive": "没收到?",
+      "resend": "重新发送"
+    },
+    "forgot": {
+      "title": "忘记密码?",
+      "subtitle": "输入你的邮箱以接收密码重置链接。",
+      "submit": "发送重置链接"
+    },
+    "resetSent": {
+      "sentTo": "我们已发送密码重置链接至",
+      "instruction": "点击邮件中的链接以重置密码。链接 1 小时后失效。"
+    },
+    "changePassword": {
+      "title": "修改密码",
+      "setTitle": "设置密码",
+      "subtitle": "更新你的账号密码",
+      "setSubtitle": "为你的账号添加密码",
+      "submit": "更新密码"
+    },
+    "resetPage": {
+      "successTitle": "密码已重置",
+      "successBody": "你的密码已成功重置。",
+      "expiredTitle": "链接已失效",
+      "expiredBody": "该密码重置链接已失效或无效。请重新申请。",
+      "title": "重置密码",
+      "subtitle": "在下方输入你的新密码。",
+      "submit": "重置密码",
+      "backHome": "← 返回首页"
+    },
+    "verified": {
+      "title": "邮箱已验证",
+      "body": "你的邮箱已成功验证。",
+      "redirecting": "跳转中……"
+    },
+    "commentPrompt": {
+      "text": "登录以参与讨论"
+    },
+    "invite": {
+      "loading": "加载中……",
+      "unavailableTitle": "邀请不可用",
+      "unavailableBody": "该邀请已不可用。",
+      "goToApp": "前往 FeedLog",
+      "joinTitle": "加入 FeedLog",
+      "joinTeam": "加入 {org} 在 FeedLog 的团队",
+      "signInToContinue": "登录以继续",
+      "anonymousHint": "过程中你将登录或创建一个 FeedLog 账号。",
+      "joining": "加入中……",
+      "joinOrg": "加入 {org}",
+      "notYou": "不是你?",
+      "signOut": "退出登录",
+      "sentToEmail": "该邀请发送至 {email}。",
+      "switchAccount": "切换账号"
+    },
+    "sso": {
+      "pageTitle": "无法登录",
+      "title": "我们无法为你登录",
+      "body": "单点登录未完成——登录链接可能已过期或配置有误。若持续出现,请联系你的管理员。",
+      "continuingIn": "{seconds} 秒后继续……",
+      "continueNow": "立即继续"
+    },
+    "errors": {
+      "emailNotVerified": "请先验证邮箱再登录",
+      "invalidCredentials": "邮箱或密码错误",
+      "signInFailed": "登录失败",
+      "passwordTooShort": "密码至少需 8 个字符",
+      "signUpFailed": "注册失败",
+      "notYetVerified": "邮箱尚未验证,请查收邮件",
+      "enterEmail": "请输入邮箱",
+      "sendResetFailed": "重置邮件发送失败",
+      "resendFailed": "验证邮件重发失败",
+      "passwordsMismatch": "两次密码不一致",
+      "changeFailed": "修改密码失败",
+      "setFailed": "设置密码失败",
+      "resetFailed": "重置密码失败"
+    },
+    "success": {
+      "verificationResent": "验证邮件已重新发送",
+      "passwordUpdated": "密码已更新",
+      "passwordSet": "密码设置成功"
+    }
+  },
+  "dashboard": {
+    "all": "全部",
+    "allBoards": "全部看板",
+    "backToSite": "返回站点",
+    "filter": {
+      "status": "状态",
+      "board": "看板",
+      "merged": "合并"
+    },
+    "nav": {
+      "srTitle": "导航",
+      "srDescription": "控制台导航菜单",
+      "main": "主要",
+      "settings": "设置",
+      "developer": "开发者"
+    },
+    "roadmap": {
+      "title": "路线图",
+      "subtitle": "按状态查看反馈"
+    },
+    "boards": {
+      "title": "看板",
+      "subtitle": "按分类整理反馈",
+      "create": "新建看板",
+      "empty": "还没有看板",
+      "noResults": "没有找到看板",
+      "emptyHint": "创建第一个看板,开始整理反馈",
+      "posts": "{count} 条反馈",
+      "noDescription": "暂无描述",
+      "deleteTitle": "删除看板“{name}”?",
+      "deleteDescription": "此操作无法撤销。该看板下的反馈将变为未分类。",
+      "editTitle": "编辑看板",
+      "nameLabel": "看板名称",
+      "descLabel": "看板描述",
+      "nameRequired": "请输入看板名称",
+      "saveFailed": "保存看板失败",
+      "saving": "保存中……",
+      "saveChanges": "保存更改"
+    },
+    "feedback": {
+      "title": "反馈",
+      "subtitle": "全部提交",
+      "filtersBtn": "筛选",
+      "create": "新建反馈",
+      "activeFilters": "当前筛选:",
+      "clearAll": "清除全部",
+      "canonicalOnly": "仅主反馈",
+      "mergedOnly": "仅合并项",
+      "noResults": "没有找到反馈",
+      "noResultsHint": "试试调整筛选条件",
+      "searchNoMatch": "没有匹配“{query}”的结果",
+      "searchNoMatchHint": "换个关键词,或清除搜索。",
+      "unknownBoard": "未知",
+      "colUpvotes": "赞成票",
+      "colTitle": "标题",
+      "colBoard": "看板",
+      "colAuthor": "作者",
+      "colComments": "评论",
+      "colCreated": "创建时间",
+      "colStatus": "状态",
+      "showing": "显示第 {from}–{to} 条,共 {total} 条",
+      "entriesShort": "共 {total} 条",
+      "searchPlaceholder": "搜索反馈…",
+      "searchAria": "搜索反馈",
+      "clearSearch": "清除搜索"
+    },
+    "sso": {
+      "title": "单点登录",
+      "subtitle": "让来自你产品的用户无需二次登录即可进入",
+      "createSecret": "新建密钥",
+      "limitReached": "已达到 {limit} 个密钥的上限",
+      "signingSecrets": "签名密钥",
+      "integrationGuide": "接入指南",
+      "ownersOnly": "仅限所有者",
+      "ownersOnlyHint": "只有工作区所有者才能管理 SSO 签名密钥。如需权限,请联系所有者。",
+      "secretsDesc": "你的后端用来签发 SSO 令牌的共享 JWT 密钥。",
+      "usedCount": "已用 {used} / {limit}",
+      "loading": "加载中……",
+      "empty": "还没有签名密钥",
+      "emptyHint": "创建一个密钥,然后在你的后端用它为用户签发 SSO 令牌。",
+      "rotationLabel": "轮换密钥:",
+      "rotationMid": "先创建一个新密钥,把你的产品切换过去,然后",
+      "rotationDisable": "停用",
+      "rotationEnd": "旧密钥(若出问题可重新启用)。确认无误后再删除。令牌会针对每个启用中的密钥进行校验。",
+      "deleteTitle": "删除这个密钥?",
+      "untitled": "未命名",
+      "deleteDescription": "将被永久删除。用它签发的所有令牌会立即失效。此操作无法撤销——如果只是想暂停,请改为停用。",
+      "deletePermanently": "永久删除",
+      "createFailed": "创建密钥失败",
+      "renameFailed": "重命名密钥失败",
+      "updateFailed": "更新密钥失败",
+      "deleteFailed": "删除密钥失败",
+      "renameTitle": "重命名密钥",
+      "renameDesc": "更新用于区分此密钥的标签。密钥本身不会改变。",
+      "createTitle": "创建签名密钥",
+      "createDesc": "一个新的 HS256 密钥,供你的后端签发 SSO 令牌。你可以随时再次查看并复制。",
+      "labelLabel": "标签",
+      "labelOptional": "(可选)",
+      "labelPlaceholder": "例如:生产环境、欧洲区、移动应用",
+      "labelHint": "在轮换密钥时帮助你区分多个密钥。",
+      "created": "创建于 {date}",
+      "new": "新",
+      "reveal": "显示",
+      "hide": "隐藏",
+      "copy": "复制",
+      "copied": "已复制",
+      "active": "已启用",
+      "disabled": "已停用",
+      "rename": "重命名",
+      "enable": "启用",
+      "disable": "停用",
+      "guideEndpoint": "接入地址",
+      "guideEndpointDesc": "将你产品中已登录的用户重定向到此 URL。",
+      "guideQueryParams": "查询参数",
+      "required": "必填",
+      "optional": "可选",
+      "guideParamJwt": "HS256 签名的令牌(见下方 payload)。",
+      "guideParamReturnTo": "登录后跳转的位置。仅限同域路径或 URL(受主机白名单限制)。默认为 /。",
+      "guideJwtPayload": "JWT 载荷",
+      "guideJwtPayloadDesc": "已登录用户的信息,包含在令牌中。FeedLog 仅读取这些字段——其他声明将被忽略。",
+      "guidePayloadEmail": "身份标识(全局唯一)+ 通知。",
+      "guidePayloadName": "显示名称。",
+      "guidePayloadPicture": "头像 URL。",
+      "guidePayloadExp": "过期时间(Unix 秒)。必填——见下方 TTL 说明。",
+      "guideSignTitle": "签名并跳转(Node.js)",
+      "guideSignDesc": "在你的后端构建此链接。",
+      "guideTtlPre": "令牌有效期(",
+      "guideTtlPost": ")为必填",
+      "guideTtlBody": "建议约 1 小时;上限 24 小时(±60 秒时钟容差)。在渲染页面时预先签名令牌——而非用户点击时——以避免额外的往返请求。",
+      "guideMatchedByPre": "用户通过",
+      "guideMatchedByEmail": "邮箱",
+      "guideMatchedByPost": "匹配。首次使用的邮箱会创建终端用户账户(无需额外登录界面);更改用户邮箱会创建新账户,且不会迁移历史记录。"
+    }
+  },
+  "settings": {
+    "loading": "加载中……",
+    "reset": "重置",
+    "saving": "保存中……",
+    "saveChanges": "保存更改",
+    "unsavedChanges": "你有未保存的更改",
+    "preview": "预览",
+    "workspace": {
+      "title": "工作区",
+      "subtitle": "你的工作区标识",
+      "general": "常规",
+      "generalDesc": "你的工作区在成员和邀请邮件中的呈现方式。",
+      "nameLabel": "工作区名称",
+      "namePlaceholder": "Acme Corp",
+      "nameHint": "你的团队或公司名称。会展示给成员并出现在邀请邮件中。"
+    },
+    "branding": {
+      "title": "品牌",
+      "subtitle": "你的公开反馈门户对访客的呈现效果。",
+      "logo": "Logo",
+      "removeLogo": "移除",
+      "logoHint": "PNG、JPG 或 SVG · 推荐 256x256",
+      "brandColor": "品牌色",
+      "brandColorHint": "用于按钮、链接和强调色。",
+      "defaultTheme": "默认主题",
+      "defaultThemeHint": "向访客展示的默认主题。",
+      "uploadFailed": "Logo 上传失败。",
+      "saveFailed": "保存品牌设置失败。",
+      "theme": {
+        "system": "跟随系统",
+        "light": "浅色",
+        "dark": "深色"
+      }
+    },
+    "portal": {
+      "title": "门户",
+      "subtitle": "展示在你的公开反馈门户上的内容",
+      "saveFailed": "保存门户设置失败。",
+      "welcomeSection": "欢迎语",
+      "welcomeDesc": "显示在你公开门户顶部的标题和简介。",
+      "titleLabel": "标题",
+      "titlePlaceholder": "向 {name} 提交反馈",
+      "titleHint": "作为你反馈门户的主标题显示。",
+      "descriptionLabel": "描述",
+      "descriptionPlaceholder": "欢迎提交任何 bug 反馈和功能建议……",
+      "loadingEditor": "编辑器加载中……",
+      "descriptionHint": "显示在标题下方,为访客提供更多背景信息。支持 Markdown。"
+    },
+    "members": {
+      "title": "成员",
+      "subtitle": "管理谁可以访问此工作区",
+      "invite": "邀请",
+      "pending": "待处理的邀请",
+      "invitedAs": "受邀为",
+      "expiresIn": "有效期 {time}",
+      "expired": "已过期",
+      "copyLink": "复制邀请链接",
+      "revoke": "撤销",
+      "membersSection": "成员",
+      "total": "共 {count} 人",
+      "you": "你",
+      "remove": "从组织移除",
+      "lastOwnerNote": "工作区的最后一位所有者不能被降级或移除。请先转移所有权。",
+      "inviteTitle": "邀请成员",
+      "inviteDesc": "发送邮件邀请。邀请将在 7 天后过期。",
+      "emailNotConfigured": "邮件未配置",
+      "emailNotConfiguredHint": "未设置 Resend API 密钥。邀请仍会创建,但不会发送邮件——请从列表中复制链接手动分享。",
+      "emailLabel": "邮箱地址",
+      "emailPlaceholder": "alice{'@'}acme.com, bob{'@'}acme.com",
+      "emailHint": "用逗号或换行分隔",
+      "roleLabel": "角色",
+      "ownerWarning": "所有者拥有完全的管理权限——可管理成员、设置和所有权。请只邀请你完全信任的人。",
+      "sending": "发送中……",
+      "creating": "创建中……",
+      "sendInvites": "发送邀请",
+      "createInvites": "创建邀请",
+      "invitationCreated": "邀请已创建",
+      "invitationsCreated": "已创建 {count} 个邀请",
+      "inviteToastEmailOn": "如果没收到邮件,可从列表中复制链接手动分享。",
+      "inviteToastEmailOff": "未发送邮件——请从列表中复制链接手动分享。",
+      "roles": {
+        "contributor": {
+          "label": "贡献者",
+          "desc": "在控制台内查看反馈并参与讨论。"
+        },
+        "manager": {
+          "label": "管理员",
+          "desc": "管理反馈、更新日志和路线图。"
+        },
+        "owner": {
+          "label": "所有者",
+          "desc": "完全访问权限。可管理成员、设置和所有权。"
+        }
+      }
+    }
+  },
+  "seo": {
+    "portalTitle": "{name} 反馈",
+    "roadmapTitle": "{name} 路线图",
+    "changelogTitle": "{name} 更新日志",
+    "postFallback": "反馈",
+    "changelogFallback": "更新日志",
+    "titleWithOrg": "{title} - {name}"
+  }
+}

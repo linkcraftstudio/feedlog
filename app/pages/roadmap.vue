@@ -18,8 +18,8 @@ function openPostDetail(item: PostListItem) {
     <!-- Title area -->
     <div class="pb-3 md:pb-6">
       <div class="flex items-baseline gap-3">
-        <h1 class="font-heading text-xl md:text-2xl font-bold shrink-0">Roadmap</h1>
-        <p class="text-sm text-muted-foreground truncate">Our current strategic roadmap and development status.</p>
+        <h1 class="font-heading text-xl md:text-2xl font-bold shrink-0">{{ $t('roadmap.title') }}</h1>
+        <p class="text-sm text-muted-foreground truncate">{{ $t('roadmap.subtitle') }}</p>
       </div>
     </div>
 

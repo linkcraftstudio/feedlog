@@ -97,8 +97,8 @@ function statusConfig(status: string) {
       <div class="px-8 pt-8 pb-6 shrink-0">
         <div class="flex items-start justify-between mb-1">
           <div class="flex flex-col gap-1">
-            <DialogTitle class="text-[26px] font-bold font-heading leading-tight tracking-tight">Pick Feedback</DialogTitle>
-            <p class="text-[14px] text-muted-foreground">Select related posts to include in your changelog.</p>
+            <DialogTitle class="text-[26px] font-bold font-heading leading-tight tracking-tight">{{ $t('changelog.picker.title') }}</DialogTitle>
+            <p class="text-[14px] text-muted-foreground">{{ $t('changelog.picker.subtitle') }}</p>
           </div>
           <DialogClose class="text-muted-foreground hover:text-foreground transition-colors p-2 -mr-2 -mt-1">
             <Icon name="lucide:x" size="24" />
@@ -113,7 +113,7 @@ function statusConfig(status: string) {
           <Input
             v-model="searchQuery"
             class="pl-12 pr-12 py-3 h-auto bg-background/50 border-border rounded-xl text-[15px] focus-visible:ring-2 focus-visible:ring-primary/10 focus-visible:border-primary"
-            placeholder="Search by title..."
+            :placeholder="$t('changelog.picker.searchPlaceholder')"
           />
         </div>
       </div>
@@ -124,7 +124,7 @@ function statusConfig(status: string) {
           <div class="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
         </div>
         <div v-else-if="sources.length === 0" class="flex flex-col items-center py-12 text-sm text-muted-foreground">
-          No feedback found
+          {{ $t('changelog.picker.noResults') }}
         </div>
         <div v-else class="flex flex-col pb-4">
           <div
@@ -175,7 +175,7 @@ function statusConfig(status: string) {
                   }"
                 >
                   <span class="w-1.5 h-1.5 rounded-full" :style="{ backgroundColor: `var(${statusConfig(source.status).cssVar})` }" />
-                  {{ statusConfig(source.status).label }}
+                  {{ $t(statusLabelKey(source.status)) }}
                 </span>
               </div>
             </div>
@@ -187,21 +187,21 @@ function statusConfig(status: string) {
       <div class="px-8 py-6 border-t border-border bg-card/50 shrink-0">
         <div class="flex items-center justify-between">
           <span class="text-[14px] font-medium" :class="isAtLimit ? 'text-amber-600 dark:text-amber-500' : 'text-muted-foreground'">
-            <strong class="text-foreground">{{ localSelectedIds.length }}</strong> / {{ MAX_SELECTION }} selected
-            <span v-if="isAtLimit" class="ml-1 text-xs">(limit reached)</span>
+            <strong class="text-foreground">{{ localSelectedIds.length }}</strong> / {{ MAX_SELECTION }} {{ $t('changelog.picker.selectedSuffix') }}
+            <span v-if="isAtLimit" class="ml-1 text-xs">{{ $t('changelog.picker.limitReached') }}</span>
           </span>
           <div class="flex items-center gap-3">
             <button
               class="px-8 py-2.5 text-[14px] font-bold text-muted-foreground border border-border hover:bg-background transition-all rounded-xl"
               @click="open = false"
             >
-              Cancel
+              {{ $t('common.cancel') }}
             </button>
             <button
               class="px-8 py-2.5 text-[14px] font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-all rounded-xl shadow-sm"
               @click="handleConfirm"
             >
-              Confirm Selection
+              {{ $t('changelog.picker.confirm') }}
             </button>
           </div>
         </div>

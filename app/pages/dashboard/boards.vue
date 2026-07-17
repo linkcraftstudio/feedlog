@@ -3,6 +3,7 @@ import draggable from 'vuedraggable'
 
 definePageMeta({ layout: 'dashboard', middleware: 'admin' })
 
+const { t } = useI18n()
 const boardStore = useBoardStore()
 await callOnce(() => boardStore.fetchBoards())
 const { boards } = storeToRefs(boardStore)
@@ -50,9 +51,9 @@ const deleting = ref<string | null>(null)
 
 async function handleDelete(board: BoardItem) {
   const ok = await confirm({
-    title: `Delete board "${board.name}"?`,
-    description: 'This action cannot be undone. Posts in this board will become uncategorized.',
-    confirmText: 'Delete',
+    title: t('dashboard.boards.deleteTitle', { name: board.name }),
+    description: t('dashboard.boards.deleteDescription'),
+    confirmText: t('common.delete'),
     variant: 'destructive',
   })
   if (!ok) return
@@ -69,9 +70,9 @@ async function handleDelete(board: BoardItem) {
   <!-- Top bar -->
   <header class="h-16 px-6 border-b border-border flex items-center justify-between shrink-0 bg-card backdrop-blur-sm">
     <div class="flex items-center gap-4">
-      <h2 class="font-heading text-lg font-bold">Boards</h2>
+      <h2 class="font-heading text-lg font-bold">{{ $t('dashboard.boards.title') }}</h2>
       <div class="h-4 w-[1px] bg-border" />
-      <span class="text-xs font-medium text-muted-foreground">Organize feedback by category</span>
+      <span class="text-xs font-medium text-muted-foreground">{{ $t('dashboard.boards.subtitle') }}</span>
     </div>
     <div class="flex items-center gap-3">
       <button
@@ -79,7 +80,7 @@ async function handleDelete(board: BoardItem) {
         @click="openCreate"
       >
         <Icon name="lucide:plus" size="16" />
-        Create Board
+        {{ $t('dashboard.boards.create') }}
       </button>
     </div>
   </header>
@@ -90,8 +91,8 @@ async function handleDelete(board: BoardItem) {
       <!-- Empty state -->
       <div v-if="filteredBoards.length === 0" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
         <Icon name="lucide:layers" size="48" class="mb-4 opacity-50" />
-        <p class="text-lg font-medium">{{ search ? 'No boards found' : 'No boards yet' }}</p>
-        <p v-if="!search" class="text-sm mt-1">Create your first board to start organizing feedback</p>
+        <p class="text-lg font-medium">{{ search ? $t('dashboard.boards.noResults') : $t('dashboard.boards.empty') }}</p>
+        <p v-if="!search" class="text-sm mt-1">{{ $t('dashboard.boards.emptyHint') }}</p>
       </div>
 
       <ClientOnly>
@@ -118,10 +119,10 @@ async function handleDelete(board: BoardItem) {
                 <div class="flex items-center gap-3 mb-1">
                   <h3 class="font-heading text-base font-bold">{{ board.name }}</h3>
                   <span class="text-xs text-muted-foreground bg-background px-2 py-0.5 rounded-full font-medium">
-                    {{ board.postCount ?? 0 }} posts
+                    {{ $t('dashboard.boards.posts', { count: board.postCount ?? 0 }) }}
                   </span>
                 </div>
-                <p class="text-sm text-muted-foreground truncate">{{ board.description || 'No description' }}</p>
+                <p class="text-sm text-muted-foreground truncate">{{ board.description || $t('dashboard.boards.noDescription') }}</p>
               </div>
 
               <!-- Action buttons -->
@@ -150,7 +151,7 @@ async function handleDelete(board: BoardItem) {
             </div>
             <div class="flex-1 min-w-0">
               <h3 class="font-heading text-base font-bold">{{ board.name }}</h3>
-              <p class="text-sm text-muted-foreground truncate">{{ board.description || 'No description' }}</p>
+              <p class="text-sm text-muted-foreground truncate">{{ board.description || $t('dashboard.boards.noDescription') }}</p>
             </div>
           </div>
         </template>

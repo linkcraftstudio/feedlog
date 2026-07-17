@@ -8,6 +8,7 @@ import { SSO_SECRET_LIMIT } from '~~/shared/constants/sso'
 
 definePageMeta({ layout: 'dashboard', middleware: ['admin'] })
 
+const { t } = useI18n()
 const ctx = useOrgContext()
 const isOwner = computed(() => ctx.value.role === 'owner')
 
@@ -55,7 +56,7 @@ async function onDialogSubmit(payload: { label: string }) {
   }
   catch (e) {
     toast.error((e as { data?: { message?: string } })?.data?.message
-      || (mode === 'create' ? 'Failed to create secret' : 'Failed to rename secret'))
+      || (mode === 'create' ? t('dashboard.sso.createFailed') : t('dashboard.sso.renameFailed')))
   }
 }
 
@@ -64,7 +65,7 @@ async function onToggle(s: SsoSecret) {
     await update(s.id, { enabled: !s.enabled })
   }
   catch {
-    toast.error('Failed to update secret')
+    toast.error(t('dashboard.sso.updateFailed'))
   }
 }
 
@@ -86,7 +87,7 @@ async function confirmDelete() {
     await remove(target.id)
   }
   catch {
-    toast.error('Failed to delete secret')
+    toast.error(t('dashboard.sso.deleteFailed'))
   }
 }
 </script>
@@ -96,18 +97,18 @@ async function confirmDelete() {
     <!-- Header -->
     <header class="h-16 px-6 border-b border-border flex items-center justify-between shrink-0 bg-card">
       <div>
-        <h2 class="font-heading text-lg font-bold">Single Sign-On</h2>
-        <p class="text-xs text-muted-foreground">Let users from your product sign in without a second login</p>
+        <h2 class="font-heading text-lg font-bold">{{ $t('dashboard.sso.title') }}</h2>
+        <p class="text-xs text-muted-foreground">{{ $t('dashboard.sso.subtitle') }}</p>
       </div>
       <button
         v-if="isOwner && view === 'secrets'"
         :disabled="!canCreate"
         class="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-heading font-bold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2"
-        :title="canCreate ? '' : `Limit of ${SSO_SECRET_LIMIT} secrets reached`"
+        :title="canCreate ? '' : $t('dashboard.sso.limitReached', { limit: SSO_SECRET_LIMIT })"
         @click="openCreate"
       >
         <Icon name="lucide:plus" size="14" />
-        Create secret
+        {{ $t('dashboard.sso.createSecret') }}
       </button>
     </header>
 
@@ -115,7 +116,7 @@ async function confirmDelete() {
     <div class="px-6 pt-4 border-b border-border bg-card shrink-0">
       <div class="flex gap-6">
         <button
-          v-for="tab in [{ k: 'secrets', label: 'Signing secrets' }, { k: 'guide', label: 'Integration guide' }]"
+          v-for="tab in [{ k: 'secrets', label: $t('dashboard.sso.signingSecrets') }, { k: 'guide', label: $t('dashboard.sso.integrationGuide') }]"
           :key="tab.k"
           class="pb-3 -mb-px text-sm font-semibold border-b-2 transition-colors"
           :class="view === tab.k ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'"
@@ -134,9 +135,9 @@ async function confirmDelete() {
           <div class="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center mb-3">
             <Icon name="lucide:lock" size="22" class="text-muted-foreground" />
           </div>
-          <p class="font-heading font-bold text-sm">Owners only</p>
+          <p class="font-heading font-bold text-sm">{{ $t('dashboard.sso.ownersOnly') }}</p>
           <p class="text-xs text-muted-foreground mt-1 max-w-xs leading-relaxed">
-            Only workspace owners can manage SSO signing secrets. Ask an owner if you need access.
+            {{ $t('dashboard.sso.ownersOnlyHint') }}
           </p>
         </div>
 
@@ -145,30 +146,30 @@ async function confirmDelete() {
           <section class="rounded-xl border border-border bg-card overflow-hidden">
             <div class="px-5 py-3 border-b border-border flex items-center justify-between">
               <div>
-                <h3 class="font-heading font-bold text-sm">Signing secrets</h3>
-                <p class="text-[11px] text-muted-foreground mt-0.5">Shared JWT secrets your backend uses to sign SSO tokens.</p>
+                <h3 class="font-heading font-bold text-sm">{{ $t('dashboard.sso.signingSecrets') }}</h3>
+                <p class="text-[11px] text-muted-foreground mt-0.5">{{ $t('dashboard.sso.secretsDesc') }}</p>
               </div>
-              <span class="text-[11px] font-semibold text-muted-foreground tabular-nums">{{ used }} of {{ SSO_SECRET_LIMIT }} used</span>
+              <span class="text-[11px] font-semibold text-muted-foreground tabular-nums">{{ $t('dashboard.sso.usedCount', { used, limit: SSO_SECRET_LIMIT }) }}</span>
             </div>
 
             <!-- Loading -->
-            <div v-if="loading" class="px-6 py-14 text-center text-sm text-muted-foreground">Loading…</div>
+            <div v-if="loading" class="px-6 py-14 text-center text-sm text-muted-foreground">{{ $t('dashboard.sso.loading') }}</div>
 
             <!-- Empty state -->
             <div v-else-if="!secrets.length" class="px-6 py-14 flex flex-col items-center text-center">
               <div class="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center mb-3">
                 <Icon name="lucide:key-round" size="22" class="text-primary" />
               </div>
-              <p class="font-heading font-bold text-sm">No signing secrets yet</p>
+              <p class="font-heading font-bold text-sm">{{ $t('dashboard.sso.empty') }}</p>
               <p class="text-xs text-muted-foreground mt-1 max-w-xs leading-relaxed">
-                Create a secret, then use it on your backend to sign SSO tokens for your users.
+                {{ $t('dashboard.sso.emptyHint') }}
               </p>
               <button
                 class="mt-4 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-heading font-bold hover:opacity-90 transition-all flex items-center gap-2"
                 @click="openCreate"
               >
                 <Icon name="lucide:plus" size="14" />
-                Create secret
+                {{ $t('dashboard.sso.createSecret') }}
               </button>
             </div>
 
@@ -189,9 +190,7 @@ async function confirmDelete() {
           <!-- Rotation hint -->
           <p class="text-[11px] text-muted-foreground leading-relaxed mt-4">
             <Icon name="lucide:refresh-cw" size="11" class="inline mr-1" />
-            <span class="font-semibold">Rotating a secret:</span> create a new one, switch your product to it, then
-            <span class="font-semibold">disable</span> the old one (re-enable if something breaks). Delete it once you're sure.
-            Tokens are verified against every enabled secret.
+            <span class="font-semibold">{{ $t('dashboard.sso.rotationLabel') }}</span>{{ $t('dashboard.sso.rotationMid') }}<span class="font-semibold">{{ $t('dashboard.sso.rotationDisable') }}</span>{{ $t('dashboard.sso.rotationEnd') }}
           </p>
         </template>
 
@@ -211,16 +210,15 @@ async function confirmDelete() {
     <AlertDialog v-model:open="showDelete">
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle class="font-heading">Delete this secret?</AlertDialogTitle>
+          <AlertDialogTitle class="font-heading">{{ $t('dashboard.sso.deleteTitle') }}</AlertDialogTitle>
           <AlertDialogDescription>
-            <span class="font-semibold text-foreground">{{ deleteTarget?.label || 'Untitled' }}</span> will be permanently deleted.
-            Any tokens signed with it stop working immediately. This can't be undone — if you only want to pause it, disable it instead.
+            <span class="font-semibold text-foreground">{{ deleteTarget?.label || $t('dashboard.sso.untitled') }}</span>{{ $t('dashboard.sso.deleteDescription') }}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>{{ $t('common.cancel') }}</AlertDialogCancel>
           <AlertDialogAction class="bg-red-600 hover:bg-red-700 text-white" @click="confirmDelete">
-            Delete permanently
+            {{ $t('dashboard.sso.deletePermanently') }}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

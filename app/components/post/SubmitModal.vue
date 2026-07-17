@@ -7,6 +7,8 @@ const props = defineProps<{ defaultBoardId?: string }>()
 const open = defineModel<boolean>('open', { default: false })
 const emit = defineEmits<{ created: [slug: string] }>()
 
+const { t, locale } = useI18n()
+
 const boardStore = useBoardStore()
 const { boards } = storeToRefs(boardStore)
 
@@ -83,15 +85,15 @@ function reset() {
 
 async function handleSubmit() {
   if (!selectedBoardId.value) {
-    error.value = 'Please select a board'
+    error.value = t('post.submit.errors.selectBoard')
     return
   }
   if (!title.value.trim()) {
-    error.value = 'Title is required'
+    error.value = t('post.submit.errors.titleRequired')
     return
   }
   if (!content.value.trim()) {
-    error.value = 'Content is required'
+    error.value = t('post.submit.errors.contentRequired')
     return
   }
 
@@ -113,7 +115,7 @@ async function handleSubmit() {
     reset()
     emit('created', result.slug)
   } catch (e: any) {
-    error.value = e.data?.message || 'Failed to submit'
+    error.value = e.data?.message || t('post.submit.errors.submitFailed')
   } finally {
     submitting.value = false
   }
@@ -148,7 +150,7 @@ watch(open, (v) => {
       <div class="px-4 sm:px-8 md:px-12 pt-10 pb-8 flex-1 flex flex-col gap-5 min-h-0 overflow-y-auto">
         <!-- Select Board -->
         <div class="flex flex-col gap-2.5 shrink-0">
-          <span class="text-xs font-bold uppercase tracking-widest text-muted-foreground">Select Board</span>
+          <span class="text-xs font-bold uppercase tracking-widest text-muted-foreground">{{ $t('post.submit.selectBoard') }}</span>
           <div class="flex flex-wrap gap-2.5">
             <button
               v-for="board in boards"
@@ -168,7 +170,7 @@ watch(open, (v) => {
         <Input
           v-model="title"
           class="h-12 text-lg font-heading font-bold shrink-0"
-          placeholder="What's on your mind?"
+          :placeholder="$t('post.submit.titlePlaceholder')"
           :maxlength="200"
         />
 
@@ -179,8 +181,8 @@ watch(open, (v) => {
             <div class="editor-preview-styled flex-1 min-h-[120px] transition-all duration-300">
               <ThemedMdEditor
                 v-model="content"
-                language="en-US"
-                placeholder="Explain your thoughts in detail..."
+                :language="locale === 'zh' ? 'zh-CN' : 'en-US'"
+                :placeholder="$t('post.submit.bodyPlaceholder')"
                 :preview="false"
                 :max-length="10000"
                 :toolbars="['bold', 'italic', 'strikeThrough', '-', 'title', 'unorderedList', 'orderedList', '-', 'link', 'image', 'code', 'codeRow', '-', 'previewOnly']"
@@ -210,12 +212,12 @@ watch(open, (v) => {
           :disabled="submitting"
           @click="handleSubmit"
         >
-          {{ submitting ? 'Submitting...' : 'Post Feedback' }}
+          {{ submitting ? $t('post.submit.submitting') : $t('post.submit.submit') }}
         </button>
       </div>
 
-      <DialogTitle class="sr-only">Submit Feedback</DialogTitle>
-      <DialogDescription class="sr-only">Submit new feedback</DialogDescription>
+      <DialogTitle class="sr-only">{{ $t('post.submit.dialogTitle') }}</DialogTitle>
+      <DialogDescription class="sr-only">{{ $t('post.submit.dialogDescription') }}</DialogDescription>
     </DialogContent>
   </Dialog>
 

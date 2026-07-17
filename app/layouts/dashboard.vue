@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const { signOut } = useAuth()
 const { data: session } = await useAuthSession()
+const localePath = useLocalePath()
 
 const user = computed(() => session.value?.user)
 
@@ -17,7 +18,7 @@ const showChangePassword = ref(false)
 async function handleSignOut() {
   await signOut()
   session.value = null
-  navigateTo('/')
+  navigateTo(localePath('/'))
 }
 
 const { mainNav, settingsNav, developerNav } = useDashboardNav()
@@ -27,9 +28,21 @@ const mobileMenuOpen = ref(false)
 const route = useRoute()
 watch(() => route.path, () => { mobileMenuOpen.value = false })
 
+const { t } = useI18n()
+const navTitle = computed(() => {
+  const match = [...mainNav.value, ...settingsNav.value, ...developerNav.value]
+    .filter((item) => {
+      const to = localePath(item.to)
+      return route.path === to || route.path.startsWith(`${to}/`)
+    })
+    .sort((a, b) => b.to.length - a.to.length)[0]
+  return match?.label ?? t('nav.dashboard')
+})
+useHead({ title: () => navTitle.value })
+
 // Developer section: collapsed by default, but auto-expanded when the current
 // route lives inside it (so the active page stays visible).
-const developerOpen = ref(developerNav.some(item => route.path.startsWith(item.to)))
+const developerOpen = ref(developerNav.value.some(item => route.path.startsWith(item.to)))
 </script>
 
 <template>
@@ -43,23 +56,26 @@ const developerOpen = ref(developerNav.some(item => route.path.startsWith(item.t
         >
           <Icon name="lucide:menu" size="20" />
         </button>
-        <NuxtLink to="/dashboard" class="flex items-center gap-2">
+        <NuxtLink :to="localePath('/dashboard')" class="flex items-center gap-2">
           <AppLogo :size="28" />
           <span class="font-heading text-lg font-bold tracking-tight">FeedLog</span>
         </NuxtLink>
       </div>
-      <ThemeSwitcher />
+      <div class="flex items-center gap-1">
+        <ThemeSwitcher />
+        <LocaleSwitcher />
+      </div>
     </header>
 
     <!-- Mobile Sheet -->
     <Sheet v-model:open="mobileMenuOpen">
       <SheetContent side="left" class="w-[260px] p-0 flex flex-col">
-        <SheetTitle class="sr-only">Navigation</SheetTitle>
-        <SheetDescription class="sr-only">Dashboard navigation menu</SheetDescription>
+        <SheetTitle class="sr-only">{{ $t('dashboard.nav.srTitle') }}</SheetTitle>
+        <SheetDescription class="sr-only">{{ $t('dashboard.nav.srDescription') }}</SheetDescription>
 
         <!-- Logo -->
         <div class="p-6">
-          <NuxtLink to="/dashboard" class="flex items-center gap-3">
+          <NuxtLink :to="localePath('/dashboard')" class="flex items-center gap-3">
             <AppLogo :size="40" />
             <span class="font-heading text-xl font-bold tracking-tight">FeedLog</span>
           </NuxtLink>
@@ -68,12 +84,12 @@ const developerOpen = ref(developerNav.some(item => route.path.startsWith(item.t
         <!-- Navigation -->
         <nav class="flex-1 px-4 space-y-8 overflow-y-auto">
           <div>
-            <p class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Main</p>
+            <p class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('dashboard.nav.main') }}</p>
             <div class="space-y-1">
               <NuxtLink
                 v-for="item in mainNav"
                 :key="item.to"
-                :to="item.to"
+                :to="localePath(item.to)"
                 class="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-background hover:text-foreground transition-colors font-semibold"
                 active-class="!bg-secondary !text-primary !font-bold"
               >
@@ -83,12 +99,12 @@ const developerOpen = ref(developerNav.some(item => route.path.startsWith(item.t
             </div>
           </div>
           <div>
-            <p class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Settings</p>
+            <p class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('dashboard.nav.settings') }}</p>
             <div class="space-y-1">
               <NuxtLink
                 v-for="item in settingsNav"
                 :key="item.to"
-                :to="item.to"
+                :to="localePath(item.to)"
                 class="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-background hover:text-foreground transition-colors font-semibold"
                 active-class="!bg-secondary !text-primary !font-bold"
               >
@@ -102,7 +118,7 @@ const developerOpen = ref(developerNav.some(item => route.path.startsWith(item.t
               class="w-full flex items-center justify-between px-3 mb-2 group"
               @click="developerOpen = !developerOpen"
             >
-              <span class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors">Developer</span>
+              <span class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors">{{ $t('dashboard.nav.developer') }}</span>
               <Icon
                 :name="developerOpen ? 'lucide:chevron-down' : 'lucide:chevron-right'"
                 size="14"
@@ -113,7 +129,7 @@ const developerOpen = ref(developerNav.some(item => route.path.startsWith(item.t
               <NuxtLink
                 v-for="item in developerNav"
                 :key="item.to"
-                :to="item.to"
+                :to="localePath(item.to)"
                 class="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-background hover:text-foreground transition-colors font-semibold"
                 active-class="!bg-secondary !text-primary !font-bold"
               >
@@ -152,17 +168,17 @@ const developerOpen = ref(developerNav.some(item => route.path.startsWith(item.t
               <DropdownMenuSeparator />
               <DropdownMenuItem @click="showChangePassword = true">
                 <Icon name="lucide:key-round" size="16" class="mr-2" />
-                Change Password
+                {{ $t('nav.changePassword') }}
               </DropdownMenuItem>
               <DropdownMenuItem as-child>
-                <NuxtLink to="/">
+                <NuxtLink :to="localePath('/')">
                   <Icon name="lucide:arrow-left" size="16" class="mr-2" />
-                  Back to site
+                  {{ $t('dashboard.backToSite') }}
                 </NuxtLink>
               </DropdownMenuItem>
               <DropdownMenuItem @click="handleSignOut">
                 <Icon name="lucide:log-out" size="16" class="mr-2" />
-                Sign out
+                {{ $t('common.signOut') }}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -179,12 +195,12 @@ const developerOpen = ref(developerNav.some(item => route.path.startsWith(item.t
       <nav class="flex-1 px-4 space-y-8 overflow-y-auto">
         <!-- Main -->
         <div>
-          <p class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Main</p>
+          <p class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('dashboard.nav.main') }}</p>
           <div class="space-y-1">
             <NuxtLink
               v-for="item in mainNav"
               :key="item.to"
-              :to="item.to"
+              :to="localePath(item.to)"
               class="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-background hover:text-foreground transition-colors font-semibold"
               active-class="!bg-secondary !text-primary !font-bold"
             >
@@ -196,12 +212,12 @@ const developerOpen = ref(developerNav.some(item => route.path.startsWith(item.t
 
         <!-- Settings -->
         <div>
-          <p class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Settings</p>
+          <p class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('dashboard.nav.settings') }}</p>
           <div class="space-y-1">
             <NuxtLink
               v-for="item in settingsNav"
               :key="item.to"
-              :to="item.to"
+              :to="localePath(item.to)"
               class="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-background hover:text-foreground transition-colors font-semibold"
               active-class="!bg-secondary !text-primary !font-bold"
             >
@@ -217,7 +233,7 @@ const developerOpen = ref(developerNav.some(item => route.path.startsWith(item.t
             class="w-full flex items-center justify-between px-3 mb-2 group"
             @click="developerOpen = !developerOpen"
           >
-            <span class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors">Developer</span>
+            <span class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors">{{ $t('dashboard.nav.developer') }}</span>
             <Icon
               :name="developerOpen ? 'lucide:chevron-down' : 'lucide:chevron-right'"
               size="14"
@@ -228,7 +244,7 @@ const developerOpen = ref(developerNav.some(item => route.path.startsWith(item.t
             <NuxtLink
               v-for="item in developerNav"
               :key="item.to"
-              :to="item.to"
+              :to="localePath(item.to)"
               class="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-background hover:text-foreground transition-colors font-semibold"
               active-class="!bg-secondary !text-primary !font-bold"
             >
@@ -267,21 +283,22 @@ const developerOpen = ref(developerNav.some(item => route.path.startsWith(item.t
             <DropdownMenuSeparator />
             <DropdownMenuItem @click="showChangePassword = true">
               <Icon name="lucide:key-round" size="16" class="mr-2" />
-              Change Password
+              {{ $t('nav.changePassword') }}
             </DropdownMenuItem>
             <DropdownMenuItem as-child>
-              <NuxtLink to="/">
+              <NuxtLink :to="localePath('/')">
                 <Icon name="lucide:arrow-left" size="16" class="mr-2" />
-                Back to site
+                {{ $t('dashboard.backToSite') }}
               </NuxtLink>
             </DropdownMenuItem>
             <DropdownMenuItem @click="handleSignOut">
               <Icon name="lucide:log-out" size="16" class="mr-2" />
-              Sign out
+              {{ $t('common.signOut') }}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         <ThemeSwitcher />
+        <LocaleSwitcher />
       </div>
     </aside>
 

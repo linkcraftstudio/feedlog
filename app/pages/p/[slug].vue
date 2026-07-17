@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const route = useRoute()
 const slug = route.params.slug as string
+const localePath = useLocalePath()
 
 const store = usePostDetailStore()
 const boardStore = useBoardStore()
@@ -33,6 +34,6 @@ usePageOg({
 
 <template>
   <div class="flex-1 flex flex-col md:flex-row gap-8 min-w-0">
-    <PostDetail :slug="slug" @deleted="navigateTo('/')" />
+    <PostDetail :slug="slug" @deleted="navigateTo(localePath('/'))" />
   </div>
 </template>

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { resolveAttachmentUrls } from '~/utils/attachment'
 
+const localePath = useLocalePath()
+
 const props = defineProps<{
   title: string
   description: string
@@ -23,7 +25,7 @@ const hasContent = computed(() => props.title.trim().length > 0 || props.descrip
       size="sm"
       class="absolute right-3 top-3 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-within:opacity-100"
     >
-      <NuxtLink to="/dashboard/settings/portal">
+      <NuxtLink :to="localePath('/dashboard/settings/portal')">
         <Icon name="lucide:pencil" size="14" />
         Edit
       </NuxtLink>

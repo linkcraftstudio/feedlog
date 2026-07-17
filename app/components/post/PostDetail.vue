@@ -69,6 +69,8 @@ const editContent = ref('')
 const editSaving = ref(false)
 const editError = ref('')
 const { confirm } = useConfirmDialog()
+const { t } = useI18n()
+const timeAgo = useTimeAgo()
 const deleting = ref(false)
 
 function startEditPost() {
@@ -90,8 +92,8 @@ async function saveEditPost() {
   if (!post.value) return
   const title = editTitle.value.trim()
   const content = editContent.value.trim()
-  if (!title) { editError.value = 'Title is required'; return }
-  if (!content) { editError.value = 'Content is required'; return }
+  if (!title) { editError.value = t('post.detail.errors.titleRequired'); return }
+  if (!content) { editError.value = t('post.detail.errors.contentRequired'); return }
 
   editSaving.value = true
   editError.value = ''
@@ -100,7 +102,7 @@ async function saveEditPost() {
     editing.value = false
     emit('updated', { id: post.value.id, slug: post.value.slug, title, content })
   } catch (e: any) {
-    editError.value = e.data?.message || 'Failed to save'
+    editError.value = e.data?.message || t('post.detail.errors.saveFailed')
   } finally {
     editSaving.value = false
   }
@@ -109,9 +111,10 @@ async function saveEditPost() {
 async function handleDeletePost() {
   if (!post.value) return
   const ok = await confirm({
-    title: 'Delete this post?',
-    description: 'This action cannot be undone. This will permanently delete the post and all its comments.',
-    confirmText: 'Delete',
+    title: t('post.detail.deleteTitle'),
+    description: t('post.detail.deleteDescription'),
+    cancelText: t('common.cancel'),
+    confirmText: t('common.delete'),
     variant: 'destructive',
   })
   if (!ok) return
@@ -121,7 +124,7 @@ async function handleDeletePost() {
     await store.deletePost(props.slug)
     emit('deleted', postId)
   } catch (e: any) {
-    editError.value = e.data?.message || 'Failed to delete'
+    editError.value = e.data?.message || t('post.detail.errors.deleteFailed')
   } finally {
     deleting.value = false
   }
@@ -296,9 +299,9 @@ async function handleShare() {
   const url = `${window.location.origin}/p/${props.slug}`
   try {
     await navigator.clipboard.writeText(url)
-    toast.success('Link copied to clipboard')
+    toast.success(t('post.detail.linkCopied'))
   } catch {
-    toast.error('Failed to copy link')
+    toast.error(t('post.detail.linkCopyFailed'))
   }
 }
 </script>
@@ -347,19 +350,19 @@ async function handleShare() {
               <Icon name="lucide:chevron-up" size="28" />
               <span class="font-heading font-bold text-lg">{{ post.voteCount }}</span>
             </button>
-            <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground text-center">Upvotes</p>
+            <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground text-center">{{ $t('post.detail.upvotes') }}</p>
           </div>
           <div class="flex-1 min-w-0">
             <template v-if="editing">
               <div class="space-y-4">
-                <Input v-model="editTitle" class="h-10 text-lg font-heading font-bold" placeholder="Title" :maxlength="200" />
+                <Input v-model="editTitle" class="h-10 text-lg font-heading font-bold" :placeholder="$t('post.detail.titlePlaceholder')" :maxlength="200" />
                 <div class="editor-preview-styled">
-                  <ThemedMdEditor v-model="editContent" language="en-US" placeholder="Edit your post..." :preview="false" :max-length="10000" :toolbars="['bold', 'italic', 'strikeThrough', '-', 'title', 'unorderedList', 'orderedList', '-', 'link', 'image', 'code', 'codeRow', '-', 'previewOnly']" :sanitize="sanitizeAttachmentHtml" :style="{ height: '280px' }" @on-upload-img="onUploadImg" />
+                  <ThemedMdEditor v-model="editContent" language="en-US" :placeholder="$t('post.detail.editPlaceholder')" :preview="false" :max-length="10000" :toolbars="['bold', 'italic', 'strikeThrough', '-', 'title', 'unorderedList', 'orderedList', '-', 'link', 'image', 'code', 'codeRow', '-', 'previewOnly']" :sanitize="sanitizeAttachmentHtml" :style="{ height: '280px' }" @on-upload-img="onUploadImg" />
                 </div>
                 <p v-if="editError" class="text-sm text-destructive">{{ editError }}</p>
                 <div class="flex items-center gap-3 justify-end">
-                  <button class="px-4 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground transition-colors" @click="cancelEditPost">Cancel</button>
-                  <button class="px-5 py-2 rounded-md bg-primary text-primary-foreground text-sm font-heading font-bold hover:bg-primary/90 transition-colors disabled:opacity-50" :disabled="editSaving" @click="saveEditPost">{{ editSaving ? 'Saving...' : 'Save Changes' }}</button>
+                  <button class="px-4 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground transition-colors" @click="cancelEditPost">{{ $t('common.cancel') }}</button>
+                  <button class="px-5 py-2 rounded-md bg-primary text-primary-foreground text-sm font-heading font-bold hover:bg-primary/90 transition-colors disabled:opacity-50" :disabled="editSaving" @click="saveEditPost">{{ editSaving ? $t('post.detail.saving') : $t('post.detail.saveChanges') }}</button>
                 </div>
               </div>
             </template>
@@ -377,11 +380,11 @@ async function handleShare() {
                   </span>
                   <DropdownMenu v-if="isOrgManager && !isMerged">
                     <DropdownMenuTrigger as-child>
-                      <button class="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors" title="Merge"><Icon name="lucide:git-merge" size="18" /></button>
+                      <button class="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors" :title="$t('post.merge.tooltip')"><Icon name="lucide:git-merge" size="18" /></button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" class="min-w-[200px]">
-                      <DropdownMenuItem class="text-xs font-bold gap-2" @click="openMergeDialog('bring')"><Icon name="lucide:arrow-down-left" size="14" /> Merge to this post</DropdownMenuItem>
-                      <DropdownMenuItem class="text-xs font-bold gap-2" @click="openMergeDialog('push')"><Icon name="lucide:arrow-up-right" size="14" /> Merge this post into...</DropdownMenuItem>
+                      <DropdownMenuItem class="text-xs font-bold gap-2" @click="openMergeDialog('bring')"><Icon name="lucide:arrow-down-left" size="14" /> {{ $t('post.merge.toThis') }}</DropdownMenuItem>
+                      <DropdownMenuItem class="text-xs font-bold gap-2" @click="openMergeDialog('push')"><Icon name="lucide:arrow-up-right" size="14" /> {{ $t('post.merge.thisInto') }}</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <DropdownMenu v-if="showPostMenu">
@@ -389,8 +392,8 @@ async function handleShare() {
                       <button class="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"><Icon name="lucide:more-horizontal" size="18" /></button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" class="min-w-[120px]">
-                      <DropdownMenuItem v-if="canEditPost" class="text-xs font-bold gap-2" @click="startEditPost"><Icon name="lucide:pencil" size="14" /> Edit</DropdownMenuItem>
-                      <DropdownMenuItem v-if="canDeletePost" class="text-xs font-bold gap-2 text-destructive" @click="handleDeletePost"><Icon name="lucide:trash-2" size="14" /> Delete</DropdownMenuItem>
+                      <DropdownMenuItem v-if="canEditPost" class="text-xs font-bold gap-2" @click="startEditPost"><Icon name="lucide:pencil" size="14" /> {{ $t('common.edit') }}</DropdownMenuItem>
+                      <DropdownMenuItem v-if="canDeletePost" class="text-xs font-bold gap-2 text-destructive" @click="handleDeletePost"><Icon name="lucide:trash-2" size="14" /> {{ $t('common.delete') }}</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -406,10 +409,10 @@ async function handleShare() {
       <div class="space-y-4">
         <div class="flex items-center justify-between">
           <h3 class="font-heading text-lg font-bold flex items-center gap-2">
-            <Icon name="lucide:message-square" size="20" /> Discussion ({{ post.commentCount }})
+            <Icon name="lucide:message-square" size="20" /> {{ $t('post.detail.discussion', { count: post.commentCount }) }}
           </h3>
           <div class="flex items-center gap-2 bg-border/20 p-1 rounded-md">
-            <button v-for="s in (['newest', 'oldest', 'top'] as const)" :key="s" class="px-3 py-1 text-[11px] font-medium rounded-md capitalize transition-colors" :class="commentSort === s ? 'bg-card shadow-sm text-foreground font-bold' : 'text-muted-foreground hover:text-foreground'" @click="commentSort = s">{{ s === 'newest' ? 'Newest' : s === 'oldest' ? 'Oldest' : 'Top' }}</button>
+            <button v-for="s in (['newest', 'oldest', 'top'] as const)" :key="s" class="px-3 py-1 text-[11px] font-medium rounded-md capitalize transition-colors" :class="commentSort === s ? 'bg-card shadow-sm text-foreground font-bold' : 'text-muted-foreground hover:text-foreground'" @click="commentSort = s">{{ $t(`post.detail.sort.${s}`) }}</button>
           </div>
         </div>
         <!-- Merge banner (inside discussion, per PRD) -->
@@ -433,11 +436,11 @@ async function handleShare() {
         </div>
         <div v-else class="flex flex-col items-center justify-center py-12 text-center">
           <Icon name="lucide:message-circle" size="48" class="text-muted-foreground/40 mb-4" />
-          <p class="text-sm font-medium text-muted-foreground">No comments yet</p>
-          <p class="text-xs text-muted-foreground/60 mt-1">Be the first to share your thoughts</p>
+          <p class="text-sm font-medium text-muted-foreground">{{ $t('post.detail.noComments') }}</p>
+          <p class="text-xs text-muted-foreground/60 mt-1">{{ $t('post.detail.noCommentsHint') }}</p>
         </div>
         <div v-if="hasMoreComments" class="flex justify-center mt-8">
-          <button class="px-6 py-2.5 rounded-full border border-border text-sm font-heading font-semibold hover:border-primary hover:text-primary transition-colors bg-card shadow-warm" :disabled="moreCommentLoading" @click="store.loadMoreComments(slug, commentSort)">{{ moreCommentLoading ? 'Loading...' : 'View more comments' }}</button>
+          <button class="px-6 py-2.5 rounded-full border border-border text-sm font-heading font-semibold hover:border-primary hover:text-primary transition-colors bg-card shadow-warm" :disabled="moreCommentLoading" @click="store.loadMoreComments(slug, commentSort)">{{ moreCommentLoading ? $t('post.detail.loadingMore') : $t('post.detail.viewMoreComments') }}</button>
         </div>
       </div>
     </div>
@@ -446,59 +449,59 @@ async function handleShare() {
     <aside class="w-full md:w-[320px] shrink-0 self-start space-y-4">
       <div class="bg-card border border-border rounded-lg p-6 shadow-sm space-y-4">
         <div>
-          <h4 class="font-heading text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Board</h4>
+          <h4 class="font-heading text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">{{ $t('post.detail.board') }}</h4>
           <DropdownMenu v-if="isOrgManager && !isMerged">
             <DropdownMenuTrigger as-child>
               <button class="flex items-center gap-3 hover:bg-secondary/50 p-2 -ml-2 rounded-md transition-colors">
-                <Icon name="lucide:folder" size="16" class="text-primary shrink-0" /><span class="font-bold text-sm">{{ boardName ?? 'None' }}</span><Icon name="lucide:chevron-down" size="14" class="text-muted-foreground shrink-0" />
+                <Icon name="lucide:folder" size="16" class="text-primary shrink-0" /><span class="font-bold text-sm">{{ boardName ?? $t('post.detail.none') }}</span><Icon name="lucide:chevron-down" size="14" class="text-muted-foreground shrink-0" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" class="min-w-[200px]">
               <DropdownMenuItem class="text-xs font-medium gap-2" :class="!post.boardId ? 'font-bold' : ''" @click="handleBoardChange(null)">
-                <span class="w-4 shrink-0 flex items-center justify-center"><Icon v-if="!post.boardId" name="lucide:check" size="12" /></span> None
+                <span class="w-4 shrink-0 flex items-center justify-center"><Icon v-if="!post.boardId" name="lucide:check" size="12" /></span> {{ $t('post.detail.none') }}
               </DropdownMenuItem>
               <DropdownMenuItem v-for="board in boards" :key="board.id" class="text-xs font-medium gap-2" :class="post.boardId === board.id ? 'font-bold' : ''" @click="handleBoardChange(board.id)">
                 <span class="w-4 shrink-0 flex items-center justify-center"><Icon v-if="post.boardId === board.id" name="lucide:check" size="12" /></span> {{ board.name }}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <div v-else class="flex items-center gap-3 p-2 -ml-2"><Icon name="lucide:folder" size="16" class="text-primary shrink-0" /><span class="font-bold text-sm">{{ boardName ?? 'None' }}</span></div>
+          <div v-else class="flex items-center gap-3 p-2 -ml-2"><Icon name="lucide:folder" size="16" class="text-primary shrink-0" /><span class="font-bold text-sm">{{ boardName ?? $t('post.detail.none') }}</span></div>
         </div>
         <!-- Status: hidden for merged posts -->
         <div v-if="!isMerged">
-          <h4 class="font-heading text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Status</h4>
+          <h4 class="font-heading text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">{{ $t('post.detail.status') }}</h4>
           <DropdownMenu v-if="isOrgManager">
             <DropdownMenuTrigger as-child>
               <button class="flex items-center gap-3 hover:bg-secondary/50 p-2 -ml-2 rounded-md transition-colors">
                 <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: `var(${(STATUS_CONFIG[post.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.open).cssVar})` }" />
-                <span class="font-bold text-sm">{{ (STATUS_CONFIG[post.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.open).label }}</span><Icon name="lucide:chevron-down" size="14" class="text-muted-foreground" />
+                <span class="font-bold text-sm">{{ $t(statusLabelKey(post.status)) }}</span><Icon name="lucide:chevron-down" size="14" class="text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" class="min-w-[160px]">
               <DropdownMenuItem v-for="opt in STATUS_OPTIONS" :key="opt.value" class="text-xs font-medium gap-2" :class="post.status === opt.value ? 'font-bold' : ''" @click="handleStatusChange(opt.value)">
                 <span class="w-4 shrink-0 flex items-center justify-center"><Icon v-if="post.status === opt.value" name="lucide:check" size="12" /></span>
-                <div class="w-2.5 h-2.5 rounded-full" :style="{ backgroundColor: `var(${opt.cssVar})` }"></div> {{ opt.label }}
+                <div class="w-2.5 h-2.5 rounded-full" :style="{ backgroundColor: `var(${opt.cssVar})` }"></div> {{ $t(statusLabelKey(opt.value)) }}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <div v-else class="flex items-center gap-3">
             <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: `var(${(STATUS_CONFIG[post.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.open).cssVar})` }" />
-            <span class="font-bold text-sm">{{ (STATUS_CONFIG[post.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.open).label }}</span>
+            <span class="font-bold text-sm">{{ $t(statusLabelKey(post.status)) }}</span>
           </div>
         </div>
         <div>
-          <h4 class="font-heading text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-3">Author</h4>
+          <h4 class="font-heading text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-3">{{ $t('post.detail.author') }}</h4>
           <div class="flex items-center gap-3">
             <img v-if="post.author?.image" :src="post.author.image" :alt="post.author.name" class="w-8 h-8 rounded-full object-cover shrink-0" referrerpolicy="no-referrer">
             <div v-else class="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center text-foreground font-bold text-xs shrink-0">{{ initials(post.author?.name) }}</div>
-            <p class="text-sm font-bold">{{ post.author?.name ?? 'Anonymous' }}</p>
+            <p class="text-sm font-bold">{{ post.author?.name ?? $t('common.anonymous') }}</p>
           </div>
         </div>
         <div class="pt-2 flex flex-col gap-2">
           <!-- Subscribe to Updates — hidden until the notification backend lands; unhide when ready
           <Button variant="secondary" :disabled="isMerged" :class="isMerged ? 'opacity-50 cursor-not-allowed' : ''"><Icon name="lucide:bell" size="18" /> Subscribe to Updates</Button>
           -->
-          <Button variant="outline" class="text-primary" :disabled="isMerged" :class="isMerged ? 'opacity-50 cursor-not-allowed' : ''" @click="handleShare"><Icon name="lucide:share-2" size="18" /> Share Request</Button>
+          <Button variant="outline" class="text-primary" :disabled="isMerged" :class="isMerged ? 'opacity-50 cursor-not-allowed' : ''" @click="handleShare"><Icon name="lucide:share-2" size="18" /> {{ $t('post.detail.shareRequest') }}</Button>
         </div>
       </div>
       <SimilarPostsPanel v-if="post.id && !isMerged" :post-id="post.id" :is-admin="isOrgManager" @merge="handleSimilarMerge" />

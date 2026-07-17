@@ -10,6 +10,8 @@ const emit = defineEmits<{
   loadMoreComments: [postId: string, cursor: string]
 }>()
 
+const localePath = useLocalePath()
+const timeAgo = useTimeAgo()
 const mp = computed(() => props.comment.mergedPost)
 const subComments = computed(() => {
   const base = mp.value?.comments.data ?? []
@@ -113,7 +115,7 @@ async function loadLevel2Comments(postId: string) {
           <span class="text-xs text-muted-foreground">{{ timeAgo(comment.createdAt) }}</span>
           <span class="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md flex items-center gap-1 ml-1">
             <Icon name="lucide:git-merge" size="14" />
-            Merged post by {{ comment.author.name }}
+            {{ $t('post.merge.mergedPostBy', { name: comment.author.name }) }}
           </span>
 
           <!-- Admin unmerge menu -->
@@ -126,7 +128,7 @@ async function loadLevel2Comments(postId: string) {
             <DropdownMenuContent align="end" class="min-w-[120px]">
               <DropdownMenuItem class="text-xs font-bold gap-2" @click="handleUnmerge">
                 <Icon name="lucide:git-branch" size="14" />
-                Unmerge
+                {{ $t('post.merge.unmerge') }}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -134,7 +136,7 @@ async function loadLevel2Comments(postId: string) {
 
         <!-- Merged post card -->
         <div class="bg-card border border-border rounded-lg p-5 shadow-sm space-y-3">
-          <NuxtLink :to="`/p/${mp.post.slug}`" class="font-heading font-bold text-lg text-foreground hover:text-primary block">
+          <NuxtLink :to="localePath(`/p/${mp.post.slug}`)" class="font-heading font-bold text-lg text-foreground hover:text-primary block">
             {{ mp.post.title }}
           </NuxtLink>
           <p v-if="mp.post.excerpt" class="text-sm text-foreground/80 leading-relaxed">{{ mp.post.excerpt }}</p>
@@ -165,7 +167,7 @@ async function loadLevel2Comments(postId: string) {
               <span class="text-xs text-muted-foreground">{{ timeAgo(sc.createdAt) }}</span>
               <span class="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md flex items-center gap-1 ml-1">
                 <Icon name="lucide:git-merge" size="14" />
-                Merged post
+                {{ $t('post.merge.mergedPost') }}
               </span>
 
               <!-- Admin unmerge menu for second-level -->
@@ -178,13 +180,13 @@ async function loadLevel2Comments(postId: string) {
                 <DropdownMenuContent align="end" class="min-w-[120px]">
                   <DropdownMenuItem class="text-xs font-bold gap-2" @click="emit('unmerge', sc.mergedPost!.post.id)">
                     <Icon name="lucide:git-branch" size="14" />
-                    Unmerge
+                    {{ $t('post.merge.unmerge') }}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
             <div class="bg-card border border-border rounded-lg p-5 shadow-sm space-y-2">
-              <NuxtLink :to="`/p/${sc.mergedPost.post.slug}`" class="font-heading font-bold text-base text-foreground hover:text-primary block">
+              <NuxtLink :to="localePath(`/p/${sc.mergedPost.post.slug}`)" class="font-heading font-bold text-base text-foreground hover:text-primary block">
                 {{ sc.mergedPost.post.title }}
               </NuxtLink>
               <p v-if="sc.mergedPost.post.excerpt" class="text-sm text-foreground/80 leading-relaxed">{{ sc.mergedPost.post.excerpt }}</p>
@@ -214,7 +216,7 @@ async function loadLevel2Comments(postId: string) {
               :disabled="level2Comments[sc.mergedPost.post.id]?.loading"
               @click="loadLevel2Comments(sc.mergedPost.post.id)"
             >
-              {{ level2Comments[sc.mergedPost.post.id]?.data?.length ? 'Load more comments' : `Load ${sc.mergedPost.post.commentCount} comments` }}
+              {{ level2Comments[sc.mergedPost.post.id]?.data?.length ? $t('post.merge.loadMoreComments') : $t('post.merge.loadComments', { count: sc.mergedPost.post.commentCount }) }}
               <Icon v-if="level2Comments[sc.mergedPost.post.id]?.loading" name="lucide:loader-2" size="12" class="animate-spin" />
             </button>
           </div>
@@ -251,7 +253,7 @@ async function loadLevel2Comments(postId: string) {
         :disabled="loadingMore"
         @click="loadMoreSubComments"
       >
-        Load more comments
+        {{ $t('post.merge.loadMoreComments') }}
         <Icon v-if="loadingMore" name="lucide:loader-2" size="12" class="animate-spin" />
       </button>
     </div>
