@@ -162,6 +162,12 @@ function onPostUpdated(updated: { id: string; status?: string; boardId?: string 
   const idx = posts.value.findIndex(p => p.id === updated.id)
   if (idx === -1) return
 
+  // Board changed → the sidebar's per-board counts (served from the board store)
+  // are now stale. Compare against the pre-update boardId, then refresh the store.
+  if (updated.boardId !== undefined && updated.boardId !== posts.value[idx].boardId) {
+    void boardStore.fetchBoards()
+  }
+
   // If status or board changed and no longer matches current filter, remove
   if (updated.boardId !== undefined && activeBoardId.value && updated.boardId !== activeBoardId.value) {
     posts.value.splice(idx, 1)
@@ -175,6 +181,8 @@ function onPostUpdated(updated: { id: string; status?: string; boardId?: string 
 function onPostDeleted(postId: string) {
   const idx = posts.value.findIndex(p => p.id === postId)
   if (idx !== -1) posts.value.splice(idx, 1)
+  // A deleted post drops its board's count (and the total) → refresh the store.
+  void boardStore.fetchBoards()
 }
 
 // Vote / unvote on list items
@@ -298,7 +306,7 @@ async function handleVote(post: PostListItem) {
   </aside>
 
   <!-- Main content: Feedback area -->
-  <section class="flex-1 flex flex-col gap-6">
+  <section class="flex-1 min-w-0 flex flex-col gap-6">
     <PortalWelcomeBlock
       v-if="hasWelcome"
       :title="branding.welcomeTitle"

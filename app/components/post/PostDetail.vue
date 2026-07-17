@@ -13,6 +13,8 @@ export interface PostUpdatedEvent {
   status?: string
   boardId?: string | null
   commentCount?: number
+  voteCount?: number
+  hasVoted?: boolean
 }
 
 const props = defineProps<{
@@ -184,11 +186,11 @@ function handleVote() {
   if (!post.value) return
   if (isMerged.value) return // Block voting on merged posts
   if (!isLoggedIn.value) return loginModal.open()
-  if (post.value.hasVoted) {
-    store.unvote(props.slug)
-  } else {
-    store.vote(props.slug)
-  }
+  const p = post.value
+  const settled = p.hasVoted ? store.unvote(props.slug) : store.vote(props.slug)
+  const syncList = () => emit('updated', { id: p.id, slug: p.slug, voteCount: p.voteCount, hasVoted: p.hasVoted })
+  syncList()
+  settled.then(syncList)
 }
 
 // ---- Comment interaction state ----
@@ -364,7 +366,7 @@ async function handleShare() {
             <template v-else>
               <div class="flex items-start gap-3 mb-3">
                 <div class="flex-1 min-w-0 flex items-center gap-2">
-                  <h2 class="font-heading text-2xl font-bold">{{ post.title }}</h2>
+                  <h2 class="font-heading text-2xl font-bold min-w-0 break-words">{{ post.title }}</h2>
                   <!-- <span v-if="mergedCount > 0" class="inline-flex items-center gap-1 text-xs font-bold text-muted-foreground bg-secondary px-2 py-0.5 rounded-md shrink-0">
                     <Icon name="lucide:git-merge" size="12" /> {{ mergedCount }}
                   </span> -->
@@ -418,7 +420,7 @@ async function handleShare() {
         </ClientOnly>
         <div v-if="commentLoading && comments.length === 0" class="space-y-4 pt-2">
           <div v-for="i in 3" :key="i" class="flex gap-4 animate-pulse">
-            <div class="w-10 h-10 rounded-full bg-muted shrink-0" />
+            <div class="w-10 h-10 rounded-full bg-border shrink-0" />
             <div class="flex-1 bg-card border border-border rounded-lg p-4 space-y-2">
               <div class="h-3 bg-muted rounded w-1/4" /><div class="h-4 bg-muted rounded w-full" /><div class="h-4 bg-muted rounded w-3/4" />
             </div>

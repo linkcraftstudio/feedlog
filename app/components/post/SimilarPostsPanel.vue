@@ -67,7 +67,7 @@ function statusConfig(status: string) {
         class="group py-4 first:pt-0 border-b border-border/40 last:border-b-0"
       >
         <div class="flex items-start justify-between gap-2">
-          <NuxtLink :to="`/p/${sp.slug}`" class="text-sm font-bold hover:text-primary transition-colors leading-relaxed flex-1 min-w-0">
+          <NuxtLink :to="`/p/${sp.slug}`" class="text-sm font-bold hover:text-primary transition-colors leading-relaxed flex-1 min-w-0 break-words">
             {{ sp.title }}
           </NuxtLink>
           <!-- Admin merge button -->

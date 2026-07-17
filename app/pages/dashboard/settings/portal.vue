@@ -114,7 +114,7 @@ async function save() {
               <input
                 v-model="form.welcomeTitle"
                 type="text"
-                placeholder="Submit feedback for Acme"
+                :placeholder="`Submit feedback for ${org.name}`"
                 :disabled="!isOwner"
                 class="mt-2 w-full h-11 px-3.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:border-primary transition-colors disabled:opacity-60"
               >
