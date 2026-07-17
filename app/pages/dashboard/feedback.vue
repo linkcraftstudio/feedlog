@@ -128,9 +128,20 @@ watch(filters, () => {
   currentPage.value = 1
 }, { deep: true })
 
+const searchTerm = ref('')
+const searchActive = computed(() => searchTerm.value.length > 0)
+watch(searchTerm, () => {
+  currentPage.value = 1
+})
+
+// While searching, route to the additive /search endpoint; otherwise use the
+// standard list endpoint. Both return PagePaginatedList<PostListItem>.
+const apiUrl = computed(() => searchActive.value ? '/api/admin/posts/search' : '/api/admin/posts')
+
 // Fetch data
-const { data: postsData, refresh: refreshPosts, status: fetchStatus } = await useFetch<PagePaginatedList<PostListItem>>('/api/admin/posts', {
+const { data: postsData, refresh: refreshPosts, status: fetchStatus } = await useFetch<PagePaginatedList<PostListItem>>(apiUrl, {
   query: computed(() => ({
+    q: searchTerm.value || undefined,
     status: filterStatus.value,
     boardId: filterBoardId.value,
     merged: filterMerged.value,
@@ -222,6 +233,9 @@ function onPostDeleted(postId: string) {
       <span class="hidden md:block text-xs font-medium text-muted-foreground">All submissions</span>
     </div>
     <div class="flex items-center gap-3">
+      <!-- Search: persistent, filters the table in place -->
+      <AdminFeedbackSearch v-model="searchTerm" />
+
       <!-- Filters button -->
       <DropdownMenu v-model:open="addFilterOpen">
         <DropdownMenuTrigger as-child>
@@ -308,9 +322,13 @@ function onPostDeleted(postId: string) {
 
         <!-- Empty state -->
         <div v-else-if="posts.length === 0" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
-          <Icon name="lucide:inbox" size="48" class="mb-4 opacity-50" />
-          <p class="text-lg font-medium">No feedback found</p>
-          <p class="text-sm mt-1">Try adjusting your filters</p>
+          <Icon :name="searchActive ? 'lucide:search-x' : 'lucide:inbox'" size="48" class="mb-4 opacity-50" />
+          <p class="text-lg font-medium">
+            {{ searchActive ? `No matches for “${searchTerm}”` : 'No feedback found' }}
+          </p>
+          <p class="text-sm mt-1">
+            {{ searchActive ? 'Try a different term, or clear the search.' : 'Try adjusting your filters' }}
+          </p>
         </div>
 
         <template v-else>

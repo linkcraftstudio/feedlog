@@ -22,7 +22,7 @@ export function useSsoSecrets() {
       secrets.value = await $fetch<SsoSecret[]>('/api/developer/sso/secrets')
     }
     catch (e) {
-      error.value = (e as { statusMessage?: string })?.statusMessage ?? 'Failed to load secrets'
+      error.value = (e as { data?: { message?: string } })?.data?.message || 'Failed to load secrets'
     }
     finally {
       loading.value = false

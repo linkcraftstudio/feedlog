@@ -68,9 +68,9 @@ SELECT
   'published',
   'FeedLog is ready to go',
   'Welcome! Your FeedLog install is up. Publish your own changelog entries from `/dashboard/changelogs` — keep users in the loop when features ship, and react with emoji to celebrate.',
-  '["Announcement"]'::jsonb,
+  '[]'::jsonb,
   'FeedLog is ready to go',
   'Welcome! Your FeedLog install is up. Publish your own changelog entries from `/dashboard/changelogs` — keep users in the loop when features ship, and react with emoji to celebrate.',
-  '["Announcement"]'::jsonb,
+  '[]'::jsonb,
   now(), now(), now()
 WHERE NOT EXISTS (SELECT 1 FROM "changelog");

@@ -54,8 +54,8 @@ async function onDialogSubmit(payload: { label: string }) {
     }
   }
   catch (e) {
-    toast.error((e as { statusMessage?: string })?.statusMessage
-      ?? (mode === 'create' ? 'Failed to create secret' : 'Failed to rename secret'))
+    toast.error((e as { data?: { message?: string } })?.data?.message
+      || (mode === 'create' ? 'Failed to create secret' : 'Failed to rename secret'))
   }
 }
 

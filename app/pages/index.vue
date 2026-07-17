@@ -53,8 +53,15 @@ const initialData = await fetchPosts()
 posts.value = initialData.data
 nextCursor.value = initialData.pagination.nextCursor
 
+const searchQuery = ref('')
+const searching = ref(false)
+const searchActive = computed(() => searchQuery.value.trim().length > 0)
+const searchToolbar = ref<{ reset: () => void } | null>(null)
+let boardSwitchClearing = false
+
 // Reset list when filters change
 watch(activeBoardId, async () => {
+  if (searchActive.value) return
   startLoading()
   fetchingPosts.value = true
   try {
@@ -68,6 +75,7 @@ watch(activeBoardId, async () => {
 })
 
 watch(sort, async () => {
+  if (searchActive.value) return
   fetchingPosts.value = true
   try {
     const data = await fetchPosts()
@@ -84,6 +92,23 @@ async function refreshPosts() {
   nextCursor.value = data.pagination.nextCursor
 }
 
+watch(searchQuery, async () => {
+  const q = searchQuery.value.trim()
+  if (!q) {
+    if (boardSwitchClearing) { boardSwitchClearing = false; return }
+    await refreshPosts()
+    return
+  }
+  searching.value = true
+  try {
+    const res = await useApiFetch<{ data: PostListItem[] }>('/api/posts/search', { query: { q } })
+    posts.value = res.data
+    nextCursor.value = null // search returns a flat capped set — no "load more"
+  } finally {
+    searching.value = false
+  }
+})
+
 async function loadMore() {
   if (!nextCursor.value || loadingMore.value) return
   loadingMore.value = true
@@ -97,12 +122,16 @@ async function loadMore() {
 }
 
 // Switch board
-function selectBoard(boardId: string | null) {
-  if (boardId) {
-    router.push({ query: { b: boardId } })
-  } else {
-    router.push({ query: {} })
+async function selectBoard(boardId: string | null) {
+  const wasCommitted = searchActive.value
+  const sameBoard = activeBoardId.value === boardId
+  searchToolbar.value?.reset()
+  if (wasCommitted) {
+    boardSwitchClearing = true
+    searchQuery.value = ''
   }
+  router.push({ query: boardId ? { b: boardId } : {} })
+  if (wasCommitted && sameBoard) await refreshPosts()
 }
 
 // Status configuration (centralized)
@@ -278,50 +307,35 @@ async function handleVote(post: PostListItem) {
     />
 
     <!-- Header row -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
-      <h2 class="font-heading text-2xl font-bold">
-        {{ sortBy === 'top' ? 'Top Requests' : 'Recent Requests' }}
-      </h2>
-      <div class="flex items-center gap-3">
-        <!-- Top / Recent toggle -->
-        <div class="flex bg-border/50 p-1 rounded-lg">
-          <button
-            class="px-4 py-1.5 rounded-[12px] text-sm font-medium transition-colors"
-            :class="sortBy === 'top'
-              ? 'bg-card text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'"
-            @click="sortBy = 'top'"
-          >
-            Top
-          </button>
-          <button
-            class="px-4 py-1.5 rounded-[12px] text-sm font-medium transition-colors"
-            :class="sortBy === 'recent'
-              ? 'bg-card text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'"
-            @click="sortBy = 'recent'"
-          >
-            Recent
-          </button>
-        </div>
-        <!-- New Request button -->
+    <BoardSearchToolbar
+      ref="searchToolbar"
+      v-model="searchQuery"
+      v-model:sort="sortBy"
+      @new-request="isLoggedIn ? (showSubmit = true) : loginModal.open()"
+    />
+
+    <!-- Post list with loading state -->
+    <div :class="{ 'opacity-50 pointer-events-none': fetchingPosts || searching }" class="transition-opacity duration-200">
+
+    <!-- Empty state -->
+    <div v-if="posts.length === 0" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
+      <!-- Search yielded nothing: nudge toward raising it (duplicate-prevention payoff) -->
+      <template v-if="searchActive">
+        <Icon name="lucide:search-x" size="48" class="mb-4 opacity-50" />
+        <p class="text-lg font-medium">No matches for “{{ searchQuery.trim() }}”</p>
+        <p class="fl-empty__hint">Nobody’s raised this yet — be the first.</p>
         <Button
           class="h-10 px-4 rounded-lg text-[15px] font-heading font-semibold"
           @click="isLoggedIn ? showSubmit = true : loginModal.open()"
         >
           <Icon name="lucide:plus" size="18" />
           New Request
-      </Button>
-      </div>
-    </div>
-
-    <!-- Post list with loading state -->
-    <div :class="{ 'opacity-50 pointer-events-none': fetchingPosts }" class="transition-opacity duration-200">
-
-    <!-- Empty state -->
-    <div v-if="posts.length === 0" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
-      <Icon name="lucide:inbox" size="48" class="mb-4 opacity-50" />
-      <p class="text-lg font-medium">No feedback yet</p>
+        </Button>
+      </template>
+      <template v-else>
+        <Icon name="lucide:inbox" size="48" class="mb-4 opacity-50" />
+        <p class="text-lg font-medium">No feedback yet</p>
+      </template>
     </div>
 
     <!-- Feedback card list -->
@@ -436,5 +450,11 @@ async function handleVote(post: PostListItem) {
 
 nav::-webkit-scrollbar {
   display: none;
+}
+
+.fl-empty__hint {
+  font-size: 14px;
+  margin: 4px 0 20px;
+  color: var(--muted-foreground);
 }
 </style>

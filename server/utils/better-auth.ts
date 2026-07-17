@@ -9,6 +9,9 @@ import { member, organization as orgTable } from '../db/schemas'
 import { ac, contributor, manager, owner } from '../../shared/auth/permissions'
 import { DEFAULT_ORG_ID } from '../../shared/constants/default-org'
 import { hashPassword, verifyPassword } from './password-hash'
+import { consola } from 'consola'
+
+const logger = consola.withTag('auth')
 
 const env = process.env
 
@@ -133,29 +136,37 @@ export function defaultTrustedOrigins(request?: Request): string[] {
 }
 
 export function buildAuthConfig(overrides: AuthConfigOverrides = {}): BetterAuthOptions {
+  type SendInvite = NonNullable<NonNullable<Parameters<typeof organization>[0]>['sendInvitationEmail']>
+  // Default invite email: `${BETTER_AUTH_URL}/invite?id=...`. No-op when Resend isn't
+  // configured; the Members page "copy invitation link" button is the manual fallback.
+  const layerDefaultSendInvite: SendInvite = async (data) => {
+    if (!hasEmailProvider) return
+    const baseUrl = env.BETTER_AUTH_URL || 'http://localhost:3000'
+    const url = `${baseUrl}/invite?id=${data.id}`
+    await sendEmail({
+      to: data.email,
+      subject: `You're invited to join ${data.organization.name} on FeedLog`,
+      html: renderInvitationEmail({ url, orgName: data.organization.name }),
+    })
+  }
+  const rawSendInvite: SendInvite = overrides.organizationExtras?.sendInvitationEmail ?? layerDefaultSendInvite
+  const sendInvitationEmail: SendInvite = async (data, request) => {
+    try {
+      await rawSendInvite(data, request)
+    }
+    catch (e) {
+      logger.warn(`Invitation email failed for ${data.email}: ${(e as Error)?.message ?? e}`)
+    }
+  }
   const orgOpts = {
     ac,
     roles: { owner, manager, contributor },
     creatorRole: 'owner' as const,
     invitationExpiresIn: 7 * 24 * 60 * 60,
-    // Default invite email: `${BETTER_AUTH_URL}/invite?id=...`. No-op when
-    // Resend isn't configured; the Members page "copy invitation link"
-    // button is the manual fallback.
-    sendInvitationEmail: async (data: {
-      id: string
-      email: string
-      organization: { name: string }
-    }) => {
-      if (!hasEmailProvider) return
-      const baseUrl = env.BETTER_AUTH_URL || 'http://localhost:3000'
-      const url = `${baseUrl}/invite?id=${data.id}`
-      await sendEmail({
-        to: data.email,
-        subject: `You're invited to join ${data.organization.name} on FeedLog`,
-        html: renderInvitationEmail({ url, orgName: data.organization.name }),
-      })
-    },
     ...overrides.organizationExtras,
+    // After the spread so our best-effort wrapper wins over an override's own
+    // sender (it already delegates to that override via rawSendInvite).
+    sendInvitationEmail,
   }
   const mergedSocial = defu(overrides.socialProviderOverrides ?? {}, socialProviders) as typeof socialProviders
   return {

@@ -12,6 +12,7 @@ export interface PostUpdatedEvent {
   excerpt?: string
   status?: string
   boardId?: string | null
+  commentCount?: number
 }
 
 const props = defineProps<{
@@ -196,12 +197,19 @@ const editingCommentId = ref<string | null>(null)
 const commentSubmitting = ref(false)
 const commentEditorRef = ref<{ clear: () => void } | null>(null)
 
+function emitCommentCount() {
+  if (post.value) {
+    emit('updated', { id: post.value.id, slug: post.value.slug, commentCount: post.value.commentCount })
+  }
+}
+
 // Comment handlers
 async function handleCommentSubmit(content: string) {
   commentSubmitting.value = true
   try {
     await store.addComment(props.slug, content)
     commentEditorRef.value?.clear()
+    emitCommentCount()
   } finally {
     commentSubmitting.value = false
   }
@@ -215,6 +223,7 @@ async function handleReplySubmit(content: string) {
     const replyToId = commentId !== parentId ? commentId : undefined
     await store.addComment(props.slug, content, parentId, replyToId)
     replyingTo.value = null
+    emitCommentCount()
   } finally {
     commentSubmitting.value = false
   }
@@ -272,6 +281,7 @@ function handleEditCommentCancel() {
 
 async function handleDeleteComment(commentId: string) {
   await store.deleteComment(props.slug, commentId)
+  emitCommentCount()
 }
 
 // Watch comment sort changes → refetch

@@ -22,6 +22,9 @@ const { onUploadImg } = useUploadImg()
 const similarPosts = ref<any[]>([])
 const similarLoading = ref(false)
 const similarDebounce = ref<ReturnType<typeof setTimeout>>()
+// Monotonic ticket: every trigger increments it; only the run whose ticket still
+// matches may write results back (out-of-order / stale-response guard).
+let similarSeq = 0
 const showDetailSlug = ref<string | null>(null)
 const similarHintRef = ref<{ expanded: boolean } | null>(null)
 const editorFocused = ref(false)
@@ -34,6 +37,9 @@ const hintDefaultExpanded = computed(() => !content.value.trim())
 
 function triggerSimilarSearch() {
   clearTimeout(similarDebounce.value)
+  // Bump on every trigger so any in-flight request from an older query is
+  // invalidated — including when this call early-returns at the 3-char gate.
+  const mine = ++similarSeq
   const t = title.value.trim()
   if (t.length < 3) {
     similarPosts.value = []
@@ -46,11 +52,13 @@ function triggerSimilarSearch() {
       const body: Record<string, string> = { title: t }
       if (content.value.trim()) body.content = content.value.trim()
       const result = await useApiFetch<{ data: any[] }>('/api/posts/similar', { method: 'POST', body })
+      // Drop if a newer query superseded us, or the modal has since closed.
+      if (mine !== similarSeq || !open.value) return
       similarPosts.value = result.data
     } catch {
-      similarPosts.value = []
+      if (mine === similarSeq) similarPosts.value = []
     } finally {
-      similarLoading.value = false
+      if (mine === similarSeq) similarLoading.value = false
     }
   }, delay)
 }
@@ -58,7 +66,13 @@ function triggerSimilarSearch() {
 watch(title, triggerSimilarSearch)
 watch(content, triggerSimilarSearch)
 
+// Cancel any pending search if the component is torn down.
+onUnmounted(() => clearTimeout(similarDebounce.value))
+
 function reset() {
+  clearTimeout(similarDebounce.value)
+  similarSeq++
+  similarLoading.value = false
   selectedBoardId.value = null
   title.value = ''
   content.value = ''

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { toast } from 'vue-sonner'
 import { authClient } from '~/lib/auth-client'
 
 // /dashboard/settings/members — list members + pending invitations.
@@ -99,6 +100,11 @@ async function sendInvite() {
     inviteEmails.value = ''
     inviteRole.value = 'contributor'
     await refresh()
+    toast.success(emails.length > 1 ? `${emails.length} invitations created` : 'Invitation created', {
+      description: emailConfigured.value
+        ? 'If the email doesn’t arrive, copy the link from the list to share it manually.'
+        : 'No email was sent — copy the link from the list to share it manually.',
+    })
   } finally {
     inviting.value = false
   }
@@ -326,8 +332,9 @@ function initials(name: string | undefined): string {
             <textarea
               v-model="inviteEmails"
               rows="2"
+              :disabled="inviting"
               placeholder="alice@acme.com, bob@acme.com"
-              class="mt-2 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:border-primary transition-colors resize-none"
+              class="mt-2 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:border-primary transition-colors resize-none disabled:opacity-60 disabled:cursor-not-allowed"
             />
             <p class="text-[11px] text-muted-foreground mt-1">Comma or newline separated</p>
           </div>
@@ -335,7 +342,7 @@ function initials(name: string | undefined): string {
           <!-- Role -->
           <div>
             <label class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Role</label>
-            <Select v-model="inviteRole">
+            <Select v-model="inviteRole" :disabled="inviting">
               <SelectTrigger class="mt-2 w-full h-10 text-sm">
                 <SelectValue>
                   <span class="flex items-center gap-2">

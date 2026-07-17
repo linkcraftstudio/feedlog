@@ -21,6 +21,8 @@ export default defineNitroPlugin(() => {
           method: 'POST',
           headers: { Authorization: `Bearer ${resendApiKey}` },
           body: { from, to, subject, html, text },
+          timeout: 10_000,
+          retry: 0,
         })
         logger.info(`Email sent via Resend to=${to} id=${response.id}`)
       },
