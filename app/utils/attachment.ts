@@ -9,7 +9,7 @@ export function resolveAttachmentUrl(key: string | null | undefined): string | n
   return `/api/files/${key}`
 }
 
-const ATTACHMENT_MD_RE = /(!\[[^\]]*\]\()attachment:([^\s)]+)(\))/g
+const ATTACHMENT_MD_RE = /(!\[[^\]]*\]\()attachment:([^)]+)(\))/g
 const ATTACHMENT_HTML_RE = /(src=["'])attachment:([^"']+)(["'])/g
 
 /**
@@ -19,7 +19,7 @@ const ATTACHMENT_HTML_RE = /(src=["'])attachment:([^"']+)(["'])/g
  * e.g. ![alt](attachment:uploads/img.png) → ![alt](/api/files/uploads/img.png)
  */
 export function resolveAttachmentUrls(markdown: string): string {
-  return markdown.replace(ATTACHMENT_MD_RE, '$1/api/files/$2$3')
+  return markdown.replace(ATTACHMENT_MD_RE, (_m, pre, key, post) => `${pre}/api/files/${encodeURI(key)}${post}`)
 }
 
 /**
