@@ -1,6 +1,10 @@
 <script setup lang="ts">
 // Standalone language switcher (top-bar icon), sits next to ThemeSwitcher.
 const { locale, locales, setLocale } = useI18n()
+
+async function switchLocale(code: string) {
+  await setLocale(code as never)
+}
 </script>
 
 <template>
@@ -19,7 +23,7 @@ const { locale, locales, setLocale } = useI18n()
         v-for="l in locales"
         :key="l.code"
         class="cursor-pointer"
-        @click="setLocale(l.code)"
+        @click="switchLocale(l.code)"
       >
         <span class="flex-1">{{ l.name ?? l.code }}</span>
         <Icon v-if="locale === l.code" name="lucide:check" size="14" class="text-primary" />

@@ -43,8 +43,7 @@ const navItems = [
 
 async function handleSignOut() {
   await signOut()
-  session.value = null
-  navigateTo(localePath('/'))
+  window.location.href = localePath('/')
 }
 
 // Mobile expandable nav

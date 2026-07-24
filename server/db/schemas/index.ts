@@ -21,6 +21,10 @@ export {
   organizationSso,
   organizationSsoRelations,
 } from './sso'
+export {
+  postSubscription,
+} from './notifications'
+export type { NotificationPayload } from './notifications'
 import { user, session, account, organization, member, invitation } from './auth'
 
 // Custom type for pgvector's vector column

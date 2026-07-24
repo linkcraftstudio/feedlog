@@ -280,7 +280,26 @@
       "addPlaceholder": "添加评论或反馈……",
       "viewMoreReplies": "查看另外 {count} 条回复",
       "deleteTitle": "删除这条评论?",
-      "deleteDescription": "此操作无法撤销,将永久删除该评论及其所有回复。"
+      "deleteDescription": "此操作无法撤销,将永久删除该评论及其所有回复。",
+      "notifyUpvoters": "通知点赞者",
+      "notifyUpvotersHint": "额外通知点赞过的人。作者和已订阅的人始终会收到。",
+      "emailUpvoters": "邮件通知点赞者"
+    },
+    "statusNotify": {
+      "title": "要给点赞者发邮件通知吗？",
+      "desc": "自动发一封邮件，告知点赞过这条反馈的人状态已变更。",
+      "customize": "自定义邮件",
+      "send": "通知点赞者",
+      "dismiss": "不通知",
+      "messagePlaceholder": "给点赞者写一段自定义消息…",
+      "sendDefault": "发送默认邮件",
+      "sendCustom": "发送自定义邮件"
+    },
+    "subscribe": {
+      "title": "订阅这条反馈",
+      "desc": "有变更时通过邮件通知你。",
+      "subscribe": "订阅",
+      "unsubscribe": "取消订阅"
     }
   },
   "auth": {

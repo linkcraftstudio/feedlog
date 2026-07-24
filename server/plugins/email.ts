@@ -16,11 +16,11 @@ export default defineNitroPlugin(() => {
 
     registerEmailProvider({
       name: 'resend',
-      send: async ({ to, subject, html, text }) => {
+      send: async ({ to, subject, html, text, headers }) => {
         const response = await $fetch<{ id: string }>('https://api.resend.com/emails', {
           method: 'POST',
           headers: { Authorization: `Bearer ${resendApiKey}` },
-          body: { from, to, subject, html, text },
+          body: { from, to, subject, html, text, headers },
           timeout: 10_000,
           retry: 0,
         })

@@ -34,7 +34,7 @@ async function handleCreated(slug: string) {
       if (post?.id) {
         await useApiFetch(`/api/admin/posts/${post.id}`, {
           method: 'PATCH',
-          body: { status: addStatus.value },
+          body: { status: addStatus.value, notify: false },
         })
       }
     } catch {

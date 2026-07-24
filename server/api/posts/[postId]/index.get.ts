@@ -62,6 +62,23 @@ export default defineEventHandler(async (event): Promise<PostDetail> => {
     }
   }
 
+  // subscribed: is the current user on this post's notification list, across
+  // the whole merge family. Drives the sidebar subscribe card's button state.
+  let subscribed = false
+  if (session) {
+    const [result] = await db.execute(sql`
+      WITH RECURSIVE family AS (
+        SELECT id FROM post WHERE id = ${row.id}
+        UNION ALL
+        SELECT p.id FROM post p JOIN family f ON p.merged_to = f.id
+      )
+      SELECT EXISTS(
+        SELECT 1 FROM post_subscription WHERE user_id = ${session.user.id} AND post_id IN (SELECT id FROM family)
+      ) as subscribed
+    `)
+    subscribed = !!(result as any)?.subscribed
+  }
+
   // If merged, fetch canonical post info
   let canonicalPost: { slug: string; title: string } | undefined
   if (row.mergedTo) {
@@ -85,6 +102,7 @@ export default defineEventHandler(async (event): Promise<PostDetail> => {
     mergedTo: row.mergedTo,
     mergedCount: row.mergedCount,
     hasVoted,
+    subscribed,
     author: { id: row.authorId, name: row.authorName, image: row.authorImage },
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

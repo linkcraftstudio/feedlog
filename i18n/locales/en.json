@@ -280,7 +280,26 @@
       "addPlaceholder": "Add a comment or feedback...",
       "viewMoreReplies": "View {count} more replies",
       "deleteTitle": "Delete this comment?",
-      "deleteDescription": "This action cannot be undone. This will permanently delete the comment and all its replies."
+      "deleteDescription": "This action cannot be undone. This will permanently delete the comment and all its replies.",
+      "notifyUpvoters": "Notify upvoters",
+      "notifyUpvotersHint": "Also email upvoters. The author and subscribers always get it.",
+      "emailUpvoters": "Email upvoters"
+    },
+    "statusNotify": {
+      "title": "Notify upvoters by email?",
+      "desc": "Send an automatic email update to notify upvoters about the status change.",
+      "customize": "Customize email",
+      "send": "Notify voters",
+      "dismiss": "Don't notify",
+      "messagePlaceholder": "Write a custom message for the upvoters…",
+      "sendDefault": "Send default email",
+      "sendCustom": "Send customized email"
+    },
+    "subscribe": {
+      "title": "Subscribe to post",
+      "desc": "Get notified by email when there are changes.",
+      "subscribe": "Subscribe",
+      "unsubscribe": "Unsubscribe"
     }
   },
   "auth": {

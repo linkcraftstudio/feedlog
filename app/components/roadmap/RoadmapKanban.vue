@@ -280,7 +280,9 @@ onUnmounted(() => {
 })
 
 // ---- Handle drop (pessimistic update) ----
-async function handleDrop(postId: string, fromStatus: RoadmapStatus, toStatus: RoadmapStatus) {
+// Dragging never notifies: it is a bulk triage gesture, so the status moves
+// silently. Mailing is done from the post detail sidebar.
+function handleDrop(postId: string, fromStatus: RoadmapStatus, toStatus: RoadmapStatus) {
   // Clear hover ghost immediately to avoid two ghosts in the same frame
   ghostPreview.value = null
   dropTargetStatus.value = null
@@ -295,21 +297,25 @@ async function handleDrop(postId: string, fromStatus: RoadmapStatus, toStatus: R
   const targetItems = roadmapData.value[toStatus].data
   const insertIndex = findInsertIndex(targetItems, item)
 
-  // Step 1: Source card stays but shows ghost state, target shows pending ghost
   pendingDrop.value = { postId, post: { ...item }, fromStatus, toStatus, index: insertIndex }
+  void writeDrop()
+}
 
-  // Step 2: Call API (with minimum display time for loading state)
+async function writeDrop() {
+  const drop = pendingDrop.value
+  if (!drop || !roadmapData.value) return
+  const { postId, post: item, fromStatus, toStatus } = drop
+
   const MIN_LOADING_MS = 400
   try {
     await Promise.all([
       useApiFetch(`/api/admin/posts/${postId}`, {
         method: 'PATCH',
-        body: { status: toStatus },
+        body: { status: toStatus, notify: false },
       }),
       new Promise(r => setTimeout(r, MIN_LOADING_MS)),
     ])
 
-    // Step 3a: Success — insert real card in target first, then clear pending + remove source
     // Insert before clearing pendingDrop so the key stays the same (pending → card, no animation)
     const toCol = roadmapData.value[toStatus]
     const realItem = { ...item, status: toStatus }
@@ -319,13 +325,14 @@ async function handleDrop(postId: string, fromStatus: RoadmapStatus, toStatus: R
     pendingDrop.value = null
 
     // Now remove source card (triggers leave animation in source column)
+    const fromCol = roadmapData.value[fromStatus]
     const sourceIdx = fromCol.data.findIndex(p => p.id === postId)
     if (sourceIdx !== -1) {
       fromCol.data.splice(sourceIdx, 1)
       fromCol.total--
     }
   } catch {
-    // Step 3b: Failure — just remove ghost, source card is still there
+    // Failure: drop the ghost; the source card never moved.
     pendingDrop.value = null
   }
 }

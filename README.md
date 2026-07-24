@@ -167,6 +167,7 @@ overrides, and authentication toggles.
 - **Similar-idea merge** — Vector embeddings (OpenAI `text-embedding-3-large`, 768-dim) surface duplicate feedback before it fragments the board.
 - **Authentication** — Email / password, Google OAuth, GitHub OAuth, admin role handling — powered by [better-auth](https://www.better-auth.com).
 - **Comments & discussions** — Markdown-powered threads on every post.
+- **Notifications** — Authors and upvoters are subscribed automatically and emailed when a post's status changes or the team replies officially; unsubscribe per post at any time. Admins aren't notified. Requires an email provider.
 
 ## Tech Stack
 

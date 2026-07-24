@@ -1,6 +1,7 @@
-import { post, postSearch, user } from '#layers/feedlog/server/db/schemas'
+import { post, postSearch, user, postSubscription } from '#layers/feedlog/server/db/schemas'
 import { eq } from 'drizzle-orm'
 import { createPostSchema } from '#layers/feedlog/shared/schemas/post'
+import { isActorAdmin } from '#layers/feedlog/shared/utils/notifications'
 
 // POST /api/posts — Create a post (any authenticated user: end-user or staff).
 export default defineEventHandler(async (event) => {
@@ -36,6 +37,11 @@ export default defineEventHandler(async (event) => {
   await db
     .insert(postSearch)
     .values({ postId: created.id, orgId, searchText })
+
+  // The author subscribes to their own post — unless they're an admin.
+  if (!isActorAdmin(session, orgId)) {
+    await db.insert(postSubscription).values({ postId: created.id, userId: session.user.id }).onConflictDoNothing()
+  }
 
   // Async embedding generation (non-blocking)
   event.waitUntil(

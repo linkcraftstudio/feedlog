@@ -68,6 +68,7 @@ export interface PostDetail {
   mergedCount: number
   mergedTo: string | null
   hasVoted: boolean
+  subscribed?: boolean
   author: PostAuthor
   createdAt: string
   updatedAt: string

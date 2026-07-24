@@ -17,7 +17,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'Password must be at most 128 characters' })
   }
 
-  // Check if user already has a credential account
   const accounts = await auth.api.listUserAccounts({ headers: getHeaders(event) })
   const hasCredential = accounts?.some(
     (acc: { providerId: string }) => acc.providerId === 'credential',
@@ -26,7 +25,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'Password already set. Use change-password instead.' })
   }
 
-  // Use better-auth's internal setPassword endpoint
   const result = await auth.api.setPassword({
     body: { newPassword: body.newPassword },
     headers: getHeaders(event),

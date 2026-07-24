@@ -1,11 +1,15 @@
 import { and, eq, sql } from 'drizzle-orm'
+import { getRequestURL } from 'h3'
 import { z } from 'zod/v4'
 import { comment, post, user } from '#layers/feedlog/server/db/schemas'
+import { isActorAdmin } from '#layers/feedlog/shared/utils/notifications'
 
 const createCommentSchema = z.object({
   content: z.string().trim().min(1, 'Content is required').max(5000, 'Comment must be 5000 characters or less'),
   parentId: z.uuid().optional(),
   replyToId: z.uuid().optional(),
+  // Admin opt-out for pinging upvoters; author + manual subscribers always get it.
+  notifyVoters: z.boolean().optional(),
 })
 
 // POST /api/posts/:postId/comments — Create a comment (any authenticated user).
@@ -68,6 +72,22 @@ export default defineEventHandler(async (event) => {
     await db.update(comment).set({ replyCount: sql`${comment.replyCount} + 1` }).where(eq(comment.id, parentId))
   }
   await db.update(post).set({ commentCount: sql`${post.commentCount} + 1` }).where(eq(post.id, postId))
+
+  // Best-effort, after the write. Only an admin's top-level comment notifies
+  // (resolveCommentEvents no-ops for replies / non-admins). Author + manual
+  // subscribers always get it; upvoters only when notifyVoters isn't false.
+  event.waitUntil(
+    emitCommentNotifications({
+      orgId,
+      postId,
+      snippet: body.content,
+      actorId: session.user.id,
+      authorIsAdmin: isActorAdmin(session, orgId),
+      isTopLevel: !parentId,
+      notifyVoters: body.notifyVoters !== false,
+      requestOrigin: getRequestURL(event).origin,
+    }).catch((err: unknown) => console.error('[notifications] comment emit failed', err)),
+  )
 
   // Fetch author info
   const [author] = await db

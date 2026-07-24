@@ -1,5 +1,6 @@
 import { eq, and, sql } from 'drizzle-orm'
-import { vote, post } from '#layers/feedlog/server/db/schemas'
+import { vote, post, postSubscription } from '#layers/feedlog/server/db/schemas'
+import { isActorAdmin } from '#layers/feedlog/shared/utils/notifications'
 
 // POST /api/posts/:id/vote — Vote on a post (any authenticated user, idempotent).
 export default defineEventHandler(async (event) => {
@@ -41,6 +42,12 @@ export default defineEventHandler(async (event) => {
     .set({ voteCount: sql`${post.voteCount} + 1` })
     .where(eq(post.id, postId))
     .returning({ voteCount: post.voteCount })
+
+  // Voting subscribes you to the post — unless you're an admin (admins don't
+  // receive post-thread mail). Un-voting does NOT unsubscribe.
+  if (!isActorAdmin(session, orgId)) {
+    await db.insert(postSubscription).values({ postId, userId: session.user.id }).onConflictDoNothing()
+  }
 
   return { voted: true, voteCount: updated?.voteCount ?? 0 }
 })

@@ -9,12 +9,12 @@ export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')!
   const body = await readValidatedBody(event, updatePostSchema.parse)
 
-  const { orgId } = await requireOrgPermission(event, { feedlog: ['moderate'] })
+  const { session, orgId } = await requireOrgPermission(event, { feedlog: ['moderate'] })
 
   const db = useDB()
 
   const [existing] = await db
-    .select({ id: post.id, title: post.title, content: post.content })
+    .select({ id: post.id, title: post.title, content: post.content, status: post.status })
     .from(post)
     .where(and(eq(post.id, id), eq(post.orgId, orgId)))
     .limit(1)
@@ -67,5 +67,7 @@ export default defineEventHandler(async (event) => {
     )
   }
 
+  // Status changes are silent here — notifications go through the separate
+  // POST /api/admin/posts/:id/notify-status, decided by the admin after the fact.
   return updated
 })

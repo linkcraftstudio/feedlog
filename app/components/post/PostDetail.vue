@@ -131,10 +131,33 @@ async function handleDeletePost() {
 }
 
 // ---- Admin sidebar actions ----
+// Status changes apply immediately and silently; this prompt (when set to the
+// new status) then asks whether to mail the subscribers.
+const notifyStatus = ref<string | null>(null)
+
 async function handleStatusChange(status: string) {
-  if (!post.value || !isOrgManager.value) return
+  if (!post.value || !isOrgManager.value || post.value.status === status) return
   await store.updatePost(props.slug, { status }, true)
   emit('updated', { id: post.value.id, slug: post.value.slug, status })
+  notifyStatus.value = status
+}
+
+async function sendStatusNotification(note: string) {
+  const status = notifyStatus.value
+  if (!post.value || !status) return
+  notifyStatus.value = null
+  try {
+    await useApiFetch(`/api/admin/posts/${post.value.id}/notify-status`, {
+      method: 'POST',
+      body: { status, note: note || undefined },
+    })
+  }
+  catch (err: unknown) {
+    // 409 = status changed under the admin between the write and the send.
+    if ((err as { statusCode?: number })?.statusCode === 409) {
+      console.error('[notifications] status changed by someone else')
+    }
+  }
 }
 
 async function handleBoardChange(boardId: string | null) {
@@ -209,10 +232,10 @@ function emitCommentCount() {
 }
 
 // Comment handlers
-async function handleCommentSubmit(content: string) {
+async function handleCommentSubmit(content: string, notify: boolean) {
   commentSubmitting.value = true
   try {
-    await store.addComment(props.slug, content)
+    await store.addComment(props.slug, content, { notify })
     commentEditorRef.value?.clear()
     emitCommentCount()
   } finally {
@@ -226,7 +249,7 @@ async function handleReplySubmit(content: string) {
   try {
     const { parentId, commentId } = replyingTo.value
     const replyToId = commentId !== parentId ? commentId : undefined
-    await store.addComment(props.slug, content, parentId, replyToId)
+    await store.addComment(props.slug, content, { parentId, replyToId })
     replyingTo.value = null
     emitCommentCount()
   } finally {
@@ -418,7 +441,7 @@ async function handleShare() {
         <!-- Merge banner (inside discussion, per PRD) -->
         <MergeBanner v-if="isMerged && post.canonicalPost" :canonical-post="post.canonicalPost" />
         <ClientOnly v-if="!isMerged">
-          <CommentEditor v-if="isLoggedIn" ref="commentEditorRef" :loading="commentSubmitting" @submit="handleCommentSubmit" />
+          <CommentEditor v-if="isLoggedIn" ref="commentEditorRef" :loading="commentSubmitting" :can-notify="isOrgManager" @submit="handleCommentSubmit" />
           <CommentLoginPrompt v-else />
         </ClientOnly>
         <div v-if="commentLoading && comments.length === 0" class="space-y-4 pt-2">
@@ -488,6 +511,14 @@ async function handleShare() {
             <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: `var(${(STATUS_CONFIG[post.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.open).cssVar})` }" />
             <span class="font-bold text-sm">{{ $t(statusLabelKey(post.status)) }}</span>
           </div>
+          <StatusNotifyPrompt
+            v-if="notifyStatus"
+            class="mt-2"
+            :actor-name="session?.user?.name"
+            :actor-image="session?.user?.image"
+            @send="sendStatusNotification"
+            @dismiss="notifyStatus = null"
+          />
         </div>
         <div>
           <h4 class="font-heading text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-3">{{ $t('post.detail.author') }}</h4>
@@ -497,10 +528,9 @@ async function handleShare() {
             <p class="text-sm font-bold">{{ post.author?.name ?? $t('common.anonymous') }}</p>
           </div>
         </div>
+        <!-- Admins never receive post-thread email, so the card would lie to them. -->
+        <PostSubscribeCard v-if="post.id && isLoggedIn && !isOrgManager && !isMerged" :post-id="post.id" :subscribed="post.subscribed ?? false" @update:subscribed="post.subscribed = $event" />
         <div class="pt-2 flex flex-col gap-2">
-          <!-- Subscribe to Updates — hidden until the notification backend lands; unhide when ready
-          <Button variant="secondary" :disabled="isMerged" :class="isMerged ? 'opacity-50 cursor-not-allowed' : ''"><Icon name="lucide:bell" size="18" /> Subscribe to Updates</Button>
-          -->
           <Button variant="outline" class="text-primary" :disabled="isMerged" :class="isMerged ? 'opacity-50 cursor-not-allowed' : ''" @click="handleShare"><Icon name="lucide:share-2" size="18" /> {{ $t('post.detail.shareRequest') }}</Button>
         </div>
       </div>
@@ -509,6 +539,7 @@ async function handleShare() {
 
     <!-- Merge dialog -->
     <MergeDialog v-if="post.id" v-model:open="mergeDialogOpen" :post-id="post.id" :post-title="post.title" :direction="mergeDirection" @merged="handleMerged" />
+
   </template>
 </template>
 

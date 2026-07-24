@@ -201,6 +201,7 @@ export const usePostDetailStore = defineStore('postDetail', () => {
       )
       p.voteCount = res.voteCount
       p.hasVoted = res.voted
+      p.subscribed = true // voting auto-subscribes on the backend
     } catch {
       p.hasVoted = false
       p.voteCount--
@@ -227,13 +228,18 @@ export const usePostDetailStore = defineStore('postDetail', () => {
     }
   }
 
-  async function addComment(slug: string, content: string, parentId?: string, replyToId?: string) {
+  async function addComment(
+    slug: string,
+    content: string,
+    opts: { parentId?: string; replyToId?: string; notify?: boolean } = {},
+  ) {
+    const { parentId, replyToId, notify } = opts
     const p = posts.value[slug]
     if (!p) return
 
     const res = await useApiFetch<CommentItem>(
       `/api/posts/${p.id}/comments`,
-      { method: 'POST', body: { content, parentId, replyToId } },
+      { method: 'POST', body: { content, parentId, replyToId, notifyVoters: notify } },
     )
 
     const list = commentsMap.value[p.id]
