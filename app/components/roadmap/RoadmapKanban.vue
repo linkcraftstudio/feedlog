@@ -482,7 +482,7 @@ function removeItem(postId: string) {
       <div
         v-if="col.items.length || ghostPreview?.status === col.id || pendingDrop?.toStatus === col.id"
         :ref="(el) => setScrollableRef(col.id, el)"
-        class="flex-1 overflow-y-auto pr-1"
+        class="kanban-scroll flex-1 overflow-y-auto pr-1"
       >
         <TransitionGroup
           name="kanban-card"
@@ -566,6 +566,27 @@ function removeItem(postId: string) {
   background-color: color-mix(in oklab, var(--foreground) 5%, transparent);
   border-radius: 16px;
   padding: 12px;
+}
+
+.kanban-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--foreground) 22%, transparent) transparent;
+}
+.kanban-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.kanban-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.kanban-scroll::-webkit-scrollbar-thumb {
+  background-color: color-mix(in oklab, var(--foreground) 22%, transparent);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.kanban-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in oklab, var(--foreground) 34%, transparent);
+  border-width: 3px;
 }
 
 /* Card enter: expand from 0 height + fade in */
