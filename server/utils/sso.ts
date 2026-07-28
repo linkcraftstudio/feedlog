@@ -1,10 +1,13 @@
 import type { H3Event } from 'h3'
 import { getRequestURL } from 'h3'
 import { jwtVerify } from 'jose'
+import { eq } from 'drizzle-orm'
+import { uuidv7 } from 'uuidv7'
+import { user } from '#layers/feedlog/server/db/schemas'
 
-// Product-SSO helpers: verify the customer-signed HS256 JWT, guard the
-// return_to target against open redirects, and produce the signed session
-// cookie value.
+// Product-SSO helpers: verify the customer-signed HS256 JWT, resolve the
+// asserted identity to a user row, guard the return_to target against open
+// redirects, and produce the signed session cookie value.
 
 // exp is required on every token. We reject tokens whose exp is more than this
 // far in the future — a leaked pre-signed token stays usable only this long.
@@ -67,6 +70,44 @@ export async function verifySsoJwt(token: string, secrets: string[]): Promise<Ss
     : null
 
   return { email: normalizedEmail, name, image }
+}
+
+// Identity key = email. emailVerified=true so a later verified Google/password
+// login can be linked onto this row instead of being rejected and locking the
+// email out. ON CONFLICT keeps concurrent first-touch requests for the same
+// email from racing on the unique email constraint.
+//
+// Insert-only: an existing row is reused as-is, never updated. The `user` row is
+// global (one per email across all orgs) and this runs before the session's
+// host-binding collar exists — updating name/image here would let an org
+// overwrite a user's global profile from outside its own board.
+export async function findOrCreateSsoUser(db: ReturnType<typeof useDB>, identity: SsoIdentity): Promise<string> {
+  const existing = await db
+    .select({ id: user.id })
+    .from(user)
+    .where(eq(user.email, identity.email))
+    .limit(1)
+  if (existing[0]) return existing[0].id
+
+  await db.insert(user)
+    .values({
+      id: uuidv7(),
+      email: identity.email,
+      name: identity.name,
+      image: identity.image,
+      emailVerified: true,
+    })
+    .onConflictDoNothing({ target: user.email })
+
+  const row = await db
+    .select({ id: user.id })
+    .from(user)
+    .where(eq(user.email, identity.email))
+    .limit(1)
+  if (!row[0]) {
+    throw createError({ statusCode: 500, message: 'Failed to resolve SSO user' })
+  }
+  return row[0].id
 }
 
 // Open-redirect guard for return_to. Allows only a same-host relative path

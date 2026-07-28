@@ -1,6 +1,6 @@
 import { betterAuth, type BetterAuthOptions } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { admin, customSession, organization } from 'better-auth/plugins'
+import { admin, bearer, customSession, organization } from 'better-auth/plugins'
 import { defu } from 'defu'
 import { eq } from 'drizzle-orm'
 import { uuidv7 } from 'uuidv7'
@@ -177,6 +177,15 @@ export function buildAuthConfig(overrides: AuthConfigOverrides = {}): BetterAuth
     trustedOrigins: overrides.trustedOrigins ?? defaultTrustedOrigins,
     ...(overrides.account && { account: overrides.account }),
     plugins: [
+      // The widget runs in a cross-site iframe where the session cookie is
+      // unreliable (third-party cookie blocking), so endpoints must also accept
+      // `Authorization: Bearer <session token>`. Opt-in per request — cookie
+      // flows are unaffected.
+      //
+      // requireSignature stays off: the widget gets the RAW session token (see
+      // /api/widget/auth/exchange), and the plugin signs it itself with
+      // base64urlnopad HMAC, which a standard-base64 cookie value would not match.
+      bearer(),
       admin(),
       organization(orgOpts),
       customSession(async ({ user, session }) => {

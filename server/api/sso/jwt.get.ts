@@ -1,7 +1,5 @@
 import { and, eq } from 'drizzle-orm'
-import { uuidv7 } from 'uuidv7'
-import { organizationSso, user } from '#layers/feedlog/server/db/schemas'
-import type { SsoIdentity } from '#layers/feedlog/server/utils/sso'
+import { organizationSso } from '#layers/feedlog/server/db/schemas'
 
 // GET /api/sso/jwt — third-party product SSO entry (JWT handoff).
 //
@@ -109,43 +107,3 @@ export default defineEventHandler(async (event) => {
     return sendRedirect(event, `/sso/error?return_to=${encodeURIComponent(returnTo)}`, 302)
   }
 })
-
-// Identity key = email. emailVerified=true so a later verified
-// Google/password login can be linked onto this row instead of being rejected
-// and locking the email out. ON CONFLICT keeps concurrent first-touch
-// requests for the same email from racing on the unique email constraint.
-//
-// Insert-only: an existing row is reused as-is, never updated. The `user` row is
-// global (one per email across all orgs) and this runs before the session's
-// host-binding collar exists — updating name/image here would let an org
-// overwrite a user's global profile from outside its own board, escaping the
-// host-bounded residual. Profile staleness for a pure-SSO user is the accepted
-// trade-off (matches the "email change = new user, no history migration" stance).
-async function findOrCreateSsoUser(db: ReturnType<typeof useDB>, identity: SsoIdentity): Promise<string> {
-  const existing = await db
-    .select({ id: user.id })
-    .from(user)
-    .where(eq(user.email, identity.email))
-    .limit(1)
-  if (existing[0]) return existing[0].id
-
-  await db.insert(user)
-    .values({
-      id: uuidv7(),
-      email: identity.email,
-      name: identity.name,
-      image: identity.image,
-      emailVerified: true,
-    })
-    .onConflictDoNothing({ target: user.email })
-
-  const row = await db
-    .select({ id: user.id })
-    .from(user)
-    .where(eq(user.email, identity.email))
-    .limit(1)
-  if (!row[0]) {
-    throw createError({ statusCode: 500, message: 'Failed to resolve SSO user' })
-  }
-  return row[0].id
-}
