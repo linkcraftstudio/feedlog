@@ -694,5 +694,25 @@
     "postFallback": "Feedback",
     "changelogFallback": "Changelog",
     "titleWithOrg": "{title} - {name}"
+  },
+  "widget": {
+    "greeting": "Hi! I'm an AI assistant, not a human agent. Tell me what's not working or what you'd like to see, and I'll turn it into feedback for the team.",
+    "placeholder": "Describe your feedback…",
+    "send": "Send",
+    "thinking": "Thinking…",
+    "close": "Close",
+    "back": "Back",
+    "myFeedback": "My feedback",
+    "viewAll": "View all feedback",
+    "noFeedback": "You haven't submitted any feedback yet.",
+    "postCount": "{count} post | {count} posts",
+    "withUpdates": "{count} with updates",
+    "loginTitle": "Sign in to send feedback",
+    "loginDesc": "Sign in to your account to share feedback and follow its progress.",
+    "login": "Sign in",
+    "sendFailed": "Could not send that. Please try again.",
+    "loadFailed": "Could not load your feedback.",
+    "attachImage": "Attach image",
+    "uploadFailed": "Upload failed"
   }
 }

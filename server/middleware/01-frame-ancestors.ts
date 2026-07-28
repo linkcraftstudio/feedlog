@@ -12,10 +12,13 @@
 const EMBED_PATH = '/widget/embed'
 
 export default defineEventHandler((event) => {
-  // API routes are not framable surfaces; a header there is noise.
-  if (event.path.startsWith('/api/')) return
+  // event.path carries the query string, so compare against the pathname only.
+  const path = event.path.split('?')[0] ?? ''
 
-  const framable = event.path === EMBED_PATH || event.path.startsWith(`${EMBED_PATH}/`)
+  // API routes are not framable surfaces; a header there is noise.
+  if (path.startsWith('/api/')) return
+
+  const framable = path === EMBED_PATH || path.startsWith(`${EMBED_PATH}/`)
   setResponseHeader(
     event,
     'Content-Security-Policy',

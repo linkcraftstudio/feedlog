@@ -694,5 +694,25 @@
     "postFallback": "反馈",
     "changelogFallback": "更新日志",
     "titleWithOrg": "{title} - {name}"
+  },
+  "widget": {
+    "greeting": "你好!我是 AI 助手,不是人工客服。告诉我哪里有问题或你希望看到什么,我会帮你整理成反馈提交给团队。",
+    "placeholder": "描述你的反馈……",
+    "send": "发送",
+    "thinking": "正在思考……",
+    "close": "关闭",
+    "back": "返回",
+    "myFeedback": "我的反馈",
+    "viewAll": "查看全部反馈",
+    "noFeedback": "你还没有提交过反馈。",
+    "postCount": "{count} 条反馈",
+    "withUpdates": "{count} 条有更新",
+    "loginTitle": "登录后提交反馈",
+    "loginDesc": "登录你的账号,即可提交反馈并跟进处理进展。",
+    "login": "登录",
+    "sendFailed": "发送失败,请重试。",
+    "loadFailed": "加载反馈失败。",
+    "attachImage": "添加图片",
+    "uploadFailed": "上传失败"
   }
 }
