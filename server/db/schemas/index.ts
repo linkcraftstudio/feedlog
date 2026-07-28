@@ -25,6 +25,12 @@ export {
   postSubscription,
 } from './notifications'
 export type { NotificationPayload } from './notifications'
+export {
+  organizationWidget,
+  organizationWidgetRelations,
+  postUnread,
+} from './widget'
+export type { WidgetCustomRule } from './widget'
 import { user, session, account, organization, member, invitation } from './auth'
 
 // Custom type for pgvector's vector column
