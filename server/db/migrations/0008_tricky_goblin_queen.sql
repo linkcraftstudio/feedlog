@@ -1,0 +1,1 @@
+CREATE INDEX "idx_post_org_author_created" ON "post" USING btree ("org_id","author_id","created_at" DESC);
