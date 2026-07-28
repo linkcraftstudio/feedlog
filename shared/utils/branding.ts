@@ -68,14 +68,38 @@ function oklchToLinear({ l: L, c: C, h: H }: Oklch): [number, number, number] {
   ]
 }
 
+const gam = (v: number) => (v <= 0.0031308 ? v * 12.92 : 1.055 * v ** (1 / 2.4) - 0.055)
+
+function linearToHex(rgb: [number, number, number]): string {
+  const channel = (v: number) => Math.round(Math.max(0, Math.min(1, gam(v))) * 255)
+    .toString(16).padStart(2, '0').toUpperCase()
+  return `#${channel(rgb[0])}${channel(rgb[1])}${channel(rgb[2])}`
+}
+
 const luminance = ([r, g, b]: [number, number, number]) => 0.2126 * r + 0.7152 * g + 0.0722 * b
 const contrast = (y1: number, y2: number) => (Math.max(y1, y2) + 0.05) / (Math.min(y1, y2) + 0.05)
-const WHITE_FG = { css: 'oklch(1 0 0)', y: 1 }
-const DARK_FG = { css: 'oklch(0.275 0.009 28.9)', y: luminance(oklchToLinear({ l: 0.275, c: 0.009, h: 28.9 })) }
+const DARK_FG_OKLCH: Oklch = { l: 0.275, c: 0.009, h: 28.9 }
+const WHITE_FG = { css: 'oklch(1 0 0)', hex: '#FFFFFF', y: 1 }
+// hex derived from the same oklch the CSS variable uses, so the two can't drift.
+const DARK_FG = {
+  css: 'oklch(0.275 0.009 28.9)',
+  hex: linearToHex(oklchToLinear(DARK_FG_OKLCH)),
+  y: luminance(oklchToLinear(DARK_FG_OKLCH)),
+}
+
+function prefersWhiteForeground(accent: Oklch): boolean {
+  const y = luminance(oklchToLinear(accent))
+  return contrast(y, WHITE_FG.y) >= contrast(y, DARK_FG.y)
+}
 
 function pickForeground(accent: Oklch): string {
-  const y = luminance(oklchToLinear(accent))
-  return contrast(y, WHITE_FG.y) >= contrast(y, DARK_FG.y) ? WHITE_FG.css : DARK_FG.css
+  return prefersWhiteForeground(accent) ? WHITE_FG.css : DARK_FG.css
+}
+
+// Same WCAG pick as `--primary-foreground`, so the two can't diverge.
+export function pickBrandForegroundHex(brandHex: string): string {
+  const seed = linearToOklch(hexToLinear(normalizeBrandHex(brandHex)))
+  return prefersWhiteForeground(seed) ? WHITE_FG.hex : DARK_FG.hex
 }
 
 const round = (n: number, d = 3) => Number(n.toFixed(d))
