@@ -48,7 +48,8 @@
     "workspace": "工作区",
     "sso": "单点登录",
     "dashboard": "控制台",
-    "changePassword": "修改密码"
+    "changePassword": "修改密码",
+    "widget": "反馈组件"
   },
   "board": {
     "boards": "看板",
@@ -645,6 +646,45 @@
           "desc": "完全访问权限。可管理成员、设置和所有权。"
         }
       }
+    },
+    "widget": {
+      "title": "反馈组件",
+      "subtitle": "嵌入你产品内的反馈组件",
+      "loadFailed": "加载组件设置失败。",
+      "saveFailed": "保存失败。",
+      "saved": "已保存",
+      "installSection": "安装",
+      "installDesc": "在你的产品中安装 SDK,并用工作区地址完成初始化。",
+      "baseUrlLabel": "工作区地址",
+      "baseUrlHint": "初始化 SDK 时作为 baseUrl 传入。",
+      "snippetLabel": "安装",
+      "copy": "复制",
+      "copied": "已复制",
+      "enabledLabel": "启用组件",
+      "enabledHint": "关闭后,SDK 不会在你的站点上渲染任何内容。",
+      "supportSection": "联系客服",
+      "supportDesc": "当用户消息命中下方规则时,助手会引导他联系客服,而不是创建公开反馈。",
+      "emailLabel": "客服邮箱",
+      "emailPlaceholder": "support{'@'}example.com",
+      "emailHint": "未填写时助手仍会引导用户联系客服,只是不给出具体邮箱。",
+      "save": "保存",
+      "rulesLabel": "规则",
+      "rulesHint": "每条启用的规则都会原样写入助手的系统提示词。",
+      "builtinBadge": "内置",
+      "addRule": "添加规则",
+      "editRule": "编辑规则",
+      "ruleLabel": "在以下情况引导联系客服……",
+      "rulePlaceholder": "用户咨询企业合同或定制报价",
+      "ruleHint": "补全上面这句话。描述场景,而不是具体措辞。",
+      "activeCount": "已启用 {count} / {max} 条规则",
+      "limitTitle": "已达规则上限",
+      "limitDesc": "最多同时启用 {max} 条规则。请先关闭一条再启用新的。",
+      "gotIt": "知道了",
+      "deleteTitle": "删除这条规则?",
+      "deleteDesc": "助手将不再针对这个场景引导用户联系客服。",
+      "deleteConfirm": "删除",
+      "cancel": "取消",
+      "ownerOnly": "只有工作区所有者和管理员可以修改组件设置。"
     }
   },
   "seo": {

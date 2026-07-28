@@ -48,7 +48,8 @@
     "workspace": "Workspace",
     "sso": "Single Sign-On",
     "dashboard": "Dashboard",
-    "changePassword": "Change Password"
+    "changePassword": "Change Password",
+    "widget": "Widget"
   },
   "board": {
     "boards": "Boards",
@@ -645,6 +646,45 @@
           "desc": "Full access. Can manage members, settings, and ownership."
         }
       }
+    },
+    "widget": {
+      "title": "Widget",
+      "subtitle": "The in-app feedback widget embedded in your product",
+      "loadFailed": "Failed to load widget settings.",
+      "saveFailed": "Failed to save.",
+      "saved": "Saved",
+      "installSection": "Installation",
+      "installDesc": "Install the SDK in your product, then initialise it with your workspace URL.",
+      "baseUrlLabel": "Workspace URL",
+      "baseUrlHint": "Pass this as baseUrl when initialising the SDK.",
+      "snippetLabel": "Install",
+      "copy": "Copy",
+      "copied": "Copied",
+      "enabledLabel": "Enable widget",
+      "enabledHint": "When off, the SDK renders nothing on your site.",
+      "supportSection": "Contact support",
+      "supportDesc": "When a message matches a rule below, the assistant points the visitor to support instead of creating public feedback.",
+      "emailLabel": "Support email",
+      "emailPlaceholder": "support{'@'}example.com",
+      "emailHint": "Without an address the assistant still suggests contacting support, just without naming one.",
+      "save": "Save",
+      "rulesLabel": "Rules",
+      "rulesHint": "Each enabled rule is added to the assistant instructions verbatim.",
+      "builtinBadge": "Built-in",
+      "addRule": "Add rule",
+      "editRule": "Edit rule",
+      "ruleLabel": "Redirect to support when…",
+      "rulePlaceholder": "user asks about enterprise contracts or custom pricing",
+      "ruleHint": "Complete the sentence above. Describe the situation, not the wording.",
+      "activeCount": "{count} of {max} rules enabled",
+      "limitTitle": "Rule limit reached",
+      "limitDesc": "At most {max} rules can be enabled at once. Turn one off before enabling another.",
+      "gotIt": "Got it",
+      "deleteTitle": "Delete this rule?",
+      "deleteDesc": "The assistant will stop redirecting to support for this situation.",
+      "deleteConfirm": "Delete",
+      "cancel": "Cancel",
+      "ownerOnly": "Only workspace owners and managers can change widget settings."
     }
   },
   "seo": {

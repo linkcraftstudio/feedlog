@@ -24,6 +24,9 @@ export function useDashboardNav(): DashboardNav {
     ]),
     settingsNav: computed(() => [
       { label: t('nav.board'),     to: '/dashboard/boards',              icon: 'lucide:settings-2' },
+      // Round chat bubble: matches the launcher visitors actually see, and stays
+      // distinct from Feedback's square one.
+      { label: t('nav.widget'),    to: '/dashboard/settings/widget',     icon: 'lucide:message-circle' },
       { label: t('nav.members'),   to: '/dashboard/settings/members',    icon: 'lucide:users' },
       { label: t('nav.portal'),    to: '/dashboard/settings/portal',     icon: 'lucide:layout-template' },
       { label: t('nav.workspace'), to: '/dashboard/settings/workspace',  icon: 'lucide:building-2' },
