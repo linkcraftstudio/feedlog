@@ -33,6 +33,13 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 409, message: 'Status was changed by someone else' })
   }
 
+  // The widget's red dot hangs off this endpoint, not the status PATCH: it
+  // should follow the admin's decision to announce, so routine board tidying
+  // doesn't light up everyone's launcher. Independent of `recipients`, which
+  // excludes admins and voters the author's dot does not care about.
+  await markPostUnreadForAuthor(id, session.user.id)
+    .catch((err: unknown) => console.error('[widget] unread mark failed', err))
+
   // Resolve recipients synchronously so we can return the count; send async.
   const orgSlug = await resolveOrgSlug(orgId)
   const recipients = orgSlug ? await resolvePostThreadRecipients(orgId, id, session.user.id) : []

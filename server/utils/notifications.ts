@@ -1,6 +1,7 @@
 import { eq, sql } from 'drizzle-orm'
 import { useDB } from './db'
 import { sendNotification } from './notification-send'
+import { markPostUnreadForAuthor } from './widget-unread'
 import { resolveCommentEvents } from '../../shared/utils/notifications'
 import { organization, user } from '../db/schemas'
 import type { NotificationPayload } from '../db/schemas'
@@ -118,6 +119,12 @@ async function emitAdminReply(input: CommentEmitInput): Promise<void> {
 export async function emitCommentNotifications(input: CommentEmitInput): Promise<void> {
   const events = resolveCommentEvents({ isTopLevel: input.isTopLevel, authorIsAdmin: input.authorIsAdmin })
   for (const typeKey of events) {
-    if (typeKey === 'post.admin_replied') await emitAdminReply(input)
+    if (typeKey === 'post.admin_replied') {
+      // The widget's red dot rides the same event as the email, but reaches only
+      // the author. Separate try so a widget failure can't cost anyone their mail.
+      await markPostUnreadForAuthor(input.postId, input.actorId)
+        .catch((err: unknown) => console.error('[widget] unread mark failed', err))
+      await emitAdminReply(input)
+    }
   }
 }
