@@ -10,7 +10,18 @@ import type { ResolvedWidgetSettings } from '#layers/feedlog/shared/utils/widget
 // PATCH /api/admin/widget — update widget settings (feedlog:moderate).
 export default defineEventHandler(async (event): Promise<ResolvedWidgetSettings & { baseUrl: string }> => {
   const { orgId } = await requireOrgPermission(event, { feedlog: ['moderate'] })
-  const body = await readValidatedBody(event, updateWidgetSettingsSchema.parse)
+
+  // safeParse, not readValidatedBody: the latter lets the raw ZodError through,
+  // and h3 serialises its whole issue list — regex and all — into the message
+  // the admin ends up reading in a toast.
+  const parsed = updateWidgetSettingsSchema.safeParse(await readBody(event).catch(() => null))
+  if (!parsed.success) {
+    throw createError({
+      statusCode: 400,
+      message: parsed.error.issues[0]?.message || 'Invalid widget settings',
+    })
+  }
+  const body = parsed.data
 
   const db = useDB()
   const [existing] = await db
