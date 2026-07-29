@@ -40,7 +40,9 @@ export function useWidgetEmbed() {
       ...init,
       credentials: 'omit',
       headers: {
-        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        // FormData must set its own Content-Type so the multipart boundary
+        // survives; only JSON bodies get the header spelled out here.
+        ...(init.body && !(init.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
         ...init.headers,
         ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}),
       },

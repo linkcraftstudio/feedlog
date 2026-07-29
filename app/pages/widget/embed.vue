@@ -55,6 +55,7 @@ useHead(() => ({
 interface ChatMessage {
   role: 'user' | 'assistant'
   text: string
+  images?: string[]
   post?: { id: string; slug: string; title: string; board: string | null; status: string }
 }
 
@@ -64,21 +65,55 @@ const draft = ref('')
 const sending = ref(false)
 const bodyEl = ref<HTMLElement | null>(null)
 
+// ---- attachments ---------------------------------------------------------
+// Uploaded up front rather than on send: the storage key is what the message
+// endpoint wants, and uploading early lets a failure surface while the visitor
+// is still composing.
+const MAX_ATTACHMENTS = 3
+interface Attachment { key: string; name: string }
+const attachments = ref<Attachment[]>([])
+const uploading = ref(false)
+const fileInput = ref<HTMLInputElement | null>(null)
+
+async function onFilePicked(e: Event) {
+  const input = e.target as HTMLInputElement
+  const files = Array.from(input.files ?? []).slice(0, MAX_ATTACHMENTS - attachments.value.length)
+  input.value = ''
+  if (!files.length) return
+
+  uploading.value = true
+  for (const file of files) {
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await widgetFetch<{ key: string }>('/api/upload', { method: 'POST', body: form })
+      attachments.value.push({ key: res.key, name: file.name })
+    }
+    catch {
+      messages.value.push({ role: 'assistant', text: t('widget.uploadFailed') })
+      scrollToBottom()
+    }
+  }
+  uploading.value = false
+}
+
 function scrollToBottom() {
   nextTick(() => { if (bodyEl.value) bodyEl.value.scrollTop = bodyEl.value.scrollHeight })
 }
 
 async function send() {
   const text = draft.value.trim()
-  if (!text || sending.value) return
-  messages.value.push({ role: 'user', text })
+  const images = attachments.value.map(a => a.key)
+  if ((!text && !images.length) || sending.value || uploading.value) return
+  messages.value.push({ role: 'user', text, images })
   draft.value = ''
+  attachments.value = []
   sending.value = true
   scrollToBottom()
   try {
     const res = await widgetFetch<{ type: string; reply: string; post?: ChatMessage['post'] }>(
       '/api/widget/messages',
-      { method: 'POST', body: JSON.stringify({ text }) },
+      { method: 'POST', body: JSON.stringify({ text, images }) },
     )
     messages.value.push({ role: 'assistant', text: res.reply, post: res.post })
     // A new post belongs in the list the moment it exists.
@@ -248,7 +283,16 @@ onMounted(async () => {
                 ? 'bg-primary text-primary-foreground rounded-br-sm'
                 : 'bg-secondary rounded-bl-sm'"
             >
-              <WidgetEmbedMessageText :text="m.text" />
+              <WidgetEmbedMessageText v-if="m.text" :text="m.text" />
+              <div v-if="m.images?.length" class="flex flex-wrap gap-1.5" :class="m.text ? 'mt-2' : ''">
+                <img
+                  v-for="k in m.images"
+                  :key="k"
+                  :src="`/api/files/${k}`"
+                  alt=""
+                  class="w-16 h-16 rounded-lg object-cover border border-black/10"
+                >
+              </div>
             </div>
             <WidgetEmbedFeedbackCard
               v-if="m.post"
@@ -269,7 +313,44 @@ onMounted(async () => {
       </div>
 
       <div class="p-3 border-t border-border shrink-0">
+        <!-- Staged attachments: already uploaded, waiting to ride along with the message. -->
+        <div v-if="attachments.length || uploading" class="flex flex-wrap gap-1.5 mb-2">
+          <div
+            v-for="(a, i) in attachments"
+            :key="a.key"
+            class="relative w-12 h-12 rounded-lg overflow-hidden border border-border group"
+          >
+            <img :src="`/api/files/${a.key}`" :alt="a.name" class="w-full h-full object-cover">
+            <button
+              class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
+              :aria-label="t('widget.cancel')"
+              @click="attachments.splice(i, 1)"
+            >
+              <Icon name="lucide:x" size="14" />
+            </button>
+          </div>
+          <div v-if="uploading" class="w-12 h-12 rounded-lg border border-border grid place-items-center">
+            <Icon name="lucide:loader-2" size="14" class="animate-spin text-muted-foreground" />
+          </div>
+        </div>
+
         <div class="flex items-end gap-2">
+          <input
+            ref="fileInput"
+            type="file"
+            accept="image/*"
+            multiple
+            class="hidden"
+            @change="onFilePicked"
+          >
+          <button
+            :disabled="attachments.length >= MAX_ATTACHMENTS || uploading || sending"
+            class="w-9 h-9 rounded-xl border border-border flex items-center justify-center text-muted-foreground hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-all shrink-0"
+            :aria-label="t('widget.attachImage')"
+            @click="fileInput?.click()"
+          >
+            <Icon name="lucide:image" size="15" />
+          </button>
           <textarea
             v-model="draft"
             rows="1"
@@ -278,7 +359,7 @@ onMounted(async () => {
             @keydown.enter.exact.prevent="send"
           />
           <button
-            :disabled="!draft.trim() || sending"
+            :disabled="(!draft.trim() && !attachments.length) || sending || uploading"
             class="w-9 h-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shrink-0"
             :aria-label="t('widget.send')"
             @click="send"
