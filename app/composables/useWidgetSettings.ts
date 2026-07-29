@@ -73,10 +73,17 @@ export function useWidgetSettings() {
     ]
   })
 
-  // Rebuilds both halves of the payload from the flattened list.
-  function toPatch(rules: { id: string; scenario: string; enabled: boolean; builtin: boolean }[]): WidgetSettingsPatch {
+  // Each mutation sends only the half it touched. Sending both would make every
+  // save a full overwrite: a stale copy of the untouched half would silently
+  // revert whatever the previous save wrote to it.
+  type FlatRule = { id: string; scenario: string; enabled: boolean; builtin: boolean }
+
+  function builtinsPatch(rules: FlatRule[]): WidgetSettingsPatch {
+    return { disabledBuiltins: rules.filter(r => r.builtin && !r.enabled).map(r => r.id) }
+  }
+
+  function customPatch(rules: FlatRule[]): WidgetSettingsPatch {
     return {
-      disabledBuiltins: rules.filter(r => r.builtin && !r.enabled).map(r => r.id),
       customRules: rules.filter(r => !r.builtin).map(r => ({
         // A rule the admin just added has a temporary client id; the server
         // assigns the real one.
@@ -87,5 +94,5 @@ export function useWidgetSettings() {
     }
   }
 
-  return { settings, loading, saving, error, refresh, save, allRules, toPatch }
+  return { settings, loading, saving, error, refresh, save, allRules, builtinsPatch, customPatch }
 }

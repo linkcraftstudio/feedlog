@@ -11,7 +11,7 @@ const { t } = useI18n()
 const ctx = useOrgContext()
 const canEdit = computed(() => ctx.value.role === 'owner' || ctx.value.role === 'manager')
 
-const { settings, loading, saving, error, refresh, save, allRules, toPatch } = useWidgetSettings()
+const { settings, loading, saving, error, refresh, save, allRules, builtinsPatch, customPatch } = useWidgetSettings()
 
 // Client-side after mount: the endpoint needs the session cookie (mirrors the
 // Members and SSO pages).
@@ -102,7 +102,7 @@ async function onRuleSubmit(scenario: string) {
   else {
     rules.push({ id: `new-${Date.now()}`, scenario, enabled: true, builtin: false })
   }
-  await commit(toPatch(rules))
+  await commit(customPatch(rules))
 }
 
 async function toggleRule(id: string) {
@@ -112,7 +112,7 @@ async function toggleRule(id: string) {
   // Turning a rule off is always allowed; enabling one past the cap explains why.
   if (!target.enabled && atLimit.value) { limitOpen.value = true; return }
   target.enabled = !target.enabled
-  await commit(toPatch(rules))
+  await commit(target.builtin ? builtinsPatch(rules) : customPatch(rules))
 }
 
 const { confirm } = useConfirmDialog()
@@ -125,7 +125,7 @@ async function removeRule(id: string) {
     variant: 'destructive',
   })
   if (!confirmed) return
-  await commit(toPatch(allRules.value.filter(r => r.id !== id).map(r => ({ ...r }))))
+  await commit(customPatch(allRules.value.filter(r => r.id !== id).map(r => ({ ...r }))))
 }
 </script>
 
