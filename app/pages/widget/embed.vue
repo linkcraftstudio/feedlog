@@ -101,9 +101,40 @@ function scrollToBottom() {
   nextTick(() => { if (bodyEl.value) bodyEl.value.scrollTop = bodyEl.value.scrollHeight })
 }
 
+// An expired session makes the SDK rebuild this frame, wiping everything held in
+// memory. Parking in sessionStorage survives that rebuild — and only that: the
+// archive is read once and dies with the tab, so a plain reload still starts
+// clean rather than becoming the chat persistence the MVP skips.
+const RESUME_KEY = 'feedlog:widget:resume'
+
+function parkForResume(text: string, files: Attachment[], log: ChatMessage[]) {
+  try {
+    sessionStorage.setItem(RESUME_KEY, JSON.stringify({ text, files, log }))
+  }
+  catch { /* storage unavailable — the draft is lost, nothing else breaks */ }
+}
+
+function resumeParked(): boolean {
+  try {
+    const raw = sessionStorage.getItem(RESUME_KEY)
+    if (!raw) return false
+    sessionStorage.removeItem(RESUME_KEY)
+    const saved = JSON.parse(raw) as { text?: string; files?: Attachment[]; log?: ChatMessage[] }
+    draft.value = saved.text ?? ''
+    attachments.value = saved.files ?? []
+    if (saved.log?.length) {
+      messages.value = saved.log
+      return true
+    }
+  }
+  catch { /* ignore malformed leftovers */ }
+  return false
+}
+
 async function send() {
   const text = draft.value.trim()
-  const images = attachments.value.map(a => a.key)
+  const imageFiles = [...attachments.value]
+  const images = imageFiles.map(a => a.key)
   if ((!text && !images.length) || sending.value || uploading.value) return
   messages.value.push({ role: 'user', text, images })
   draft.value = ''
@@ -122,6 +153,11 @@ async function send() {
   catch (e) {
     // 401 means the SDK must re-exchange; anything else is a plain failure.
     if ((e as { statusCode?: number })?.statusCode === 401) {
+      // Park before signalling — the SDK rebuilds this frame in response, so
+      // anything written after requestAuth() is lost. The bubble goes first: it
+      // never reached the server, and replaying it would claim otherwise.
+      messages.value.pop()
+      parkForResume(text, imageFiles, messages.value)
       status.value = 'anonymous'
       protocol.requestAuth('expired')
     }
@@ -184,7 +220,9 @@ onMounted(async () => {
 
   const authed = await loadSession()
   if (authed) {
-    messages.value.push({ role: 'assistant', text: t('widget.greeting') })
+    if (!resumeParked()) {
+      messages.value.push({ role: 'assistant', text: t('widget.greeting') })
+    }
     await loadFeedback()
   }
 
