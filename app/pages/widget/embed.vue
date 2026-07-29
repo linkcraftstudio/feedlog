@@ -64,6 +64,18 @@ const messages = ref<ChatMessage[]>([])
 const draft = ref('')
 const sending = ref(false)
 const bodyEl = ref<HTMLElement | null>(null)
+const draftEl = ref<HTMLTextAreaElement | null>(null)
+
+// rows="1" is the resting height and nothing else grows the box, so it is
+// measured against its own content on every change. Resetting to auto first is
+// what makes it shrink again: scrollHeight otherwise keeps reporting the taller
+// box it already is. max-h-28 caps the growth and hands over to the scrollbar.
+watch(draft, () => {
+  const el = draftEl.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = `${el.scrollHeight}px`
+}, { flush: 'post' })
 
 // ---- attachments ---------------------------------------------------------
 // Uploaded up front rather than on send: the storage key is what the message
@@ -390,10 +402,11 @@ onMounted(async () => {
             <Icon name="lucide:image" size="15" />
           </button>
           <textarea
+            ref="draftEl"
             v-model="draft"
             rows="1"
             :placeholder="t('widget.placeholder')"
-            class="flex-1 max-h-28 px-3 py-2.5 rounded-xl border border-border bg-background text-xs resize-none focus:outline-none focus:border-primary transition-colors"
+            class="flex-1 max-h-28 px-3 py-2.5 rounded-xl border border-border bg-background text-xs resize-none focus:outline-none focus:border-primary transition-colors no-scrollbar"
             @keydown.enter.exact.prevent="send"
           />
           <button
@@ -409,3 +422,15 @@ onMounted(async () => {
     </template>
   </div>
 </template>
+
+<style scoped>
+/* The composer scrolls past max-h-28, but a scrollbar inside a 400px panel is
+   more noise than affordance. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+</style>
