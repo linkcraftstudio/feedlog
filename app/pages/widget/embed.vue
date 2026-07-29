@@ -184,32 +184,49 @@ async function send() {
 }
 
 // ---- feedback list -------------------------------------------------------
+const PAGE_SIZE = 20
 const feedback = ref<WidgetFeedbackItem[]>([])
 const listLoading = ref(false)
-const unreadCount = computed(() => feedback.value.filter(f => f.unread).length)
+const nextCursor = ref<string | null>(null)
+
+// Counted by the server, not by the loaded rows: a reply lands on a post of any
+// age while the list runs newest-first, so an unread item can sit past the page
+// this frame has fetched.
+const unreadCount = ref(0)
 
 // The SDK owns the badge; it only learns of changes from here.
 watch(unreadCount, c => protocol.reportUnread(c))
 
-async function loadFeedback() {
+async function loadUnread() {
+  try {
+    const res = await widgetFetch<{ count: number }>('/api/widget/unread')
+    unreadCount.value = res.count
+  }
+  catch { /* keep the last known count */ }
+}
+
+async function loadFeedback(append = false) {
   listLoading.value = true
   try {
-    const res = await widgetFetch<{ data: WidgetFeedbackItem[] }>('/api/widget/feedback?pageSize=50')
-    feedback.value = res.data
+    const cursor = append && nextCursor.value ? `&cursor=${encodeURIComponent(nextCursor.value)}` : ''
+    const res = await widgetFetch<{
+      data: WidgetFeedbackItem[]
+      pagination: { nextCursor: string | null }
+    }>(`/api/widget/feedback?pageSize=${PAGE_SIZE}${cursor}`)
+    feedback.value = append ? [...feedback.value, ...res.data] : res.data
+    nextCursor.value = res.pagination.nextCursor
   }
-  catch {
-    // Leave the list as-is; the header count simply doesn't update.
-  }
+  catch { /* leave the list as-is */ }
   finally {
     listLoading.value = false
   }
 }
 
 // The SDK calls takeOver() as it mounts this frame and never releases, so its
-// own unread polling is off for the life of the page — keeping the badge
-// current falls to this page from here on.
+// own unread polling is off for the life of the page. Only the count is
+// refetched — reloading the list would collapse whatever has been paged in.
 function refreshOnVisible() {
-  if (document.visibilityState === 'visible') void loadFeedback()
+  if (document.visibilityState === 'visible') void loadUnread()
 }
 
 // Opening an item clears its dot and hands the SDK the slug — the detail page
@@ -218,8 +235,9 @@ async function openItem(item: WidgetFeedbackItem) {
   protocol.navigateToFeedback(item.slug)
   if (!item.unread) return
   try {
-    await widgetFetch(`/api/widget/feedback/${item.id}/read`, { method: 'POST' })
+    const res = await widgetFetch<{ count: number }>(`/api/widget/feedback/${item.id}/read`, { method: 'POST' })
     item.unread = false
+    unreadCount.value = res.count
   }
   catch { /* the dot stays; a later load will correct it */ }
 }
@@ -242,7 +260,7 @@ onMounted(async () => {
     if (!resumeParked()) {
       messages.value.push({ role: 'assistant', text: t('widget.greeting') })
     }
-    await loadFeedback()
+    await Promise.all([loadFeedback(), loadUnread()])
     document.addEventListener('visibilitychange', refreshOnVisible)
   }
 
@@ -315,6 +333,15 @@ onUnmounted(() => document.removeEventListener('visibilitychange', refreshOnVisi
                 </div>
               </div>
             </div>
+          </button>
+        </li>
+        <li v-if="nextCursor" class="p-3">
+          <button
+            :disabled="listLoading"
+            class="w-full py-2 rounded-lg border border-border text-xs text-muted-foreground hover:bg-secondary disabled:opacity-40 transition-colors"
+            @click="loadFeedback(true)"
+          >
+            {{ listLoading ? t('widget.loading') : t('widget.loadMore') }}
           </button>
         </li>
       </ul>

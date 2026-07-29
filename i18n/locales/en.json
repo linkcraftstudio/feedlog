@@ -707,6 +707,8 @@
     "noFeedback": "You haven't submitted any feedback yet.",
     "postCount": "{count} post | {count} posts",
     "withUpdates": "{count} with updates",
+    "loadMore": "Load more",
+    "loading": "Loading…",
     "loginTitle": "Sign in to send feedback",
     "loginDesc": "Sign in to your account to share feedback and follow its progress.",
     "login": "Sign in",
