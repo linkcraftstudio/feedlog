@@ -9,7 +9,7 @@ definePageMeta({ layout: false, middleware: [] })
 
 const route = useRoute()
 const { t } = useI18n()
-const { user, status, widgetFetch, loadSession } = useWidgetEmbed()
+const { status, widgetFetch, loadSession } = useWidgetEmbed()
 const protocol = useWidgetProtocol()
 
 // ---- theme ---------------------------------------------------------------

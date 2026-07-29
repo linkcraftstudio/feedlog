@@ -69,13 +69,24 @@ export default defineEventHandler(async (event): Promise<CursorPaginatedList<Wid
   return { data, pagination: { nextCursor } }
 })
 
-function encodeCursor(data: { s: unknown; id: string }): string {
+// JSON turns the Date into an ISO string on the way out and never turns it back,
+// so the two halves are deliberately not symmetric.
+function encodeCursor(data: { s: Date; id: string }): string {
   return Buffer.from(JSON.stringify(data)).toString('base64url')
 }
 
-function decodeCursor(cursor: string): { s: any; id: string } | null {
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+// The contents are checked, not just the encoding: the halves go straight into a
+// ::timestamptz / ::uuid cast, and Postgres answers anything it can't parse with
+// an error the handler has no way to catch. Rejecting here falls back to the
+// first page, which is what an unreadable cursor already did.
+function decodeCursor(cursor: string): { s: string; id: string } | null {
   try {
-    return JSON.parse(Buffer.from(cursor, 'base64url').toString())
+    const parsed = JSON.parse(Buffer.from(cursor, 'base64url').toString())
+    if (typeof parsed?.s !== 'string' || Number.isNaN(Date.parse(parsed.s))) return null
+    if (typeof parsed?.id !== 'string' || !UUID.test(parsed.id)) return null
+    return { s: parsed.s, id: parsed.id }
   }
   catch {
     return null
