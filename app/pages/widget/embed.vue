@@ -243,11 +243,13 @@ onMounted(async () => {
         <div v-for="(m, i) in messages" :key="i" class="flex" :class="m.role === 'user' ? 'justify-end' : 'justify-start'">
           <div class="max-w-[85%]">
             <div
-              class="px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap"
+              class="px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed"
               :class="m.role === 'user'
                 ? 'bg-primary text-primary-foreground rounded-br-sm'
                 : 'bg-secondary rounded-bl-sm'"
-            >{{ m.text }}</div>
+            >
+              <WidgetEmbedMessageText :text="m.text" />
+            </div>
             <WidgetEmbedFeedbackCard
               v-if="m.post"
               :title="m.post.title"
