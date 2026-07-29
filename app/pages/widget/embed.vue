@@ -205,6 +205,13 @@ async function loadFeedback() {
   }
 }
 
+// The SDK calls takeOver() as it mounts this frame and never releases, so its
+// own unread polling is off for the life of the page — keeping the badge
+// current falls to this page from here on.
+function refreshOnVisible() {
+  if (document.visibilityState === 'visible') void loadFeedback()
+}
+
 // Opening an item clears its dot and hands the SDK the slug — the detail page
 // opens as a top-level tab, where cookies work and the full board is available.
 async function openItem(item: WidgetFeedbackItem) {
@@ -236,12 +243,15 @@ onMounted(async () => {
       messages.value.push({ role: 'assistant', text: t('widget.greeting') })
     }
     await loadFeedback()
+    document.addEventListener('visibilitychange', refreshOnVisible)
   }
 
   // ready last, so the SDK drops its loading state only once this frame has
   // settled into one of its states.
   protocol.ready()
 })
+
+onUnmounted(() => document.removeEventListener('visibilitychange', refreshOnVisible))
 </script>
 
 <template>
