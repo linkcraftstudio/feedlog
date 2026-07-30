@@ -120,11 +120,15 @@ export default defineEventHandler(async (event): Promise<WidgetMessageResponse> 
     throw createError({ statusCode: 502, message: 'AI returned an unusable response' })
   }
 
+  // Written here rather than by the model, so they have to follow the message
+  // themselves. The frame's locale is no help — it renders English either way.
+  const zh = HAN.test(text)
+
   if (parsed.type === 'support') {
-    return { type: 'support', reply: supportReply(widgetRow?.supportEmail ?? null) }
+    return { type: 'support', reply: supportReply(widgetRow?.supportEmail ?? null, zh) }
   }
   if (parsed.type === 'unrecognized') {
-    return { type: 'unrecognized', reply: unrecognizedReply(orgInfo?.name || 'this product') }
+    return { type: 'unrecognized', reply: unrecognizedReply(orgInfo?.name || (zh ? '这个产品' : 'this product'), zh) }
   }
 
   // The model picks a board by NAME — it cannot reliably copy a uuid. Resolve it
@@ -162,15 +166,27 @@ export default defineEventHandler(async (event): Promise<WidgetMessageResponse> 
 // Server-composed so the mailto and the wording can't drift with the model. With
 // no support email configured the user is still pointed at support, just without
 // an address — per the requirement.
+// Enough while the product ships only English and Chinese; a third language
+// would need a real detector.
+const HAN = /[一-鿿]/
+
 // No email configured still guides the visitor to support, just without one to
 // point at — the requirement is explicit about that.
-function supportReply(supportEmail: string | null): string {
+function supportReply(supportEmail: string | null, zh: boolean): string {
+  if (zh) {
+    return supportEmail
+      ? `抱歉!这个问题需要人工处理 —— 请邮件联系 [${supportEmail}](mailto:${supportEmail}),团队会直接回复你。`
+      : '抱歉!这个问题需要人工处理 —— 请直接联系客服团队,他们会尽快回复你。'
+  }
   return supportEmail
     ? `Sorry about that! This needs a real person — email [${supportEmail}](mailto:${supportEmail}) and the team will get back to you directly.`
     : 'Sorry about that! This needs a real person — please reach out to the support team directly and they will get back to you.'
 }
 
-function unrecognizedReply(product: string): string {
+function unrecognizedReply(product: string, zh: boolean): string {
+  if (zh) {
+    return `谢谢你的留言!不过我没能从中找到具体的产品问题或需求。\n\n如果有什么用起来不顺,或者你希望 ${product} 做得更好,直接在这里说就行,我会转达给团队。`
+  }
   return `Thanks for the note! I couldn't find a product problem or request in it.\n\nIf something isn't working — or you wish ${product} did something better — just describe it here and it will reach the team.`
 }
 
