@@ -39,6 +39,14 @@ function applyBrand(brand: { primary: string; primaryForeground: string }) {
   root.setProperty('--primary-foreground', brand.primaryForeground)
 }
 
+const org = ref<{ name: string; logo: string | null }>({ name: '', logo: null })
+const orgInitial = computed(() => org.value.name.trim().charAt(0).toUpperCase() || 'F')
+
+// A plain link, not a `navigate` message: the SDK's handler only builds post
+// URLs, so the board root has no route through it. The visitor arrives signed in
+// once they have opened any post, which is what mints the cookie on this host.
+const boardUrl = computed(() => (import.meta.client ? window.location.origin : '/'))
+
 useHead(() => ({
   title: 'FeedLog',
   htmlAttrs: { class: isDark.value ? 'dark' : undefined },
@@ -260,8 +268,14 @@ onMounted(async () => {
   protocol.init()
 
   // Anonymous and cheap; failing it only costs the brand colour.
-  void $fetch<{ branding: { primary: string; primaryForeground: string } }>('/api/widget/config')
-    .then(cfg => applyBrand(cfg.branding))
+  void $fetch<{
+    org: { name: string; logo: string | null }
+    branding: { primary: string; primaryForeground: string }
+  }>('/api/widget/config')
+    .then((cfg) => {
+      applyBrand(cfg.branding)
+      org.value = cfg.org
+    })
     .catch(() => {})
 
   const authed = await loadSession()
@@ -284,7 +298,7 @@ onUnmounted(() => document.removeEventListener('visibilitychange', refreshOnVisi
 <template>
   <div class="h-screen flex flex-col bg-background text-foreground">
     <!-- Header -->
-    <header class="h-14 px-4 border-b border-border flex items-center gap-3 shrink-0">
+    <header class="px-4 py-3 border-b border-border flex items-center gap-3 shrink-0">
       <button
         v-if="view === 'list'"
         class="w-7 h-7 rounded-md hover:bg-secondary transition-colors flex items-center justify-center text-muted-foreground"
@@ -293,12 +307,25 @@ onUnmounted(() => document.removeEventListener('visibilitychange', refreshOnVisi
       >
         <Icon name="lucide:arrow-left" size="16" />
       </button>
+      <img
+        v-if="view === 'chat' && org.logo"
+        :src="org.logo"
+        alt=""
+        class="w-8 h-8 rounded-lg object-cover shrink-0"
+      >
+      <span
+        v-else-if="view === 'chat'"
+        class="w-8 h-8 rounded-lg shrink-0 grid place-items-center bg-primary text-primary-foreground font-heading font-bold text-sm"
+      >{{ orgInitial }}</span>
       <div class="flex-1 min-w-0">
         <p class="font-heading font-bold text-sm truncate">
-          {{ view === 'list' ? t('widget.myFeedback') : 'FeedLog' }}
+          {{ view === 'list' ? t('widget.myFeedback') : t('widget.title') }}
         </p>
         <p v-if="view === 'list' && totalCount" class="text-[11px] text-muted-foreground truncate">
           {{ t('widget.postCount', { count: totalCount }, totalCount) }}<template v-if="unreadCount"> · {{ t('widget.withUpdates', { count: unreadCount }) }}</template>
+        </p>
+        <p v-else-if="view === 'chat' && org.name" class="text-[11px] text-muted-foreground leading-snug line-clamp-2">
+          {{ t('widget.subtitle', { product: org.name }) }}
         </p>
       </div>
       <button
@@ -370,17 +397,33 @@ onUnmounted(() => document.removeEventListener('visibilitychange', refreshOnVisi
 
     <!-- Chat -->
     <template v-else>
-      <button
-        class="mx-3 mt-3 px-3 py-2.5 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors flex items-center gap-2 shrink-0"
-        @click="view = 'list'; loadFeedback()"
-      >
-        <Icon name="lucide:inbox" size="14" class="text-muted-foreground shrink-0" />
-        <span class="flex-1 text-left text-xs font-semibold">{{ t('widget.myFeedback') }}</span>
-        <span v-if="unreadCount" class="text-[10px] font-bold text-primary">
-          {{ t('widget.withUpdates', { count: unreadCount }) }}
-        </span>
-        <Icon name="lucide:chevron-right" size="14" class="text-muted-foreground shrink-0" />
-      </button>
+      <!-- With nothing filed there is nothing to link to, so the whole bar
+           becomes the invitation to go read what others asked for. -->
+      <div class="mx-3 mt-3 rounded-xl border border-border bg-card flex items-stretch shrink-0 overflow-hidden">
+        <button
+          v-if="totalCount"
+          class="flex-1 min-w-0 px-3 py-2.5 hover:bg-secondary/50 transition-colors flex items-center gap-2"
+          @click="view = 'list'; loadFeedback()"
+        >
+          <Icon name="lucide:inbox" size="14" class="text-muted-foreground shrink-0" />
+          <span class="text-xs font-semibold truncate">{{ t('widget.myFeedback') }}</span>
+          <span class="text-[11px] text-muted-foreground shrink-0">({{ totalCount }})</span>
+          <span v-if="unreadCount" class="text-[11px] font-semibold text-primary shrink-0 truncate">
+            · {{ t('widget.withUpdates', { count: unreadCount }) }}
+          </span>
+        </button>
+        <a
+          :href="boardUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="px-3 py-2.5 hover:bg-secondary/50 transition-colors flex items-center gap-1.5 text-muted-foreground"
+          :class="totalCount ? 'border-l border-border shrink-0' : 'flex-1'"
+        >
+          <Icon name="lucide:globe" size="14" class="shrink-0" />
+          <span class="text-xs truncate">{{ totalCount ? t('widget.allFeedback') : t('widget.seeOthers') }}</span>
+          <Icon name="lucide:arrow-up-right" size="12" class="shrink-0" />
+        </a>
+      </div>
 
       <div ref="bodyEl" class="flex-1 overflow-y-auto px-3 py-4 space-y-3">
         <div v-for="(m, i) in messages" :key="i" class="flex" :class="m.role === 'user' ? 'justify-end' : 'justify-start'">
@@ -442,7 +485,9 @@ onUnmounted(() => document.removeEventListener('visibilitychange', refreshOnVisi
           </div>
         </div>
 
-        <div class="flex items-end gap-2">
+        <!-- Controls sit on their own row so the textarea can grow into the card
+             instead of stretching the buttons beside it. -->
+        <div class="rounded-xl border border-border bg-background focus-within:border-primary transition-colors">
           <input
             ref="fileInput"
             type="file"
@@ -451,33 +496,38 @@ onUnmounted(() => document.removeEventListener('visibilitychange', refreshOnVisi
             class="hidden"
             @change="onFilePicked"
           >
-          <button
-            :disabled="attachments.length >= MAX_ATTACHMENTS || uploading || sending"
-            class="w-9 h-9 rounded-xl border border-border flex items-center justify-center text-muted-foreground hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-all shrink-0"
-            :aria-label="t('widget.attachImage')"
-            @click="fileInput?.click()"
-          >
-            <Icon name="lucide:image" size="15" />
-          </button>
           <textarea
             ref="draftEl"
             v-model="draft"
             rows="1"
             :placeholder="t('widget.placeholder')"
-            class="flex-1 max-h-28 px-3 py-2.5 rounded-xl border border-border bg-background text-xs resize-none focus:outline-none focus:border-primary transition-colors no-scrollbar"
+            class="w-full max-h-28 px-3 pt-2.5 bg-transparent text-xs resize-none focus:outline-none no-scrollbar"
             @keydown.enter.exact.prevent="send"
           />
-          <button
-            :disabled="(!draft.trim() && !attachments.length) || sending || uploading"
-            class="w-9 h-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shrink-0"
-            :aria-label="t('widget.send')"
-            @click="send"
-          >
-            <Icon name="lucide:arrow-up" size="15" />
-          </button>
+          <div class="flex items-center justify-between px-2 pb-2 pt-1">
+            <button
+              :disabled="attachments.length >= MAX_ATTACHMENTS || uploading || sending"
+              class="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              :aria-label="t('widget.attachImage')"
+              @click="fileInput?.click()"
+            >
+              <Icon name="lucide:image" size="15" />
+            </button>
+            <button
+              :disabled="(!draft.trim() && !attachments.length) || sending || uploading"
+              class="px-4 h-7 rounded-lg bg-primary text-primary-foreground text-xs font-heading font-bold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              @click="send"
+            >
+              {{ t('widget.send') }}
+            </button>
+          </div>
         </div>
       </div>
     </template>
+
+    <p v-if="status !== 'loading'" class="py-1.5 text-center text-[10px] text-muted-foreground shrink-0">
+      {{ t('board.poweredBy') }}FeedLog
+    </p>
   </div>
 </template>
 

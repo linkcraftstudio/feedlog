@@ -5,6 +5,7 @@ import { pickBrandForegroundHex, resolveBranding } from '#layers/feedlog/shared/
 // GET /api/widget/config — anonymous bootstrap for the widget SDK.
 export default defineEventHandler(async (event): Promise<{
   enabled: boolean
+  org: { name: string; logo: string | null }
   branding: { primary: string; primaryForeground: string }
 }> => {
   const slug = event.context.orgSlug
@@ -31,6 +32,9 @@ export default defineEventHandler(async (event): Promise<{
   setResponseHeader(event, 'Cache-Control', 'public, max-age=60')
   return {
     enabled,
+    // The frame wears the customer's name and mark, for the same reason it takes
+    // their brand colour from here.
+    org: { name: info?.name ?? '', logo: info?.logo || null },
     branding: {
       primary: branding.primaryColor,
       primaryForeground: pickBrandForegroundHex(branding.primaryColor),

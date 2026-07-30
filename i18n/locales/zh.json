@@ -696,6 +696,10 @@
     "titleWithOrg": "{title} - {name}"
   },
   "widget": {
+    "title": "反馈",
+    "subtitle": "帮我们把 {product} 做得更好 —— 说说问题和想法",
+    "allFeedback": "全部反馈",
+    "seeOthers": "看看其他人提了什么",
     "greeting": "你好!我是 AI 助手,不是人工客服。告诉我哪里有问题或你希望看到什么,我会帮你整理成反馈提交给团队。",
     "placeholder": "描述你的反馈……",
     "send": "发送",

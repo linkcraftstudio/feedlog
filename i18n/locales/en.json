@@ -696,6 +696,10 @@
     "titleWithOrg": "{title} - {name}"
   },
   "widget": {
+    "title": "Feedback",
+    "subtitle": "Help us make {product} better — share problems and ideas",
+    "allFeedback": "All feedback",
+    "seeOthers": "See what others have suggested",
     "greeting": "Hi! I'm an AI assistant, not a human agent. Tell me what's not working or what you'd like to see, and I'll turn it into feedback for the team.",
     "placeholder": "Describe your feedback…",
     "send": "Send",
