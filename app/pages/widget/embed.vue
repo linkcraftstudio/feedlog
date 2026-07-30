@@ -188,6 +188,13 @@ const PAGE_SIZE = 20
 const feedback = ref<WidgetFeedbackItem[]>([])
 const listLoading = ref(false)
 const nextCursor = ref<string | null>(null)
+const totalCount = ref(0)
+
+const timeAgo = useTimeAgo()
+const formatDate = useFormatDate()
+function postedAt(d: string | Date): string {
+  return Date.now() - new Date(d).getTime() < 86400000 ? timeAgo(d) : formatDate(d)
+}
 
 // Counted by the server, not by the loaded rows: a reply lands on a post of any
 // age while the list runs newest-first, so an unread item can sit past the page
@@ -211,10 +218,12 @@ async function loadFeedback(append = false) {
     const cursor = append && nextCursor.value ? `&cursor=${encodeURIComponent(nextCursor.value)}` : ''
     const res = await widgetFetch<{
       data: WidgetFeedbackItem[]
+      total: number
       pagination: { nextCursor: string | null }
     }>(`/api/widget/feedback?pageSize=${PAGE_SIZE}${cursor}`)
     feedback.value = append ? [...feedback.value, ...res.data] : res.data
     nextCursor.value = res.pagination.nextCursor
+    totalCount.value = res.total
   }
   catch { /* leave the list as-is */ }
   finally {
@@ -284,9 +293,14 @@ onUnmounted(() => document.removeEventListener('visibilitychange', refreshOnVisi
       >
         <Icon name="lucide:arrow-left" size="16" />
       </button>
-      <p class="flex-1 font-heading font-bold text-sm truncate">
-        {{ view === 'list' ? t('widget.myFeedback') : 'FeedLog' }}
-      </p>
+      <div class="flex-1 min-w-0">
+        <p class="font-heading font-bold text-sm truncate">
+          {{ view === 'list' ? t('widget.myFeedback') : 'FeedLog' }}
+        </p>
+        <p v-if="view === 'list' && totalCount" class="text-[11px] text-muted-foreground truncate">
+          {{ t('widget.postCount', { count: totalCount }, totalCount) }}<template v-if="unreadCount"> · {{ t('widget.withUpdates', { count: unreadCount }) }}</template>
+        </p>
+      </div>
       <button
         class="w-7 h-7 rounded-md hover:bg-secondary transition-colors flex items-center justify-center text-muted-foreground"
         :aria-label="t('widget.close')"
@@ -318,24 +332,31 @@ onUnmounted(() => document.removeEventListener('visibilitychange', refreshOnVisi
       <p v-if="!feedback.length && !listLoading" class="px-5 py-8 text-xs text-muted-foreground text-center">
         {{ t('widget.noFeedback') }}
       </p>
-      <ul v-else class="divide-y divide-border">
+      <ul v-else class="p-3 space-y-2">
         <li v-for="item in feedback" :key="item.id">
-          <button class="w-full text-left px-4 py-3 hover:bg-secondary/50 transition-colors" @click="openItem(item)">
+          <button
+            class="w-full text-left p-3 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors group"
+            @click="openItem(item)"
+          >
             <div class="flex items-start gap-2">
-              <span v-if="item.unread" class="mt-1.5 w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs font-semibold leading-snug">{{ item.title }}</p>
-                <div class="mt-1.5 flex items-center gap-2">
-                  <WidgetEmbedStatusBadge :status="item.status" />
-                  <span class="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                    <Icon name="lucide:chevron-up" size="11" />{{ item.voteCount }}
-                  </span>
-                </div>
-              </div>
+              <p class="flex-1 text-xs font-semibold leading-snug">
+                {{ item.title }}
+                <span v-if="item.unread" class="inline-block align-middle ml-1 w-1.5 h-1.5 rounded-full bg-red-500" />
+              </p>
+              <WidgetEmbedStatusBadge :status="item.status" class="shrink-0" />
+            </div>
+            <div class="mt-1.5 text-[10px] text-muted-foreground flex items-center gap-0.5">
+              <Icon name="lucide:chevron-up" size="11" />{{ item.voteCount }}
+              <span class="mx-1">·</span>{{ postedAt(item.createdAt) }}
+            </div>
+            <div class="mt-2 flex justify-end">
+              <span class="text-[10px] font-semibold text-primary flex items-center gap-0.5">
+                {{ t('widget.viewOnBoard') }}<Icon name="lucide:arrow-up-right" size="11" />
+              </span>
             </div>
           </button>
         </li>
-        <li v-if="nextCursor" class="p-3">
+        <li v-if="nextCursor" class="pt-1">
           <button
             :disabled="listLoading"
             class="w-full py-2 rounded-lg border border-border text-xs text-muted-foreground hover:bg-secondary disabled:opacity-40 transition-colors"

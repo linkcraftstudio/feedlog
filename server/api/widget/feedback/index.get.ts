@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from 'drizzle-orm'
+import { and, count, desc, eq, sql } from 'drizzle-orm'
 import { post, postUnread } from '#layers/feedlog/server/db/schemas'
 import type { CursorPaginatedList } from '#layers/feedlog/shared/types/pagination'
 
@@ -15,7 +15,8 @@ export interface WidgetFeedbackItem {
 // The visitor's own feedback, newest first, each flagged with whether it has an
 // unread admin update. requireAuthInOrg, not requireOrgMember: the caller is an
 // end user of the customer's product, never a FeedLog staff member.
-export default defineEventHandler(async (event): Promise<CursorPaginatedList<WidgetFeedbackItem>> => {
+// `total` rides along so the header can count posts without paging to the end.
+export default defineEventHandler(async (event): Promise<CursorPaginatedList<WidgetFeedbackItem> & { total: number }> => {
   const { session, orgId } = await requireAuthInOrg(event)
   const userId = session.user.id
   const query = getQuery(event)
@@ -66,7 +67,13 @@ export default defineEventHandler(async (event): Promise<CursorPaginatedList<Wid
     ? encodeCursor({ s: lastItem.createdAt, id: lastItem.id })
     : null
 
-  return { data, pagination: { nextCursor } }
+  // Counted without the cursor condition, so it stays the same on every page.
+  const [totalRow] = await useDB()
+    .select({ value: count() })
+    .from(post)
+    .where(and(eq(post.orgId, orgId), eq(post.authorId, userId)))
+
+  return { data, total: Number(totalRow?.value ?? 0), pagination: { nextCursor } }
 })
 
 // JSON turns the Date into an ISO string on the way out and never turns it back,

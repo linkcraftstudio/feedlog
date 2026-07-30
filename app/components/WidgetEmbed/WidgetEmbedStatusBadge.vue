@@ -10,7 +10,7 @@ const label = computed(() => t(`status.${props.status}`))
 
 <template>
   <span
-    class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
+    class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border"
     :style="{
       color: `var(--status-${key})`,
       background: `var(--status-${key}-bg)`,

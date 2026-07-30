@@ -707,6 +707,7 @@
     "noFeedback": "你还没有提交过反馈。",
     "postCount": "{count} 条反馈",
     "withUpdates": "{count} 条有更新",
+    "viewOnBoard": "在反馈板查看",
     "loadMore": "加载更多",
     "loading": "加载中……",
     "loginTitle": "登录后提交反馈",
