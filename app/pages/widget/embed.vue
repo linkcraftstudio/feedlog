@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { resolveAttachmentUrl } from '~/utils/attachment'
 import type { WidgetFeedbackItem } from '~~/server/api/widget/feedback/index.get'
 
 // /widget/embed — the FeedLog-hosted page the widget SDK loads in its iframe.
@@ -462,7 +463,7 @@ onUnmounted(() => {
                 <img
                   v-for="k in m.images"
                   :key="k"
-                  :src="`/api/files/${k}`"
+                  :src="resolveAttachmentUrl(k)!"
                   alt=""
                   class="w-16 h-16 rounded-lg object-cover border border-black/10"
                 >
@@ -496,7 +497,7 @@ onUnmounted(() => {
             :key="a.key"
             class="relative w-12 h-12 rounded-lg overflow-hidden border border-border group"
           >
-            <img :src="`/api/files/${a.key}`" :alt="a.name" class="w-full h-full object-cover">
+            <img :src="resolveAttachmentUrl(a.key)!" :alt="a.name" class="w-full h-full object-cover">
             <button
               class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
               :aria-label="t('widget.cancel')"
