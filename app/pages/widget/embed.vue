@@ -10,7 +10,7 @@ definePageMeta({ layout: false, middleware: [] })
 
 const route = useRoute()
 const { t } = useI18n()
-const { status, widgetFetch, loadSession } = useWidgetEmbed()
+const { user, status, widgetFetch, loadSession } = useWidgetEmbed()
 const protocol = useWidgetProtocol()
 
 // ---- theme ---------------------------------------------------------------
@@ -133,7 +133,8 @@ const RESUME_KEY = 'feedlog:widget:resume'
 
 function parkForResume(text: string, files: Attachment[], log: ChatMessage[]) {
   try {
-    sessionStorage.setItem(RESUME_KEY, JSON.stringify({ text, files, log }))
+    const owner = user.value?.email ?? ''
+    sessionStorage.setItem(RESUME_KEY, JSON.stringify({ owner, text, files, log }))
   }
   catch { /* storage unavailable — the draft is lost, nothing else breaks */ }
 }
@@ -143,7 +144,10 @@ function resumeParked(): boolean {
     const raw = sessionStorage.getItem(RESUME_KEY)
     if (!raw) return false
     sessionStorage.removeItem(RESUME_KEY)
-    const saved = JSON.parse(raw) as { text?: string; files?: Attachment[]; log?: ChatMessage[] }
+    const saved = JSON.parse(raw) as { owner?: string; text?: string; files?: Attachment[]; log?: ChatMessage[] }
+    // A rebuild that never completed leaves the archive for whoever signs in
+    // next on this tab; a half-sent message goes back only to its author.
+    if (saved.owner !== user.value?.email) return false
     draft.value = saved.text ?? ''
     attachments.value = saved.files ?? []
     if (saved.log?.length) {
