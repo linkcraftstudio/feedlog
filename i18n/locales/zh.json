@@ -657,6 +657,8 @@
       "installDesc": "在你的产品中安装 SDK,并用工作区地址完成初始化。",
       "baseUrlLabel": "工作区地址",
       "baseUrlHint": "初始化 SDK 时作为 baseUrl 传入。",
+      "serverLabel": "在你的服务器上",
+      "serverHint": "widget 完全信任这个接口给出的身份,务必放在你自己的登录校验之后。密钥在 Developer → SSO 获取。",
       "snippetLabel": "安装",
       "copy": "复制",
       "copied": "已复制",

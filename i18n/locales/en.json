@@ -657,6 +657,8 @@
       "installDesc": "Install the SDK in your product, then initialise it with your workspace URL.",
       "baseUrlLabel": "Workspace URL",
       "baseUrlHint": "Pass this as baseUrl when initialising the SDK.",
+      "serverLabel": "On your server",
+      "serverHint": "The widget trusts whoever this endpoint says the visitor is, so keep it behind your own sign-in. Get the secret from Developer → SSO.",
       "snippetLabel": "Install",
       "copy": "Copy",
       "copied": "Copied",

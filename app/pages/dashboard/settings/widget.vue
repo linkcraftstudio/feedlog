@@ -18,15 +18,45 @@ const { settings, loading, saving, error, refresh, save, allRules, builtinsPatch
 onMounted(() => { if (canEdit.value) void refresh() })
 
 // ---- install -------------------------------------------------------------
+// The endpoint the browser snippet fetches is the customer's own — FeedLog
+// serves no such route — and nothing else tells them to build it: the SDK's
+// README assumes an integrator who already signs these tokens for Product SSO.
+const serverSnippet = `import jwt from 'jsonwebtoken'
+
+// Your own route, reachable only when signed in — the widget trusts whoever
+// this endpoint says the visitor is. The secret stays here, never the browser.
+app.get('/api/feedlog-token', requireSignIn, (req, res) => {
+  const token = jwt.sign(
+    {
+      email:   req.user.email,  // required — identity key
+      name:    req.user.name,   // optional — falls back to the email
+      picture: req.user.avatar, // optional — avatar URL
+      exp: Math.floor(Date.now() / 1000) + 60 * 60, // required — 24h at most
+    },
+    process.env.FEEDLOG_SSO_SECRET, // one of this workspace's enabled secrets
+    { algorithm: 'HS256' },
+  )
+  res.json({ token })
+})`
+
+// Verbatim from the SDK's README, with this workspace's URL filled in: the
+// throw/null distinction is its contract to state, and paraphrasing it once
+// already turned a transient 500 into a spurious sign-out.
 const snippet = computed(() => `import { createWidget } from '@feedlog/widget'
 
 createWidget({
   baseUrl: '${settings.value?.baseUrl ?? ''}',
   auth: {
-    // Return a JWT signed with your workspace's SSO secret, or null when
-    // the visitor isn't signed in.
-    getToken: () => fetchFeedlogToken(),
+    // Return a JWT signed by YOUR backend with your org's SSO secret.
+    getToken: async () => {
+      const res = await fetch('/api/feedlog-token')
+      if (!res.ok) throw new Error('temporary failure') // throw = retryable failure
+      return (await res.json()).token ?? null           // null = signed out
+    },
+    // Optional: open your own sign-in UI (popup or full-page redirect).
+    login: () => openYourLoginModal(),
   },
+  theme: 'auto',
 })`)
 
 const copiedKey = ref<string | null>(null)
@@ -184,6 +214,22 @@ async function removeRule(id: string) {
                   </button>
                 </div>
                 <p class="text-[11px] text-muted-foreground mt-1.5">{{ $t('settings.widget.baseUrlHint') }}</p>
+              </div>
+
+              <div>
+                <div class="flex items-center justify-between">
+                  <label class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('settings.widget.serverLabel') }}</label>
+                  <button
+                    class="h-7 px-2.5 rounded-md border border-border bg-background hover:bg-secondary transition-colors flex items-center gap-1.5 text-[11px] font-semibold"
+                    :class="copiedKey === 'server' ? 'text-[var(--status-done)]' : 'text-muted-foreground'"
+                    @click="copy('server', serverSnippet)"
+                  >
+                    <Icon :name="copiedKey === 'server' ? 'lucide:check' : 'lucide:copy'" size="12" />
+                    {{ copiedKey === 'server' ? $t('settings.widget.copied') : $t('settings.widget.copy') }}
+                  </button>
+                </div>
+                <pre class="mt-2 px-4 py-3 rounded-lg bg-muted/40 border border-border overflow-x-auto text-xs font-mono leading-relaxed"><code>{{ serverSnippet }}</code></pre>
+                <p class="text-[11px] text-muted-foreground mt-1.5">{{ $t('settings.widget.serverHint') }}</p>
               </div>
 
               <div>
