@@ -41,6 +41,9 @@ function applyBrand(brand: { primary: string; primaryForeground: string }) {
 
 const org = ref<{ name: string; logo: string | null }>({ name: '', logo: null })
 const orgInitial = computed(() => org.value.name.trim().charAt(0).toUpperCase() || 'F')
+// Mirrors the prompt's own fallback, so greeting and model name an unnamed
+// workspace the same way.
+const productName = computed(() => org.value.name || t('widget.thisProduct'))
 
 // A plain link, not a `navigate` message: the SDK's handler only builds post
 // URLs, so the board root has no route through it. The visitor arrives signed in
@@ -246,6 +249,23 @@ function refreshOnVisible() {
   if (document.visibilityState === 'visible') void loadUnread()
 }
 
+// Infinite scroll. The observer is rebuilt whenever the sentinel remounts: the
+// list view is torn down every time the visitor goes back to the chat.
+const listSentinel = ref<HTMLElement | null>(null)
+let listObserver: IntersectionObserver | null = null
+
+watch(listSentinel, (el) => {
+  listObserver?.disconnect()
+  listObserver = null
+  if (!el) return
+  listObserver = new IntersectionObserver((entries) => {
+    if (entries.some(e => e.isIntersecting) && nextCursor.value && !listLoading.value) {
+      void loadFeedback(true)
+    }
+  }, { root: bodyEl.value ?? null, rootMargin: '120px' })
+  listObserver.observe(el)
+}, { flush: 'post' })
+
 // Opening an item clears its dot and hands the SDK the slug — the detail page
 // opens as a top-level tab, where cookies work and the full board is available.
 async function openItem(item: WidgetFeedbackItem) {
@@ -267,8 +287,9 @@ onMounted(async () => {
 
   protocol.init()
 
-  // Anonymous and cheap; failing it only costs the brand colour.
-  void $fetch<{
+  // Awaited alongside the session because the greeting names the product. A
+  // failure costs only the brand colour and the name.
+  const config = $fetch<{
     org: { name: string; logo: string | null }
     branding: { primary: string; primaryForeground: string }
   }>('/api/widget/config')
@@ -278,10 +299,10 @@ onMounted(async () => {
     })
     .catch(() => {})
 
-  const authed = await loadSession()
+  const [authed] = await Promise.all([loadSession(), config])
   if (authed) {
     if (!resumeParked()) {
-      messages.value.push({ role: 'assistant', text: t('widget.greeting') })
+      messages.value.push({ role: 'assistant', text: t('widget.greeting', { product: productName.value }) })
     }
     await Promise.all([loadFeedback(), loadUnread()])
     document.addEventListener('visibilitychange', refreshOnVisible)
@@ -292,7 +313,10 @@ onMounted(async () => {
   protocol.ready()
 })
 
-onUnmounted(() => document.removeEventListener('visibilitychange', refreshOnVisible))
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', refreshOnVisible)
+  listObserver?.disconnect()
+})
 </script>
 
 <template>
@@ -383,14 +407,13 @@ onUnmounted(() => document.removeEventListener('visibilitychange', refreshOnVisi
             </div>
           </button>
         </li>
-        <li v-if="nextCursor" class="pt-1">
-          <button
-            :disabled="listLoading"
-            class="w-full py-2 rounded-lg border border-border text-xs text-muted-foreground hover:bg-secondary disabled:opacity-40 transition-colors"
-            @click="loadFeedback(true)"
-          >
-            {{ listLoading ? t('widget.loading') : t('widget.loadMore') }}
-          </button>
+        <li
+          v-if="nextCursor"
+          ref="listSentinel"
+          class="py-3 grid place-items-center"
+          :aria-label="t('widget.loading')"
+        >
+          <Icon v-if="listLoading" name="lucide:loader-2" size="14" class="animate-spin text-muted-foreground" />
         </li>
       </ul>
     </div>
@@ -457,7 +480,9 @@ onUnmounted(() => document.removeEventListener('visibilitychange', refreshOnVisi
 
         <div v-if="sending" class="flex justify-start">
           <div class="px-3.5 py-2.5 rounded-2xl rounded-bl-sm bg-secondary text-xs text-muted-foreground flex items-center gap-2">
-            <Icon name="lucide:loader-2" size="12" class="animate-spin" />
+            <span class="flex items-center gap-1" aria-hidden="true">
+              <span v-for="n in 3" :key="n" class="w-1 h-1 rounded-full bg-current opacity-40 typing-dot" :style="{ animationDelay: `${(n - 1) * 0.16}s` }" />
+            </span>
             {{ t('widget.thinking') }}
           </div>
         </div>
@@ -540,5 +565,20 @@ onUnmounted(() => document.removeEventListener('visibilitychange', refreshOnVisi
 
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+.typing-dot {
+  animation: typing 1.2s ease-in-out infinite;
+}
+
+@keyframes typing {
+  0%, 60%, 100% { opacity: 0.25; }
+  30% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typing-dot {
+    animation: none;
+  }
 }
 </style>

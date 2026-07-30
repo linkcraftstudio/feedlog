@@ -124,7 +124,7 @@ export default defineEventHandler(async (event): Promise<WidgetMessageResponse> 
     return { type: 'support', reply: supportReply(widgetRow?.supportEmail ?? null) }
   }
   if (parsed.type === 'unrecognized') {
-    return { type: 'unrecognized', reply: unrecognizedReply() }
+    return { type: 'unrecognized', reply: unrecognizedReply(orgInfo?.name || 'this product') }
   }
 
   // The model picks a board by NAME — it cannot reliably copy a uuid. Resolve it
@@ -162,14 +162,16 @@ export default defineEventHandler(async (event): Promise<WidgetMessageResponse> 
 // Server-composed so the mailto and the wording can't drift with the model. With
 // no support email configured the user is still pointed at support, just without
 // an address — per the requirement.
+// No email configured still guides the visitor to support, just without one to
+// point at — the requirement is explicit about that.
 function supportReply(supportEmail: string | null): string {
   return supportEmail
-    ? `This one is better handled by our support team — please email [${supportEmail}](mailto:${supportEmail}) and they'll take care of it.`
-    : 'This one is better handled by our support team — please reach out to them directly and they\'ll take care of it.'
+    ? `Sorry about that! This needs a real person — email [${supportEmail}](mailto:${supportEmail}) and the team will get back to you directly.`
+    : 'Sorry about that! This needs a real person — please reach out to the support team directly and they will get back to you.'
 }
 
-function unrecognizedReply(): string {
-  return 'I can only help with product feedback — bugs, ideas, or improvement requests. Could you describe what you\'d like to see changed?'
+function unrecognizedReply(product: string): string {
+  return `Thanks for the note! I couldn't find a product problem or request in it.\n\nIf something isn't working — or you wish ${product} did something better — just describe it here and it will reach the team.`
 }
 
 // Attachment keys use the attachment: protocol so the renderer resolves them
