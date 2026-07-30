@@ -140,7 +140,7 @@ export default defineEventHandler(async (event): Promise<WidgetMessageResponse> 
   const created = await createPostRecord({
     orgId,
     authorId: session.user.id,
-    title: parsed.title!.slice(0, 200),
+    title: truncateTitle(parsed.title!),
     content,
     boardId: boardRow?.id ?? null,
     subscribeAuthor: !isActorAdmin(session, orgId),
@@ -169,6 +169,14 @@ export default defineEventHandler(async (event): Promise<WidgetMessageResponse> 
 // Enough while the product ships only English and Chinese; a third language
 // would need a real detector.
 const HAN = /[一-鿿]/
+
+// title is varchar(200) and Postgres counts code points, so this does too —
+// .slice counts UTF-16 units and would halve an emoji into a lone surrogate.
+const TITLE_MAX = 200
+function truncateTitle(title: string): string {
+  const chars = Array.from(title)
+  return chars.length > TITLE_MAX ? chars.slice(0, TITLE_MAX).join('') : title
+}
 
 // No email configured still guides the visitor to support, just without one to
 // point at — the requirement is explicit about that.
