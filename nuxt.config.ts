@@ -109,6 +109,34 @@ export default defineNuxtConfig({
     blob: true,
   },
 
+  // The widget frame's identity rides in the URL fragment, which never reaches
+  // the server, so a server render can only produce an empty shell — one the
+  // visitor never sees, because the SDK keeps the frame hidden until it reports
+  // ready. Rendering it costs ~290ms of TTFB and a hydration pass on top.
+  routeRules: {
+    '/widget/embed': { ssr: false },
+    '/*/widget/embed': { ssr: false },
+  },
+
+  icon: {
+    // Everything the widget frame draws. Bundled because the frame otherwise
+    // fetches two icon collections over HTTP while the visitor waits.
+    clientBundle: {
+      icons: [
+        'lucide:alert-circle',
+        'lucide:arrow-left',
+        'lucide:arrow-up-right',
+        'lucide:chevron-up',
+        'lucide:globe',
+        'lucide:image',
+        'lucide:inbox',
+        'lucide:loader-2',
+        'lucide:message-circle',
+        'lucide:x',
+      ],
+    },
+  },
+
   build: {
     transpile: ['reka-ui'],
   },
