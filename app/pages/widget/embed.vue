@@ -337,7 +337,7 @@ onMounted(async () => {
     if (!resumeParked()) {
       messages.value.push({ role: 'assistant', text: t('widget.greeting', { product: productName.value }) })
     }
-    await Promise.all([loadFeedback(), loadUnread()])
+    void Promise.all([loadFeedback(), loadUnread()])
     document.addEventListener('visibilitychange', refreshOnVisible)
   }
 
