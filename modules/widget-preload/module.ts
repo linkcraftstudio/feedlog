@@ -4,11 +4,14 @@ import { defineNuxtModule, addServerPlugin, createResolver } from '@nuxt/kit'
 // the entry chunk: the route's own chunk, the chunks it shares and its
 // stylesheet are each discovered a round trip after the previous one has run.
 // Server code cannot read the client manifest (`#build/*` is barred from the
-// nitro runtime), so resolve the route's chunk chain here at build time and
-// hand it to the runtime plugin as a virtual module. `build:manifest` never
-// fires in dev, which leaves the list empty and the plugin inert.
+// nitro runtime), so resolve those chunk chains here at build time and hand
+// them to the runtime plugin as a virtual module. `build:manifest` never fires
+// in dev, which leaves the list empty and the plugin inert.
 
 const ROUTE_MODULE_RE = /(^|\/)pages\/widget\/embed\.vue$/
+// Every layer contributes one vueI18n config, and the i18n plugin — not the
+// route — imports them, so they hang off no chunk the route can reach.
+const I18N_CONFIG_RE = /(^|\/)i18n\.config\.(ts|js|mjs)$/
 
 interface ManifestEntry {
   file: string
@@ -52,11 +55,14 @@ function collectHints(manifest: Record<string, ManifestEntry>): Hint[] {
   // Whatever the entry pulls in is already linked in the shell.
   const shipped = new Set(collectFiles(manifest, entryModules))
 
-  const routeModules = new Set<string>()
-  collectModules(manifest, routeId, routeModules)
+  const needed = new Set<string>()
+  collectModules(manifest, routeId, needed)
+  for (const id of Object.keys(manifest)) {
+    if (I18N_CONFIG_RE.test(id)) collectModules(manifest, id, needed)
+  }
 
   const hints: Hint[] = []
-  for (const file of collectFiles(manifest, routeModules)) {
+  for (const file of collectFiles(manifest, needed)) {
     if (shipped.has(file)) continue
     shipped.add(file)
     hints.push(file.endsWith('.css')
