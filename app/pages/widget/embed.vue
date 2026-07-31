@@ -425,7 +425,7 @@ onUnmounted(() => {
             <div class="flex items-start gap-2">
               <p class="flex-1 text-xs font-semibold leading-snug">
                 {{ item.title }}
-                <span v-if="item.unread" class="inline-block align-middle ml-1 w-1.5 h-1.5 rounded-full bg-red-500" />
+                <span v-if="item.unread" class="inline-block align-middle ml-1.5 w-2 h-2 rounded-full bg-red-500" />
               </p>
               <WidgetEmbedStatusBadge :status="item.status" class="shrink-0" />
             </div>
