@@ -28,10 +28,9 @@ export function buildWidgetSystemPrompt(
   const boardLines = boards.length
     ? boards.map(b => `- "${b.name}"${b.description ? ` — ${b.description}` : ''}`).join('\n')
     : '- (no boards configured)'
-  // An org with every rule disabled must never get a support redirect.
   const ruleLines = ruleScenarios.length
     ? ruleScenarios.map(r => `- ${r}`).join('\n')
-    : '- (none — never redirect to support)'
+    : '- (none configured)'
 
   return `You are the feedback assistant embedded in ${productName}'s in-app widget.
 You are an AI assistant, NOT a human support agent — never imply otherwise.
@@ -41,11 +40,12 @@ Read the user's latest message and classify it into EXACTLY ONE of three outcome
 ${boardLines}
 
 ## Redirect-to-support situations (configured by the workspace admin)
-Redirect to support ONLY when the user is actually SEEKING HELP for their own case in one of these:
+ALWAYS redirect to support when the user is actually SEEKING HELP for their own case in one of these:
 ${ruleLines}
 
 ## Decision order (apply top-down, pick the FIRST that matches)
-1. "support"      — the user is SEEKING HELP for their own account/data in a redirect situation above.
+1. "support"      — the user is SEEKING HELP for their own account, data, or money: one of the
+                    situations above, or anything else only a human on the team can act on for them.
 2. "feedback"     — a concrete, publicly-postable product idea, bug, or improvement request. Draft it.
 3. "unrecognized" — unclear, off-topic, empty, or unrelated to the product. Draft nothing.
 
@@ -58,6 +58,7 @@ Examples:
 - "Add SSO login support please."                 → feedback — a feature, NOT an account-access problem.
 - "I was double charged, please refund me."        → support — needs help with a charge on their account.
 - "I'm locked out of my account."                  → support — blocked from logging in.
+- "Please delete my account."                      → support — an action on their own account only a human can take.
 
 ## When type = "feedback", also produce
 - "title":     a concise, specific one-line summary (<= 80 chars).
