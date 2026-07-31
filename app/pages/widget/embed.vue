@@ -258,11 +258,12 @@ async function loadFeedback(append = false) {
   listLoading.value = true
   try {
     const cursor = append && nextCursor.value ? `&cursor=${encodeURIComponent(nextCursor.value)}` : ''
+    const pageSize = append ? PAGE_SIZE : Math.max(feedback.value.length, PAGE_SIZE)
     const res = await widgetFetch<{
       data: WidgetFeedbackItem[]
       total: number
       pagination: { nextCursor: string | null }
-    }>(`/api/widget/feedback?pageSize=${PAGE_SIZE}${cursor}`)
+    }>(`/api/widget/feedback?pageSize=${pageSize}${cursor}`)
     feedback.value = append ? [...feedback.value, ...res.data] : res.data
     nextCursor.value = res.pagination.nextCursor
     totalCount.value = res.total
@@ -274,10 +275,11 @@ async function loadFeedback(append = false) {
 }
 
 // The SDK calls takeOver() as it mounts this frame and never releases, so its
-// own unread polling is off for the life of the page. Only the count is
-// refetched — reloading the list would collapse whatever has been paged in.
+// own unread polling is off for the life of the page.
 function refreshOnVisible() {
-  if (document.visibilityState === 'visible') void loadUnread()
+  if (document.visibilityState !== 'visible') return
+  void loadUnread()
+  if (view.value === 'list') void loadFeedback()
 }
 
 // Infinite scroll. The observer is rebuilt whenever the sentinel remounts: the
