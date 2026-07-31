@@ -97,18 +97,30 @@ watch(draft, () => {
 const MAX_UPLOAD_MB = 10
 interface Attachment { key: string; name: string }
 const attachments = ref<Attachment[]>([])
-const uploading = ref(false)
+const pendingUploads = ref(0)
+const uploading = computed(() => pendingUploads.value > 0)
 const uploadError = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
 
-async function onFilePicked(e: Event) {
+function onFilePicked(e: Event) {
   const input = e.target as HTMLInputElement
   const files = Array.from(input.files ?? [])
   input.value = ''
-  if (!files.length) return
+  void uploadFiles(files)
+}
 
+function onPaste(e: ClipboardEvent) {
+  const images = Array.from(e.clipboardData?.files ?? []).filter(f => f.type.startsWith('image/'))
+  if (!images.length) return
+  // A copied file carries its name as text/plain; without this it lands in the draft.
+  e.preventDefault()
+  void uploadFiles(images)
+}
+
+async function uploadFiles(files: File[]) {
+  if (!files.length) return
   uploadError.value = ''
-  uploading.value = true
+  pendingUploads.value++
   for (const file of files) {
     if (file.size > MAX_UPLOAD_MB * 1024 * 1024) {
       uploadError.value = t('widget.uploadTooLarge', { size: MAX_UPLOAD_MB })
@@ -131,7 +143,7 @@ async function onFilePicked(e: Event) {
       uploadError.value = t('widget.uploadFailed')
     }
   }
-  uploading.value = false
+  pendingUploads.value--
 }
 
 function scrollToBottom() {
@@ -559,6 +571,7 @@ onUnmounted(() => {
             :placeholder="t('widget.placeholder')"
             class="w-full max-h-28 px-3 pt-2.5 bg-transparent text-xs resize-none focus:outline-none no-scrollbar"
             @keydown.enter.exact.prevent="send"
+            @paste="onPaste"
           />
           <div class="flex items-center justify-between px-2 pb-2 pt-1">
             <button
