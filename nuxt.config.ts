@@ -77,6 +77,7 @@ export default defineNuxtConfig({
     // runtime when S3_* env vars are set. Skipped on cloudflare-module
     // and vercel presets where NuxtHub's R2 / Vercel Blob driver applies.
     resolver.resolve('./modules/blob-s3/module'),
+    resolver.resolve('./modules/widget-preload/module'),
   ],
   shadcn: {
     prefix: '',
@@ -113,9 +114,19 @@ export default defineNuxtConfig({
   // the server, so a server render can only produce an empty shell — one the
   // visitor never sees, because the SDK keeps the frame hidden until it reports
   // ready. Rendering it costs ~290ms of TTFB and a hydration pass on top.
+  //
+  // That shell is the same bytes for everyone opening the frame on a host, so
+  // it is worth caching — but briefly: a deploy rotates the asset hashes the
+  // shell points at, and a stale one asks for chunks the new image never built.
   routeRules: {
-    '/widget/embed': { ssr: false },
-    '/*/widget/embed': { ssr: false },
+    '/widget/embed': {
+      ssr: false,
+      headers: { 'cache-control': 'public, max-age=300, stale-while-revalidate=600' },
+    },
+    '/*/widget/embed': {
+      ssr: false,
+      headers: { 'cache-control': 'public, max-age=300, stale-while-revalidate=600' },
+    },
   },
 
   icon: {
