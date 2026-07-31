@@ -722,6 +722,7 @@
     "sendFailed": "Could not send that. Please try again.",
     "loadFailed": "Could not load your feedback.",
     "attachImage": "Attach image",
-    "uploadFailed": "Upload failed"
+    "uploadFailed": "Could not upload that image. Please try again.",
+    "uploadTooLarge": "Images must be smaller than {size}MB."
   }
 }

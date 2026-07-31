@@ -94,9 +94,12 @@ watch(draft, () => {
 // endpoint wants, and uploading early lets a failure surface while the visitor
 // is still composing.
 const MAX_ATTACHMENTS = 3
+// Mirrors `ensure.maxSize` in server/api/upload.post.ts.
+const MAX_UPLOAD_MB = 10
 interface Attachment { key: string; name: string }
 const attachments = ref<Attachment[]>([])
 const uploading = ref(false)
+const uploadError = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
 
 async function onFilePicked(e: Event) {
@@ -105,17 +108,28 @@ async function onFilePicked(e: Event) {
   input.value = ''
   if (!files.length) return
 
+  uploadError.value = ''
   uploading.value = true
   for (const file of files) {
+    if (file.size > MAX_UPLOAD_MB * 1024 * 1024) {
+      uploadError.value = t('widget.uploadTooLarge', { size: MAX_UPLOAD_MB })
+      continue
+    }
     try {
       const form = new FormData()
       form.append('file', file)
       const res = await widgetFetch<{ key: string }>('/api/upload', { method: 'POST', body: form })
       attachments.value.push({ key: res.key, name: file.name })
     }
-    catch {
-      messages.value.push({ role: 'assistant', text: t('widget.uploadFailed') })
-      scrollToBottom()
+    catch (err) {
+      // Same 401 contract as send(): park before the SDK rebuilds the frame.
+      if ((err as { statusCode?: number })?.statusCode === 401) {
+        parkForResume(draft.value, attachments.value, messages.value)
+        status.value = 'anonymous'
+        protocol.requestAuth('expired')
+        break
+      }
+      uploadError.value = t('widget.uploadFailed')
     }
   }
   uploading.value = false
@@ -167,6 +181,7 @@ async function send() {
   messages.value.push({ role: 'user', text, images })
   draft.value = ''
   attachments.value = []
+  uploadError.value = ''
   sending.value = true
   scrollToBottom()
   try {
@@ -494,6 +509,18 @@ onUnmounted(() => {
       </div>
 
       <div class="p-3 border-t border-border shrink-0">
+        <p v-if="uploadError" class="mb-2 flex items-start gap-1.5 text-[11px] text-destructive">
+          <Icon name="lucide:alert-circle" size="13" class="shrink-0 mt-px" />
+          <span class="flex-1">{{ uploadError }}</span>
+          <button
+            class="shrink-0 hover:opacity-70 transition-opacity"
+            :aria-label="t('widget.close')"
+            @click="uploadError = ''"
+          >
+            <Icon name="lucide:x" size="12" />
+          </button>
+        </p>
+
         <!-- Staged attachments: already uploaded, waiting to ride along with the message. -->
         <div v-if="attachments.length || uploading" class="flex flex-wrap gap-1.5 mb-2">
           <div
