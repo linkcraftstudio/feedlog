@@ -338,7 +338,7 @@ onUnmounted(() => {
       </button>
       <img
         v-if="view === 'chat' && org.logo"
-        :src="org.logo"
+        :src="resolveAttachmentUrl(org.logo)!"
         alt=""
         class="w-8 h-8 rounded-lg object-cover shrink-0"
       >
