@@ -38,6 +38,8 @@ function applyBrand(brand: { primary: string; primaryForeground: string }) {
   root.setProperty('--primary', brand.primary)
   root.setProperty('--ring', brand.primary)
   root.setProperty('--primary-foreground', brand.primaryForeground)
+  // Mixed over --background so the tint tracks the theme.
+  root.setProperty('--secondary', `color-mix(in oklab, ${brand.primary} 10%, var(--background))`)
 }
 
 const org = ref<{ name: string; logo: string | null }>({ name: '', logo: null })
