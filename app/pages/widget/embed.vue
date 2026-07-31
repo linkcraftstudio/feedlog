@@ -93,7 +93,6 @@ watch(draft, () => {
 // Uploaded up front rather than on send: the storage key is what the message
 // endpoint wants, and uploading early lets a failure surface while the visitor
 // is still composing.
-const MAX_ATTACHMENTS = 3
 // Mirrors `ensure.maxSize` in server/api/upload.post.ts.
 const MAX_UPLOAD_MB = 10
 interface Attachment { key: string; name: string }
@@ -104,7 +103,7 @@ const fileInput = ref<HTMLInputElement | null>(null)
 
 async function onFilePicked(e: Event) {
   const input = e.target as HTMLInputElement
-  const files = Array.from(input.files ?? []).slice(0, MAX_ATTACHMENTS - attachments.value.length)
+  const files = Array.from(input.files ?? [])
   input.value = ''
   if (!files.length) return
 
@@ -563,7 +562,7 @@ onUnmounted(() => {
           />
           <div class="flex items-center justify-between px-2 pb-2 pt-1">
             <button
-              :disabled="attachments.length >= MAX_ATTACHMENTS || uploading || sending"
+              :disabled="uploading || sending"
               class="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               :aria-label="t('widget.attachImage')"
               @click="fileInput?.click()"

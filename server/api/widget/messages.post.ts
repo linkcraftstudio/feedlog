@@ -7,9 +7,6 @@ import { getEnabledRuleScenarios } from '#layers/feedlog/shared/utils/widget-set
 
 const MAX_COMPLETION_TOKENS = 2048
 const MAX_TEXT_LENGTH = 4000
-// Mirrors the composer's own ceiling. Every key here becomes a line of markdown
-// in the post body, so without a limit the request decides how big a post gets.
-const MAX_IMAGES = 3
 // One LLM call per message, and a message is a deliberate human act — this only
 // has to stop a script, not shape normal use.
 const RATE_LIMIT = { limit: 20, windowSeconds: 60 }
@@ -44,9 +41,6 @@ export default defineEventHandler(async (event): Promise<WidgetMessageResponse> 
   }
   if (text.length > MAX_TEXT_LENGTH) {
     throw createError({ statusCode: 422, message: 'Message is too long' })
-  }
-  if (images.length > MAX_IMAGES) {
-    throw createError({ statusCode: 422, message: `At most ${MAX_IMAGES} images can be attached` })
   }
 
   const db = useDB()
