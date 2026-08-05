@@ -199,6 +199,7 @@
       "bodyPlaceholder": "详细描述你的想法……",
       "submitting": "提交中……",
       "submit": "发布反馈",
+      "signInAndSubmit": "登录并发布",
       "dialogTitle": "提交反馈",
       "dialogDescription": "提交新反馈",
       "errors": {

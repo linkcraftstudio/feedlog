@@ -3,7 +3,11 @@ import '~/assets/css/md-editor-preview.css'
 import { preventShadcnDialogClose } from '~/lib/md-editor-helper';
 import { sanitizeAttachmentHtml } from '~/utils/attachment';
 
-const props = defineProps<{ defaultBoardId?: string }>()
+const props = defineProps<{
+  defaultBoardId?: string
+  /** Seed values from a pre-filled submit link (`/?new=1&title=&body=`). */
+  prefill?: { title?: string; body?: string }
+}>()
 const open = defineModel<boolean>('open', { default: false })
 const emit = defineEmits<{ created: [slug: string] }>()
 
@@ -11,6 +15,12 @@ const { t, locale } = useI18n()
 
 const boardStore = useBoardStore()
 const { boards } = storeToRefs(boardStore)
+
+const { data: session } = useAuthSession()
+const isLoggedIn = computed(() => !!session.value?.user)
+const loginModal = useLoginModal()
+// The user pressed submit while signed out; resume once a session appears.
+const awaitingLogin = ref(false)
 
 const selectedBoardId = ref<string | null>(null)
 const title = ref('')
@@ -81,6 +91,7 @@ function reset() {
   error.value = ''
   similarPosts.value = []
   showDetailSlug.value = null
+  awaitingLogin.value = false
 }
 
 async function handleSubmit() {
@@ -94,6 +105,16 @@ async function handleSubmit() {
   }
   if (!content.value.trim()) {
     error.value = t('post.submit.errors.contentRequired')
+    return
+  }
+
+  // Only reachable from a pre-filled link: every other entry point still gates
+  // on sign-in before opening the form. Arriving with a draft already written
+  // is what earns the deferral — the auth prompt waits until it would cost the
+  // reporter something to walk away.
+  if (!isLoggedIn.value) {
+    awaitingLogin.value = true
+    loginModal.open()
     return
   }
 
@@ -121,10 +142,21 @@ async function handleSubmit() {
   }
 }
 
+// Sign-in happens in place (OAuth runs in a popup, email posts via fetch), so
+// the draft is still in memory here — finish the submit the user already asked
+// for instead of making them press the button twice.
+watch(isLoggedIn, (v) => {
+  if (!v || !awaitingLogin.value) return
+  awaitingLogin.value = false
+  void handleSubmit()
+})
+
 // Set default board when modal opens, reset when it closes
 watch(open, (v) => {
   if (v) {
     selectedBoardId.value = props.defaultBoardId ?? boards.value[0]?.id ?? null
+    if (props.prefill?.title) title.value = props.prefill.title
+    if (props.prefill?.body) content.value = props.prefill.body
   } else {
     reset()
   }
@@ -212,7 +244,9 @@ watch(open, (v) => {
           :disabled="submitting"
           @click="handleSubmit"
         >
-          {{ submitting ? $t('post.submit.submitting') : $t('post.submit.submit') }}
+          <template v-if="submitting">{{ $t('post.submit.submitting') }}</template>
+          <template v-else-if="!isLoggedIn">{{ $t('post.submit.signInAndSubmit') }}</template>
+          <template v-else>{{ $t('post.submit.submit') }}</template>
         </button>
       </div>
 

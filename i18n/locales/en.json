@@ -199,6 +199,7 @@
       "bodyPlaceholder": "Explain your thoughts in detail...",
       "submitting": "Submitting...",
       "submit": "Post Feedback",
+      "signInAndSubmit": "Sign in & Post",
       "dialogTitle": "Submit Feedback",
       "dialogDescription": "Submit new feedback",
       "errors": {

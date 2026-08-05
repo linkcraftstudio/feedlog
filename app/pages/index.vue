@@ -23,7 +23,19 @@ const { boards, boardMap, totalPostCount } = storeToRefs(boardStore)
 // Currently selected board and sort order
 const route = useRoute()
 const router = useRouter()
-const activeBoardId = computed(() => (route.query.b as string) || null)
+
+// `?b=` accepts a board id or its name, so pre-filled links can be hand-written
+// without looking up a uuid in the dashboard. Names are matched only once the
+// board store has loaded; until then this reads as "no filter".
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const activeBoardId = computed(() => {
+  const raw = (route.query.b as string) || null
+  if (!raw) return null
+  if (UUID_RE.test(raw)) return raw
+  const wanted = raw.trim().toLowerCase()
+  // Board names carry no uniqueness constraint — first by position wins.
+  return boards.value.find(b => b.name.toLowerCase() === wanted)?.id ?? null
+})
 const sortBy = ref<'top' | 'recent'>('recent')
 
 // Post list
@@ -150,6 +162,34 @@ const postDetailStore = usePostDetailStore()
 const showDetail = ref(false)
 const showSubmit = ref(false)
 const detailSlug = ref<string | null>(null)
+
+// Pre-filled submit links: /?new=1&title=...&body=...&b=...
+// This is the one entry point that opens the form to signed-out visitors — they
+// arrive holding a draft, so making them sign in first would throw it away.
+// Caps mirror the form's own limits; over-long values are truncated rather than
+// rejected, since a broken link should still get the reporter to a usable form.
+const submitPrefill = ref<{ title?: string; body?: string }>()
+
+onMounted(() => {
+  const q = route.query
+  // `?new` with no value parses to null — bare presence counts as enabled.
+  if (q.new === undefined || q.new === '0' || q.new === 'false') return
+
+  submitPrefill.value = {
+    title: typeof q.title === 'string' ? q.title.slice(0, 200) : undefined,
+    body: typeof q.body === 'string' ? q.body.slice(0, 10000) : undefined,
+  }
+  showSubmit.value = true
+
+  // Strip the one-shot params: otherwise a refresh replays the draft, and
+  // sharing the current URL hands your draft to someone else. `b` stays — it is
+  // the list's filter state, not part of the prefill.
+  const query = { ...q }
+  delete query.new
+  delete query.title
+  delete query.body
+  router.replace({ query })
+})
 
 // Open post detail modal with prefill from list data
 function openPostDetail(item: PostListItem) {
@@ -441,7 +481,12 @@ async function handleVote(post: PostListItem) {
   <PostDetailModal v-model:open="showDetail" :slug="detailSlug" @updated="onPostUpdated" @deleted="onPostDeleted" />
 
   <!-- Submit feedback modal -->
-  <SubmitModal v-model:open="showSubmit" :default-board-id="activeBoardId ?? undefined" @created="refreshPosts()" />
+  <SubmitModal
+    v-model:open="showSubmit"
+    :default-board-id="activeBoardId ?? undefined"
+    :prefill="submitPrefill"
+    @created="refreshPosts()"
+  />
 </template>
 
 <style scoped>
