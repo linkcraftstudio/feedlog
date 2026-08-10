@@ -37,6 +37,8 @@ export interface PostAuthor {
   id: string
   name: string | null
   image: string | null
+  // Optional because only the detail endpoint sets it, and only for staff.
+  email?: string | null
 }
 
 // List item (without content)

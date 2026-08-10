@@ -113,6 +113,20 @@ export async function requireOrgMember(event: H3Event) {
   return { session, orgId, role: found.role }
 }
 
+// Non-throwing counterpart of requireOrgMember, for endpoints that serve
+// everyone but enrich the payload for staff — a throwing gate can't express
+// "same route, more fields". Product-SSO sessions are end-user identities, so
+// they get null here just as assertNotSsoSession rejects them elsewhere.
+export function getOrgMemberRole(
+  session: Awaited<ReturnType<typeof getUserSession>>,
+  orgId: string | undefined,
+): string | null {
+  if (!session || !orgId) return null
+  if ((session.session as { ssoOrgId?: string | null }).ssoOrgId) return null
+  const orgList = (session as { orgList?: { orgId: string; role: string }[] }).orgList
+  return orgList?.find(o => o.orgId === orgId)?.role ?? null
+}
+
 // Gate a dashboard surface on "current user is owner of this org". Used for
 // owner-only settings such as SSO signing secrets.
 export async function requireOrgOwner(event: H3Event) {

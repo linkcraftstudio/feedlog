@@ -317,6 +317,17 @@ watch(commentSort, () => {
   store.fetchComments(props.slug, commentSort.value)
 })
 
+async function handleCopyEmail() {
+  const email = post.value?.author?.email
+  if (!email) return
+  try {
+    await navigator.clipboard.writeText(email)
+    toast.success(t('post.detail.emailCopied'))
+  } catch {
+    toast.error(t('post.detail.emailCopyFailed'))
+  }
+}
+
 async function handleShare() {
   // Canonical post URL — independent of current location (post may be opened in a modal)
   const url = `${window.location.origin}/p/${props.slug}`
@@ -525,7 +536,24 @@ async function handleShare() {
           <div class="flex items-center gap-3">
             <img v-if="post.author?.image" :src="post.author.image" :alt="post.author.name" class="w-8 h-8 rounded-full object-cover shrink-0" referrerpolicy="no-referrer">
             <div v-else class="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center text-foreground font-bold text-xs shrink-0">{{ initials(post.author?.name) }}</div>
-            <p class="text-sm font-bold">{{ post.author?.name ?? $t('common.anonymous') }}</p>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-bold truncate">{{ post.author?.name ?? $t('common.anonymous') }}</p>
+              <!-- No role check here on purpose: the API only ships email to staff. -->
+              <div v-if="post.author?.email" class="flex items-center gap-1">
+                <a
+                  :href="`mailto:${post.author.email}`"
+                  class="min-w-0 text-[11px] text-muted-foreground hover:text-primary truncate transition-colors"
+                  :title="post.author.email"
+                >{{ post.author.email }}</a>
+                <button
+                  class="w-5 h-5 shrink-0 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                  :title="$t('post.detail.copyEmail')"
+                  @click="handleCopyEmail"
+                >
+                  <Icon name="lucide:copy" size="12" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
         <!-- Admins never receive post-thread email, so the card would lie to them. -->
