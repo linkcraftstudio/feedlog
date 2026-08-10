@@ -14,13 +14,12 @@ const MAX_TEXT_LENGTH = 4000
 // has to stop a script, not shape normal use.
 const RATE_LIMIT = { limit: 20, windowSeconds: 60 }
 
-// A non-uuid id would make Postgres throw on the ownership lookup, and it cannot
-// name a row this visitor owns either way.
+// A non-uuid id would make Postgres throw on the ownership lookup below.
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 interface WidgetMessageResponse {
   conversationId: string
-  type: 'feedback' | 'support' | 'unrecognized'
+  type: 'feedback' | 'support' | 'clarify' | 'unrecognized'
   reply: string
   post?: {
     id: string
@@ -87,8 +86,7 @@ export default defineEventHandler(async (event): Promise<WidgetMessageResponse> 
     throw createError({ statusCode: 403, message: 'Widget is not enabled for this organization' })
   }
 
-  // Ownership is the whole access model here: a conversation belongs to the one
-  // visitor who started it, in the one org they started it in.
+  // A conversation belongs to the one visitor who started it, in that one org.
   if (requestedId) {
     const [owned] = await db
       .select({ id: conversation.id })
@@ -124,9 +122,8 @@ export default defineEventHandler(async (event): Promise<WidgetMessageResponse> 
     getEnabledRuleScenarios(widgetRow ?? null),
   )
 
-  // The visitor's turn is stored before the model is asked anything: a failed
-  // call then leaves a message nobody answered, which is honest, where writing
-  // afterwards would lose what they typed.
+  // Stored before the model is asked anything: a failed call then leaves an
+  // unanswered message, where writing afterwards would lose what they typed.
   const sentAt = new Date()
   const conversationId = await db.transaction(async (tx) => {
     let id = requestedId
@@ -136,8 +133,6 @@ export default defineEventHandler(async (event): Promise<WidgetMessageResponse> 
         .where(eq(conversation.id, id))
     }
     else {
-      // Created lazily with its first message, so every row has one — leaving
-      // without sending anything leaves nothing behind.
       const [row] = await tx.insert(conversation)
         .values({ orgId, userId, previewText: text, lastMessageAt: sentAt })
         .returning({ id: conversation.id })
@@ -204,6 +199,9 @@ export default defineEventHandler(async (event): Promise<WidgetMessageResponse> 
   }
   else if (ai.type === 'unrecognized') {
     reply = unrecognizedReply(orgInfo?.name || (zh ? '这个产品' : 'this product'), zh)
+  }
+  else if (ai.type === 'clarify') {
+    reply = ai.reply!.trim()
   }
   else {
     reply = ai.reply?.trim() || 'Thanks — I turned that into a feedback post for you.'

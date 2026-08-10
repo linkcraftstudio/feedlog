@@ -5,7 +5,7 @@
 // user SEEKING HELP, plus the decision order and the contrast examples, is what
 // fixed it — keep all three when editing.
 
-export type WidgetAiType = 'feedback' | 'support' | 'unrecognized'
+export type WidgetAiType = 'feedback' | 'support' | 'clarify' | 'unrecognized'
 
 export interface WidgetAiOutput {
   type: WidgetAiType
@@ -27,13 +27,12 @@ export interface WidgetHistoryTurn {
   postTitle?: string
 }
 
-const HISTORY_TYPES = new Set<string>(['feedback', 'support', 'unrecognized'])
+const AI_TYPES = new Set<string>(['feedback', 'support', 'clarify', 'unrecognized'])
 const HISTORY_TITLE_MAX = 200
 
-// The client owns this array — the server never reads the message table to build
-// context — so nothing survives here beyond its shape: unknown fields are
+// The client owns this array, so only its shape survives: unknown fields are
 // dropped and an unrecognized "type" is omitted rather than replayed into the
-// prompt. null means the payload was not a list of well-formed turns.
+// prompt. null = not a list of well-formed turns.
 export function parseWidgetHistory(raw: unknown): WidgetHistoryTurn[] | null {
   if (raw === undefined || raw === null) return []
   if (!Array.isArray(raw)) return null
@@ -47,7 +46,7 @@ export function parseWidgetHistory(raw: unknown): WidgetHistoryTurn[] | null {
 
     const turn: WidgetHistoryTurn = { role: o.role, text: o.text }
     if (o.role === 'assistant') {
-      if (typeof o.type === 'string' && HISTORY_TYPES.has(o.type)) turn.type = o.type as WidgetAiType
+      if (typeof o.type === 'string' && AI_TYPES.has(o.type)) turn.type = o.type as WidgetAiType
       if (typeof o.postTitle === 'string' && o.postTitle) turn.postTitle = o.postTitle.slice(0, HISTORY_TITLE_MAX)
     }
     turns.push(turn)
@@ -84,7 +83,16 @@ export function buildWidgetSystemPrompt(
 
   return `You are the feedback assistant embedded in ${productName}'s in-app widget.
 You are an AI assistant, NOT a human support agent — never imply otherwise.
-Read the user's latest message and classify it into EXACTLY ONE of three outcomes.
+Read the WHOLE conversation and classify the user's latest turn into EXACTLY ONE of four
+outcomes.
+
+## What you already did in this conversation
+Your earlier turns appear as the JSON you returned. A turn with "type":"feedback" means
+that request is ALREADY FILED — never file it again, and never mention filing it again.
+Read the WHOLE conversation to understand what the user means (an answer to your own
+follow-up only makes sense in context), but judge only their LATEST turn — earlier turns
+are context, not new requests. One conversation may legitimately produce several separate
+posts, but only for genuinely DIFFERENT requests.
 
 ## Workspace boards (pick the best-fitting one when drafting feedback)
 ${boardLines}
@@ -94,10 +102,16 @@ ALWAYS redirect to support when the user is actually SEEKING HELP for their own 
 ${ruleLines}
 
 ## Decision order (apply top-down, pick the FIRST that matches)
-1. "support"      — the user is SEEKING HELP for their own account, data, or money: one of the
-                    situations above, or anything else only a human on the team can act on for them.
-2. "feedback"     — a concrete, publicly-postable product idea, bug, or improvement request. Draft it.
-3. "unrecognized" — unclear, off-topic, empty, or unrelated to the product. Draft nothing.
+1. "support"      — the user is SEEKING HELP for their own account, data, or money: one of
+                    the situations above, or anything else only a human on the team can act
+                    on for them. This applies at ANY turn, including mid-clarification.
+2. "feedback"     — you can already draft a post the team could act on, AND it is not
+                    something you filed earlier in this conversation. Draft it.
+3. "clarify"      — the user is repeating or adding detail to something you ALREADY FILED,
+                    or they are talking about the product but you cannot draft ANYTHING
+                    actionable (no concrete subject, or no concrete ask). Ask ONE short
+                    question, or confirm what is already on record. Draft nothing.
+4. "unrecognized" — off-topic, empty, or unrelated to the product. Draft nothing.
 
 ## CRITICAL — mentioning a topic word is NOT the same as needing support for it
 Suggesting a product change that merely CONTAINS a word like "privacy", "billing", "login", or "invoice"
@@ -110,13 +124,32 @@ Examples:
 - "I'm locked out of my account."                  → support — blocked from logging in.
 - "Please delete my account."                      → support — an action on their own account only a human can take.
 
+## CRITICAL — an incomplete description is NOT the same as an undraftable one
+Prefer "feedback" over "clarify". Choose "clarify" ONLY when you cannot draft ANYTHING
+actionable — never merely to collect more detail on something you could already file.
+- "The export button spins forever."          → feedback. File it. Do NOT ask which report.
+- "Something is wrong with the reports page." → clarify. No concrete symptom to file.
+- "This thing is so slow."                    → clarify. No concrete subject to file.
+- "Add a dark mode please."                   → feedback. File it.
+
+## CRITICAL — never file the same request twice
+If one of your own earlier turns already filed it, do NOT file it again, however the user
+phrases it the second time. Repeating it, adding a detail to it, or asking where it stands
+are all "clarify": confirm it is on record, then ask whether there is anything else.
+Assume you filed "Export button spins forever" earlier:
+- "The export still spins."             → clarify. Already filed; say so.
+- "It only happens with big files."     → clarify. Same issue, extra detail.
+- "Also the dashboard is slow."         → feedback. A genuinely different problem.
+
 ## When type = "feedback", also produce
 - "title":     a concise, specific one-line summary (<= 80 chars).
 - "content":   restate the request faithfully IN THE USER'S OWN VOICE (first person). Do not invent details.
 - "boardName": copy EXACTLY one board "name" from the list above that best fits. If none clearly fits, omit.
 
 ## Reply text
-- type = "feedback": short friendly confirmation in "reply". support/unrecognized: leave "reply" empty.
+- type = "feedback": short friendly confirmation in "reply".
+- type = "clarify":  the ONE question you are asking, in "reply". Nothing else.
+- support/unrecognized: leave "reply" empty.
 - Always answer in the SAME language as the user's message.
 
 ## Output — return ONLY this JSON, no prose, no code fence:
@@ -127,10 +160,12 @@ Include title / content / boardName ONLY when type = "feedback".`
 function isValidOutput(obj: unknown): obj is WidgetAiOutput {
   if (!obj || typeof obj !== 'object') return false
   const o = obj as Record<string, unknown>
-  if (o.type !== 'feedback' && o.type !== 'support' && o.type !== 'unrecognized') return false
+  if (!AI_TYPES.has(o.type as string)) return false
   // A feedback verdict without a draft is unusable; treat it as malformed so the
   // caller retries or degrades rather than creating an empty post.
   if (o.type === 'feedback' && (typeof o.title !== 'string' || typeof o.content !== 'string')) return false
+  // Likewise a follow-up with nothing to ask: an empty bubble, no way forward.
+  if (o.type === 'clarify' && (typeof o.reply !== 'string' || !o.reply.trim())) return false
   return true
 }
 

@@ -33,9 +33,8 @@ export interface CreatedPost {
 }
 
 // tx folds these writes into a caller's transaction — the widget pairs the post
-// with the chat message it came from, and half of that pair is worse than
-// neither. Slug lookup stays outside: it only reads, and a real collision is
-// caught by idx_post_org_slug either way.
+// with the chat message it came from. Slug lookup stays outside: it only reads,
+// and a real collision is caught by idx_post_org_slug either way.
 export async function createPostRecord(
   input: CreatePostInput,
   tx?: Pick<ReturnType<typeof useDB>, 'insert'>,
