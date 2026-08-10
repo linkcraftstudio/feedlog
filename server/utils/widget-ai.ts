@@ -20,6 +20,56 @@ export interface WidgetPromptBoard {
   description: string | null
 }
 
+export interface WidgetHistoryTurn {
+  role: 'user' | 'assistant'
+  text: string
+  type?: WidgetAiType
+  postTitle?: string
+}
+
+const HISTORY_TYPES = new Set<string>(['feedback', 'support', 'unrecognized'])
+const HISTORY_TITLE_MAX = 200
+
+// The client owns this array — the server never reads the message table to build
+// context — so nothing survives here beyond its shape: unknown fields are
+// dropped and an unrecognized "type" is omitted rather than replayed into the
+// prompt. null means the payload was not a list of well-formed turns.
+export function parseWidgetHistory(raw: unknown): WidgetHistoryTurn[] | null {
+  if (raw === undefined || raw === null) return []
+  if (!Array.isArray(raw)) return null
+
+  const turns: WidgetHistoryTurn[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') return null
+    const o = item as Record<string, unknown>
+    if (o.role !== 'user' && o.role !== 'assistant') return null
+    if (typeof o.text !== 'string') return null
+
+    const turn: WidgetHistoryTurn = { role: o.role, text: o.text }
+    if (o.role === 'assistant') {
+      if (typeof o.type === 'string' && HISTORY_TYPES.has(o.type)) turn.type = o.type as WidgetAiType
+      if (typeof o.postTitle === 'string' && o.postTitle) turn.postTitle = o.postTitle.slice(0, HISTORY_TITLE_MAX)
+    }
+    turns.push(turn)
+  }
+  return turns
+}
+
+// Assistant turns replay as the JSON the model itself returned, minus content —
+// that is what makes "this one is already filed" legible on the next call.
+export function historyToMessages(history: WidgetHistoryTurn[]): { role: 'user' | 'assistant', content: string }[] {
+  return history.map((turn) => {
+    if (turn.role === 'user') {
+      return { role: 'user' as const, content: turn.text || '(no text, image only)' }
+    }
+    const payload: Record<string, string> = {}
+    if (turn.type) payload.type = turn.type
+    if (turn.postTitle) payload.title = turn.postTitle
+    payload.reply = turn.text
+    return { role: 'assistant' as const, content: JSON.stringify(payload) }
+  })
+}
+
 export function buildWidgetSystemPrompt(
   productName: string,
   boards: WidgetPromptBoard[],
