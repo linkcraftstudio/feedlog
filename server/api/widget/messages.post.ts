@@ -1,8 +1,9 @@
 import OpenAI from 'openai'
-import { and, asc, eq } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'
 import { getRequestURL } from 'h3'
 import { board, conversation, message, organizationWidget } from '#layers/feedlog/server/db/schemas'
 import { buildWidgetSystemPrompt, historyToMessages, parseWidgetAiResponse, parseWidgetHistory } from '#layers/feedlog/server/utils/widget-ai'
+import { isConversationId, ownedConversation } from '#layers/feedlog/server/utils/conversation'
 import type { WidgetAiOutput } from '#layers/feedlog/server/utils/widget-ai'
 import type { CreatedPost } from '#layers/feedlog/server/utils/post-create'
 import { isActorAdmin } from '#layers/feedlog/shared/utils/notifications'
@@ -13,9 +14,6 @@ const MAX_TEXT_LENGTH = 4000
 // One LLM call per message, and a message is a deliberate human act — this only
 // has to stop a script, not shape normal use.
 const RATE_LIMIT = { limit: 20, windowSeconds: 60 }
-
-// A non-uuid id would make Postgres throw on the ownership lookup below.
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 interface WidgetMessageResponse {
   conversationId: string
@@ -62,10 +60,10 @@ export default defineEventHandler(async (event): Promise<WidgetMessageResponse> 
     throw createError({ statusCode: 422, message: 'Malformed conversation history' })
   }
 
-  const requestedId = typeof body?.conversationId === 'string' && body.conversationId
-    ? body.conversationId
-    : null
-  if (requestedId && !UUID_RE.test(requestedId)) {
+  const rawId = body?.conversationId
+  const requestedId = isConversationId(rawId) ? rawId : null
+  // A malformed id names a conversation that cannot exist, not a new one.
+  if (rawId && !requestedId) {
     throw createError({ statusCode: 404, message: 'Conversation not found' })
   }
 
@@ -91,11 +89,7 @@ export default defineEventHandler(async (event): Promise<WidgetMessageResponse> 
     const [owned] = await db
       .select({ id: conversation.id })
       .from(conversation)
-      .where(and(
-        eq(conversation.id, requestedId),
-        eq(conversation.orgId, orgId),
-        eq(conversation.userId, userId),
-      ))
+      .where(ownedConversation(requestedId, orgId, userId))
       .limit(1)
     if (!owned) {
       throw createError({ statusCode: 404, message: 'Conversation not found' })
