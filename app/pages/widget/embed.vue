@@ -66,15 +66,21 @@ useHead(() => ({
 }))
 
 // ---- chat ----------------------------------------------------------------
+type WidgetAiType = 'feedback' | 'support' | 'clarify' | 'unrecognized'
+
 interface ChatMessage {
   role: 'user' | 'assistant'
   text: string
   images?: string[]
+  // No type on an assistant bubble = the send failed; that notice is local and
+  // must never be replayed to the model.
+  type?: WidgetAiType
   post?: { id: string; slug: string; title: string; board: string | null; status: string }
 }
 
 const view = ref<'chat' | 'list'>('chat')
 const messages = ref<ChatMessage[]>([])
+const conversationId = ref<string | null>(null)
 const draft = ref('')
 const sending = ref(false)
 const bodyEl = ref<HTMLElement | null>(null)
@@ -161,7 +167,7 @@ const RESUME_KEY = 'feedlog:widget:resume'
 function parkForResume(text: string, files: Attachment[], log: ChatMessage[]) {
   try {
     const owner = user.value?.email ?? ''
-    sessionStorage.setItem(RESUME_KEY, JSON.stringify({ owner, text, files, log }))
+    sessionStorage.setItem(RESUME_KEY, JSON.stringify({ owner, text, files, log, conversationId: conversationId.value }))
   }
   catch { /* storage unavailable — the draft is lost, nothing else breaks */ }
 }
@@ -171,7 +177,7 @@ function resumeParked(): boolean {
     const raw = sessionStorage.getItem(RESUME_KEY)
     if (!raw) return false
     sessionStorage.removeItem(RESUME_KEY)
-    const saved = JSON.parse(raw) as { owner?: string; text?: string; files?: Attachment[]; log?: ChatMessage[] }
+    const saved = JSON.parse(raw) as { owner?: string; text?: string; files?: Attachment[]; log?: ChatMessage[]; conversationId?: string | null }
     // A rebuild that never completed leaves the archive for whoever signs in
     // next on this tab; a half-sent message goes back only to its author.
     if (saved.owner !== user.value?.email) return false
@@ -179,6 +185,9 @@ function resumeParked(): boolean {
     attachments.value = saved.files ?? []
     if (saved.log?.length) {
       messages.value = saved.log
+      // Restored together or not at all — an id without its log would send an
+      // empty history for a conversation that already has one.
+      conversationId.value = saved.conversationId ?? null
       return true
     }
   }
@@ -186,11 +195,20 @@ function resumeParked(): boolean {
   return false
 }
 
+function toHistory() {
+  return messages.value
+    .filter(m => m.role === 'user' || m.type)
+    .map(m => m.role === 'user'
+      ? { role: 'user' as const, text: m.text }
+      : { role: 'assistant' as const, text: m.text, type: m.type, ...(m.post ? { postTitle: m.post.title } : {}) })
+}
+
 async function send() {
   const text = draft.value.trim()
   const imageFiles = [...attachments.value]
   const images = imageFiles.map(a => a.key)
   if ((!text && !images.length) || sending.value || uploading.value) return
+  const history = toHistory()
   messages.value.push({ role: 'user', text, images })
   draft.value = ''
   attachments.value = []
@@ -198,11 +216,12 @@ async function send() {
   sending.value = true
   scrollToBottom()
   try {
-    const res = await widgetFetch<{ type: string; reply: string; post?: ChatMessage['post'] }>(
+    const res = await widgetFetch<{ conversationId: string; type: WidgetAiType; reply: string; post?: ChatMessage['post'] }>(
       '/api/widget/messages',
-      { method: 'POST', body: JSON.stringify({ text, images }) },
+      { method: 'POST', body: JSON.stringify({ text, images, conversationId: conversationId.value, history }) },
     )
-    messages.value.push({ role: 'assistant', text: res.reply, post: res.post })
+    conversationId.value = res.conversationId
+    messages.value.push({ role: 'assistant', text: res.reply, type: res.type, post: res.post })
     // A new post belongs in the list the moment it exists.
     if (res.post) void loadFeedback()
   }
