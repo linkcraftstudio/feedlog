@@ -381,7 +381,7 @@ onUnmounted(() => {
           {{ view === 'list' ? t('widget.myFeedback') : t('widget.title') }}
         </p>
         <p v-if="view === 'list' && totalCount" class="mt-0.5 text-xs text-muted-foreground truncate">
-          {{ t('widget.postCount', { count: totalCount }, totalCount) }}<template v-if="unreadCount"> · {{ t('widget.withUpdates', { count: unreadCount }) }}</template>
+          {{ t('widget.postCount', { count: totalCount }, totalCount) }}<template v-if="unreadCount"> · {{ t('widget.withUpdates', { count: unreadCount }, unreadCount) }}</template>
         </p>
         <p v-else-if="view === 'chat' && org.name" class="mt-0.5 text-xs text-muted-foreground leading-snug line-clamp-2">
           {{ t('widget.subtitle', { product: org.name }) }}
@@ -470,7 +470,7 @@ onUnmounted(() => {
           <span class="truncate">{{ t('widget.myFeedback') }}</span>
           <span class="font-medium text-muted-foreground shrink-0">({{ totalCount }})</span>
           <span v-if="unreadCount" class="font-bold text-primary shrink-0 truncate">
-            · {{ t('widget.withUpdates', { count: unreadCount }) }}
+            · {{ t('widget.withUpdates', { count: unreadCount }, unreadCount) }}
           </span>
         </button>
         <a
@@ -505,14 +505,14 @@ onUnmounted(() => {
                   class="w-16 h-16 rounded-lg object-cover border border-black/10"
                 >
               </div>
+              <WidgetEmbedFeedbackCard
+                v-if="m.post"
+                :title="m.post.title"
+                :board="m.post.board"
+                :status="m.post.status"
+                @open="protocol.navigateToFeedback(m.post!.slug)"
+              />
             </div>
-            <WidgetEmbedFeedbackCard
-              v-if="m.post"
-              :title="m.post.title"
-              :board="m.post.board"
-              :status="m.post.status"
-              @open="protocol.navigateToFeedback(m.post!.slug)"
-            />
           </div>
         </div>
 
