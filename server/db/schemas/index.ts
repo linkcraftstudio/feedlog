@@ -29,6 +29,8 @@ export {
   organizationWidget,
   organizationWidgetRelations,
   postUnread,
+  conversation,
+  message,
 } from './widget'
 export type { WidgetCustomRule } from './widget'
 import { user, session, account, organization, member, invitation } from './auth'
