@@ -310,6 +310,7 @@ onUnmounted(() => {
         :board-url="boardUrl"
         :total-count="totalCount"
         :unread-count="unreadCount"
+        :open-id="activeConversationId"
         @auth-required="onAuthRequired"
         @filed="onFiled"
         @open-feedback="onOpenFeedback"

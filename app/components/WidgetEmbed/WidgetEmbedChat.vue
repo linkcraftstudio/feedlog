@@ -8,6 +8,7 @@ const props = defineProps<{
   boardUrl: string
   totalCount: number
   unreadCount: number
+  openId: string | null
 }>()
 
 const emit = defineEmits<{
@@ -36,6 +37,7 @@ const messages = ref<ChatMessage[]>([])
 const conversationId = ref<string | null>(null)
 const draft = ref('')
 const sending = ref(false)
+const loadingThread = ref(false)
 const bodyEl = ref<HTMLElement | null>(null)
 const draftEl = ref<HTMLTextAreaElement | null>(null)
 
@@ -197,10 +199,63 @@ async function send() {
   }
 }
 
-onMounted(() => {
-  if (!resumeParked()) {
-    messages.value.push({ role: 'assistant', text: t('widget.greeting', { product: props.productName }) })
+interface StoredMessage {
+  role: string
+  kind: string | null
+  text: string
+  images: string[]
+  post: ChatMessage['post'] | null
+}
+
+// Kept alive: another conversation arrives as a prop change, never a re-mount.
+async function syncToOpenId() {
+  if (props.openId === conversationId.value) return
+
+  if (!props.openId) {
+    messages.value = [{ role: 'assistant', text: t('widget.greeting', { product: props.productName }) }]
+    conversationId.value = null
+    return
   }
+
+  loadingThread.value = true
+  try {
+    const res = await widgetFetch<{ data: StoredMessage[] }>(`/api/widget/conversations/${props.openId}/messages`)
+    messages.value = res.data.map(m => ({
+      role: m.role === 'user' ? 'user' as const : 'assistant' as const,
+      text: m.text,
+      images: m.images,
+      type: (m.kind ?? undefined) as WidgetAiType | undefined,
+      post: m.post ?? undefined,
+    }))
+    conversationId.value = props.openId
+    scrollToBottom()
+  }
+  catch {
+    messages.value = [{ role: 'assistant', text: t('widget.loadFailed') }]
+  }
+  finally {
+    loadingThread.value = false
+  }
+}
+
+// A resumed draft brings its own conversation; the activate after this mount
+// must not discard it.
+let skipNextSync = false
+
+onMounted(() => {
+  if (resumeParked()) {
+    skipNextSync = true
+    return
+  }
+  void syncToOpenId()
+})
+
+onActivated(() => {
+  if (skipNextSync) {
+    skipNextSync = false
+    return
+  }
+  void syncToOpenId()
 })
 </script>
 
@@ -236,7 +291,11 @@ onMounted(() => {
     </a>
   </div>
 
-  <div ref="bodyEl" class="flex-1 overflow-y-auto bg-background p-3.5 space-y-2.5">
+  <div v-if="loadingThread" class="flex-1 grid place-items-center bg-background">
+    <Icon name="lucide:loader-2" size="20" class="animate-spin text-muted-foreground" />
+  </div>
+
+  <div v-else ref="bodyEl" class="flex-1 overflow-y-auto bg-background p-3.5 space-y-2.5">
     <div v-for="(m, i) in messages" :key="i" class="flex" :class="m.role === 'user' ? 'justify-end' : 'justify-start'">
       <div class="max-w-[82%]">
         <div
