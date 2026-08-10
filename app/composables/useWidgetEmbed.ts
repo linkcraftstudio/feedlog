@@ -1,6 +1,8 @@
 // Session + transport for the embedded widget page. Identity here comes ONLY
 // from the bearer token the SDK passes in the URL fragment — never a cookie.
 
+import type { InjectionKey } from 'vue'
+
 export interface WidgetEmbedUser {
   id: string
   email: string
@@ -81,3 +83,7 @@ export function useWidgetEmbed() {
 
   return { token, user, status, widgetFetch, loadSession }
 }
+
+// Refs are per call: a child calling the composable gets an unauthenticated one.
+export type WidgetEmbedSession = ReturnType<typeof useWidgetEmbed>
+export const widgetEmbedKey = Symbol('widgetEmbed') as InjectionKey<WidgetEmbedSession>

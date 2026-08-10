@@ -2,6 +2,8 @@
 // listens. No message listener is registered here on purpose — adding one would
 // open an inbound surface the protocol says doesn't exist.
 
+import type { InjectionKey } from 'vue'
+
 const PROTOCOL_VERSION = 1
 
 export type WidgetOutboundType = 'ready' | 'auth-requested' | 'unread' | 'navigate' | 'close-request'
@@ -48,3 +50,7 @@ export function useWidgetProtocol() {
     requestClose: () => send('close-request'),
   }
 }
+
+// `embedded` is per call and starts false, making a child's send() a no-op.
+export type WidgetProtocol = ReturnType<typeof useWidgetProtocol>
+export const widgetProtocolKey = Symbol('widgetProtocol') as InjectionKey<WidgetProtocol>
