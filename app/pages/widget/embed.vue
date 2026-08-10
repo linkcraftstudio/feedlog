@@ -94,20 +94,36 @@ const listLoading = ref(false)
 const nextCursor = ref<string | null>(null)
 const totalCount = ref(0)
 
-// Counted by the server, not by the loaded rows: a reply lands on a post of any
-// age while the list runs newest-first, so an unread item can sit past the page
-// this frame has fetched.
+// Counted by the server, not by the loaded rows: an unread item can sit past the
+// page this frame has fetched. unreadCount is the merged badge (posts +
+// conversations); feedbackUnread is the posts-only number the UI labels.
 const unreadCount = ref(0)
+const feedbackUnread = ref(0)
 
 // The SDK owns the badge; it only learns of changes from here.
 watch(unreadCount, c => protocol.reportUnread(c))
 
+interface BadgeCounts { count: number, feedback: number }
+
+function applyBadge(res: BadgeCounts) {
+  unreadCount.value = res.count
+  feedbackUnread.value = res.feedback
+}
+
 async function loadUnread() {
   try {
-    const res = await widgetFetch<{ count: number }>('/api/widget/unread')
-    unreadCount.value = res.count
+    applyBadge(await widgetFetch<BadgeCounts>('/api/widget/unread'))
   }
   catch { /* keep the last known count */ }
+}
+
+async function markConversationRead(id: string) {
+  try {
+    applyBadge(await widgetFetch<BadgeCounts>(`/api/widget/conversations/${id}/read`, { method: 'POST' }))
+    const row = conversations.value.find(c => c.id === id)
+    if (row) row.unread = false
+  }
+  catch { /* the dot stays; a later load will correct it */ }
 }
 
 async function loadFeedback(append = false) {
@@ -144,9 +160,9 @@ async function openItem(item: WidgetFeedbackItem) {
   protocol.navigateToFeedback(item.slug)
   if (!item.unread) return
   try {
-    const res = await widgetFetch<{ count: number }>(`/api/widget/feedback/${item.id}/read`, { method: 'POST' })
+    const res = await widgetFetch<BadgeCounts>(`/api/widget/feedback/${item.id}/read`, { method: 'POST' })
     item.unread = false
-    unreadCount.value = res.count
+    applyBadge(res)
   }
   catch { /* the dot stays; a later load will correct it */ }
 }
@@ -168,6 +184,11 @@ function onOpenFeedback() {
 function onOpenConversation(id: string) {
   activeConversationId.value = id
   view.value = 'chat'
+  void markConversationRead(id)
+}
+
+function onReplied(id: string) {
+  void markConversationRead(id)
 }
 
 function onNewConversation() {
@@ -250,7 +271,7 @@ onUnmounted(() => {
           {{ headerTitle }}
         </p>
         <p v-if="view === 'list' && totalCount" class="mt-0.5 text-xs text-muted-foreground truncate">
-          {{ t('widget.postCount', { count: totalCount }, totalCount) }}<template v-if="unreadCount"> · {{ t('widget.withUpdates', { count: unreadCount }, unreadCount) }}</template>
+          {{ t('widget.postCount', { count: totalCount }, totalCount) }}<template v-if="feedbackUnread"> · {{ t('widget.withUpdates', { count: feedbackUnread }, feedbackUnread) }}</template>
         </p>
         <p v-else-if="view === 'chat' && org.name" class="mt-0.5 text-xs text-muted-foreground leading-snug line-clamp-2">
           {{ t('widget.subtitle', { product: org.name }) }}
@@ -289,7 +310,7 @@ onUnmounted(() => {
         :items="conversations"
         :org-initial="orgInitial"
         :total-count="totalCount"
-        :unread-count="unreadCount"
+        :unread-count="feedbackUnread"
         @open="onOpenConversation"
         @open-feedback="onOpenFeedback"
         @new-conversation="onNewConversation"
@@ -309,10 +330,11 @@ onUnmounted(() => {
         :product-name="productName"
         :board-url="boardUrl"
         :total-count="totalCount"
-        :unread-count="unreadCount"
+        :unread-count="feedbackUnread"
         :open-id="activeConversationId"
         @auth-required="onAuthRequired"
         @filed="onFiled"
+        @replied="onReplied"
         @open-feedback="onOpenFeedback"
       />
     </KeepAlive>

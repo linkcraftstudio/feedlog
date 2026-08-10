@@ -1,6 +1,33 @@
-import { eq } from 'drizzle-orm'
+import { and, count, eq } from 'drizzle-orm'
 import { useDB } from './db'
-import { post, postUnread } from '../db/schemas'
+import { conversation, post, postUnread } from '../db/schemas'
+import { withinRetention } from './conversation'
+
+// Badge = posts + conversations; `feedback` is the posts-only half. Conversations
+// past the retention window are left out: the list hides them, so that dot would
+// never be clearable.
+export async function countWidgetBadge(orgId: string, userId: string): Promise<{ count: number, feedback: number }> {
+  const db = useDB()
+
+  const [posts] = await db
+    .select({ value: count() })
+    .from(postUnread)
+    .innerJoin(post, eq(post.id, postUnread.postId))
+    .where(and(eq(postUnread.userId, userId), eq(post.orgId, orgId)))
+
+  const [threads] = await db
+    .select({ value: count() })
+    .from(conversation)
+    .where(and(
+      eq(conversation.orgId, orgId),
+      eq(conversation.userId, userId),
+      eq(conversation.unread, true),
+      withinRetention(),
+    ))
+
+  const feedback = Number(posts?.value ?? 0)
+  return { count: feedback + Number(threads?.value ?? 0), feedback }
+}
 
 // Marks a post unread for its author — the widget's red dot. Fired on the same
 // two events the email notifications use (admin reply, status change), but with

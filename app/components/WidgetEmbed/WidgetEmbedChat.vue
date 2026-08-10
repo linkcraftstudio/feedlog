@@ -15,6 +15,7 @@ const emit = defineEmits<{
   authRequired: []
   filed: []
   openFeedback: []
+  replied: [id: string]
 }>()
 
 const { t } = useI18n()
@@ -176,6 +177,7 @@ async function send() {
     )
     conversationId.value = res.conversationId
     messages.value.push({ role: 'assistant', text: res.reply, type: res.type, post: res.post })
+    emit('replied', res.conversationId)
     // A new post belongs in the list the moment it exists.
     if (res.post) emit('filed')
   }

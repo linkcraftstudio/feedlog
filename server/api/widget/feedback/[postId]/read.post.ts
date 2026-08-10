@@ -1,8 +1,9 @@
-import { and, count, eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { post, postUnread } from '#layers/feedlog/server/db/schemas'
+import { countWidgetBadge } from '#layers/feedlog/server/utils/widget-unread'
 
 // Clears the red dot on one feedback item when the visitor opens it.
-export default defineEventHandler(async (event): Promise<{ ok: true; count: number }> => {
+export default defineEventHandler(async (event): Promise<{ ok: true, count: number, feedback: number }> => {
   const { session, orgId } = await requireAuthInOrg(event)
   const userId = session.user.id
   const postId = getRouterParam(event, 'postId')
@@ -29,11 +30,5 @@ export default defineEventHandler(async (event): Promise<{ ok: true; count: numb
 
   // Remaining count, so the iframe can push the new badge value to the SDK
   // without a follow-up request to /api/widget/unread.
-  const [row] = await db
-    .select({ value: count() })
-    .from(postUnread)
-    .innerJoin(post, eq(post.id, postUnread.postId))
-    .where(and(eq(postUnread.userId, userId), eq(post.orgId, orgId)))
-
-  return { ok: true, count: Number(row?.value ?? 0) }
+  return { ok: true, ...await countWidgetBadge(orgId, userId) }
 })
