@@ -728,6 +728,15 @@
     "loadFailed": "Could not load your feedback.",
     "attachImage": "Attach image",
     "uploadFailed": "Could not upload that image. Please try again.",
-    "uploadTooLarge": "Images must be smaller than {size}MB."
+    "uploadTooLarge": "Images must be smaller than {size}MB.",
+    "messages": "Messages",
+    "agentTitle": "Feedback Agent",
+    "newConversation": "Send us a message",
+    "newBadge": "{count} new",
+    "timeAgoMinute": "{n}m",
+    "timeAgoHour": "{n}h",
+    "timeAgoDay": "{n}d",
+    "timeAgoWeek": "{n}w",
+    "timeAgoMonth": "{n}mo"
   }
 }

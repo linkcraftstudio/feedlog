@@ -728,6 +728,15 @@
     "loadFailed": "加载反馈失败。",
     "attachImage": "添加图片",
     "uploadFailed": "图片上传失败,请重试。",
-    "uploadTooLarge": "图片不能超过 {size}MB。"
+    "uploadTooLarge": "图片不能超过 {size}MB。",
+    "messages": "消息",
+    "agentTitle": "反馈助手",
+    "newConversation": "给我们留言",
+    "newBadge": "{count} 条新消息",
+    "timeAgoMinute": "{n} 分钟",
+    "timeAgoHour": "{n} 小时",
+    "timeAgoDay": "{n} 天",
+    "timeAgoWeek": "{n} 周",
+    "timeAgoMonth": "{n} 个月"
   }
 }

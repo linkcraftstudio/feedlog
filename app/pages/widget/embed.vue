@@ -3,6 +3,7 @@ import { resolveAttachmentUrl } from '~/utils/attachment'
 import { widgetEmbedKey } from '~/composables/useWidgetEmbed'
 import { widgetProtocolKey } from '~/composables/useWidgetProtocol'
 import type { WidgetFeedbackItem } from '~~/server/api/widget/feedback/index.get'
+import type { WidgetConversationItem } from '~~/server/api/widget/conversations/index.get'
 
 // /widget/embed — the FeedLog-hosted page the widget SDK loads in its iframe.
 //
@@ -67,7 +68,24 @@ useHead(() => ({
     : [],
 }))
 
-const view = ref<'chat' | 'list'>('chat')
+// 'conversations' is the root; the other two both return to it.
+const view = ref<'conversations' | 'chat' | 'list'>('chat')
+const conversations = ref<WidgetConversationItem[]>([])
+const activeConversationId = ref<string | null>(null)
+
+const headerTitle = computed(() => {
+  if (view.value === 'conversations') return t('widget.messages')
+  if (view.value === 'list') return t('widget.myFeedback')
+  return t('widget.agentTitle')
+})
+
+async function loadConversations() {
+  try {
+    const res = await widgetFetch<{ data: WidgetConversationItem[] }>('/api/widget/conversations')
+    conversations.value = res.data
+  }
+  catch { /* leave the list as-is */ }
+}
 
 // ---- feedback list -------------------------------------------------------
 const PAGE_SIZE = 20
@@ -139,12 +157,27 @@ function onAuthRequired() {
 }
 
 function onFiled() {
-  void Promise.all([loadFeedback(), loadUnread()])
+  void Promise.all([loadFeedback(), loadUnread(), loadConversations()])
 }
 
 function onOpenFeedback() {
   view.value = 'list'
   void loadFeedback()
+}
+
+function onOpenConversation(id: string) {
+  activeConversationId.value = id
+  view.value = 'chat'
+}
+
+function onNewConversation() {
+  activeConversationId.value = null
+  view.value = 'chat'
+}
+
+function onBack() {
+  view.value = 'conversations'
+  void loadConversations()
 }
 
 // ---- lifecycle -----------------------------------------------------------
@@ -169,7 +202,11 @@ onMounted(async () => {
 
   const [authed] = await Promise.all([loadSession(), config])
   if (authed) {
-    void Promise.all([loadFeedback(), loadUnread()])
+    // Awaited: the SDK hides this frame until ready(), so settling the view
+    // here costs a round trip but never flashes the wrong one.
+    await Promise.all([loadConversations(), loadUnread()])
+    if (conversations.value.length) view.value = 'conversations'
+    void loadFeedback()
     document.addEventListener('visibilitychange', refreshOnVisible)
   }
 
@@ -188,10 +225,10 @@ onUnmounted(() => {
     <!-- Header -->
     <header class="h-16 px-4 border-b border-border bg-card flex items-center gap-2.5 shrink-0">
       <button
-        v-if="view === 'list'"
+        v-if="view !== 'conversations'"
         class="w-7 h-7 shrink-0 hover:opacity-70 transition-opacity flex items-center justify-center text-primary"
         :aria-label="t('widget.back')"
-        @click="view = 'chat'"
+        @click="onBack"
       >
         <Icon name="lucide:arrow-left" size="17" />
       </button>
@@ -205,9 +242,12 @@ onUnmounted(() => {
         v-else-if="view === 'chat'"
         class="w-7 h-7 rounded-md shrink-0 grid place-items-center bg-primary text-primary-foreground font-heading font-bold text-[13px]"
       >{{ orgInitial }}</span>
-      <div class="flex-1 min-w-0">
-        <p class="font-heading font-semibold text-[15.5px] truncate">
-          {{ view === 'list' ? t('widget.myFeedback') : t('widget.title') }}
+      <div class="flex-1 min-w-0" :class="view === 'conversations' ? 'text-center' : ''">
+        <p
+          class="font-heading truncate"
+          :class="view === 'conversations' ? 'text-lg font-bold leading-6' : 'font-semibold text-[15.5px]'"
+        >
+          {{ headerTitle }}
         </p>
         <p v-if="view === 'list' && totalCount" class="mt-0.5 text-xs text-muted-foreground truncate">
           {{ t('widget.postCount', { count: totalCount }, totalCount) }}<template v-if="unreadCount"> · {{ t('widget.withUpdates', { count: unreadCount }, unreadCount) }}</template>
@@ -244,8 +284,19 @@ onUnmounted(() => {
 
     <!-- Chat only: a trip to the list must not wipe the conversation. -->
     <KeepAlive v-else include="WidgetEmbedChat">
+      <WidgetEmbedConversationList
+        v-if="view === 'conversations'"
+        :items="conversations"
+        :org-initial="orgInitial"
+        :total-count="totalCount"
+        :unread-count="unreadCount"
+        @open="onOpenConversation"
+        @open-feedback="onOpenFeedback"
+        @new-conversation="onNewConversation"
+      />
+
       <WidgetEmbedFeedbackList
-        v-if="view === 'list'"
+        v-else-if="view === 'list'"
         :items="feedback"
         :loading="listLoading"
         :has-more="!!nextCursor"
