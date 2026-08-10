@@ -11,14 +11,16 @@ const { t } = useI18n()
 
 <template>
   <button
-    class="w-full text-left mt-2 p-3 rounded-xl border border-border bg-background hover:border-primary/50 transition-colors group"
+    class="w-full text-left mt-2 min-w-[230px] px-3 py-2.5 rounded-md border border-border bg-card hover:border-primary/50 transition-colors group"
     @click="$emit('open')"
   >
-    <p class="text-xs font-semibold leading-snug">{{ title }}</p>
-    <div class="mt-2 flex items-center gap-2">
-      <span v-if="board" class="text-[10px] font-semibold text-primary">{{ board }}</span>
-      <WidgetEmbedStatusBadge :status="status" />
-      <span class="ml-auto text-[10px] font-semibold text-primary flex items-center gap-0.5">
+    <p class="text-[13px] font-semibold leading-snug">{{ title }}</p>
+    <div class="mt-1.5 flex items-center justify-between gap-2.5">
+      <span class="flex items-center gap-1.5">
+        <span v-if="board" class="rounded-sm bg-secondary px-1.5 py-0.5 text-[10.5px] font-semibold text-primary">{{ board }}</span>
+        <WidgetEmbedStatusBadge :status="status" />
+      </span>
+      <span class="text-[11.5px] font-semibold text-primary inline-flex items-center gap-0.5 shrink-0">
         {{ t('widget.viewOnBoard') }}<Icon name="lucide:arrow-up-right" size="11" />
       </span>
     </div>

@@ -80,10 +80,10 @@ const sending = ref(false)
 const bodyEl = ref<HTMLElement | null>(null)
 const draftEl = ref<HTMLTextAreaElement | null>(null)
 
-// rows="1" is the resting height and nothing else grows the box, so it is
+// min-h-12 is the resting height and nothing else grows the box, so it is
 // measured against its own content on every change. Resetting to auto first is
 // what makes it shrink again: scrollHeight otherwise keeps reporting the taller
-// box it already is. max-h-28 caps the growth and hands over to the scrollbar.
+// box it already is. max-h-[120px] caps the growth and hands over to the scrollbar.
 watch(draft, () => {
   const el = draftEl.value
   if (!el) return
@@ -357,42 +357,42 @@ onUnmounted(() => {
 <template>
   <div class="h-screen flex flex-col bg-background text-foreground">
     <!-- Header -->
-    <header class="px-4 py-3 border-b border-border flex items-center gap-3 shrink-0">
+    <header class="h-16 px-4 border-b border-border bg-card flex items-center gap-2.5 shrink-0">
       <button
         v-if="view === 'list'"
-        class="w-7 h-7 rounded-md hover:bg-secondary transition-colors flex items-center justify-center text-muted-foreground"
+        class="w-7 h-7 shrink-0 hover:opacity-70 transition-opacity flex items-center justify-center text-primary"
         :aria-label="t('widget.back')"
         @click="view = 'chat'"
       >
-        <Icon name="lucide:arrow-left" size="16" />
+        <Icon name="lucide:arrow-left" size="17" />
       </button>
       <img
         v-if="view === 'chat' && org.logo"
         :src="resolveAttachmentUrl(org.logo)!"
         alt=""
-        class="w-8 h-8 rounded-lg object-cover shrink-0"
+        class="w-7 h-7 rounded-md object-cover shrink-0"
       >
       <span
         v-else-if="view === 'chat'"
-        class="w-8 h-8 rounded-lg shrink-0 grid place-items-center bg-primary text-primary-foreground font-heading font-bold text-sm"
+        class="w-7 h-7 rounded-md shrink-0 grid place-items-center bg-primary text-primary-foreground font-heading font-bold text-[13px]"
       >{{ orgInitial }}</span>
       <div class="flex-1 min-w-0">
-        <p class="font-heading font-bold text-sm truncate">
+        <p class="font-heading font-semibold text-[15.5px] truncate">
           {{ view === 'list' ? t('widget.myFeedback') : t('widget.title') }}
         </p>
-        <p v-if="view === 'list' && totalCount" class="text-[11px] text-muted-foreground truncate">
+        <p v-if="view === 'list' && totalCount" class="mt-0.5 text-xs text-muted-foreground truncate">
           {{ t('widget.postCount', { count: totalCount }, totalCount) }}<template v-if="unreadCount"> · {{ t('widget.withUpdates', { count: unreadCount }) }}</template>
         </p>
-        <p v-else-if="view === 'chat' && org.name" class="text-[11px] text-muted-foreground leading-snug line-clamp-2">
+        <p v-else-if="view === 'chat' && org.name" class="mt-0.5 text-xs text-muted-foreground leading-snug line-clamp-2">
           {{ t('widget.subtitle', { product: org.name }) }}
         </p>
       </div>
       <button
-        class="w-7 h-7 rounded-md hover:bg-secondary transition-colors flex items-center justify-center text-muted-foreground"
+        class="w-6.5 h-6.5 rounded-full bg-secondary hover:opacity-80 transition-opacity flex items-center justify-center text-primary shrink-0"
         :aria-label="t('widget.close')"
         @click="protocol.requestClose()"
       >
-        <Icon name="lucide:x" size="16" />
+        <Icon name="lucide:x" size="13" />
       </button>
     </header>
 
@@ -402,7 +402,7 @@ onUnmounted(() => {
       <p class="font-heading font-bold text-sm">{{ t('widget.loginTitle') }}</p>
       <p class="text-xs text-muted-foreground leading-relaxed">{{ t('widget.loginDesc') }}</p>
       <button
-        class="mt-1 h-9 px-5 rounded-lg bg-primary text-primary-foreground text-xs font-heading font-bold hover:opacity-90 transition-all"
+        class="mt-1 h-9 px-5 rounded-md bg-primary text-primary-foreground text-xs font-heading font-bold hover:opacity-90 transition-all"
         @click="protocol.requestAuth('user')"
       >
         {{ t('widget.login') }}
@@ -414,29 +414,29 @@ onUnmounted(() => {
     </div>
 
     <!-- Feedback list -->
-    <div v-else-if="view === 'list'" ref="bodyEl" class="flex-1 overflow-y-auto">
+    <div v-else-if="view === 'list'" ref="bodyEl" class="flex-1 overflow-y-auto bg-background">
       <p v-if="!feedback.length && !listLoading" class="px-5 py-8 text-xs text-muted-foreground text-center">
         {{ t('widget.noFeedback') }}
       </p>
       <ul v-else class="p-3 space-y-2">
         <li v-for="item in feedback" :key="item.id">
           <button
-            class="w-full text-left p-3 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors group"
+            class="w-full text-left px-3 py-2.5 rounded-md border border-border bg-card hover:border-primary/40 transition-colors group"
             @click="openItem(item)"
           >
             <div class="flex items-start gap-2">
-              <p class="flex-1 text-xs font-semibold leading-snug">
+              <p class="flex-1 text-[13px] font-semibold leading-snug">
                 {{ item.title }}
-                <span v-if="item.unread" class="inline-block align-middle ml-1.5 w-2 h-2 rounded-full bg-red-500" />
+                <span v-if="item.unread" class="inline-block align-middle ml-1.5 w-1.75 h-1.75 rounded-full bg-primary" />
               </p>
               <WidgetEmbedStatusBadge :status="item.status" class="shrink-0" />
             </div>
-            <div class="mt-1.5 text-[10px] text-muted-foreground flex items-center gap-0.5">
-              <Icon name="lucide:chevron-up" size="11" />{{ item.voteCount }}
+            <div class="mt-0.5 text-xs text-muted-foreground flex items-center gap-0.5">
+              <Icon name="lucide:chevron-up" size="12" />{{ item.voteCount }}
               <span class="mx-1">·</span>{{ postedAt(item.createdAt) }}
             </div>
-            <div class="mt-2 flex justify-end">
-              <span class="text-[10px] font-semibold text-primary flex items-center gap-0.5">
+            <div class="mt-1.5 flex justify-end">
+              <span class="text-[11.5px] font-semibold text-primary flex items-center gap-0.5">
                 {{ t('widget.viewOnBoard') }}<Icon name="lucide:arrow-up-right" size="11" />
               </span>
             </div>
@@ -457,16 +457,19 @@ onUnmounted(() => {
     <template v-else>
       <!-- With nothing filed there is nothing to link to, so the whole bar
            becomes the invitation to go read what others asked for. -->
-      <div class="mx-3 mt-3 rounded-xl border border-border bg-card flex items-stretch shrink-0 overflow-hidden">
+      <div
+        class="mx-3.5 mt-3.5 rounded-md border border-border bg-card shadow-warm text-[12.5px] font-semibold flex items-stretch shrink-0 overflow-hidden"
+        :class="totalCount ? '' : 'border-dashed'"
+      >
         <button
           v-if="totalCount"
-          class="flex-1 min-w-0 px-3 py-2.5 hover:bg-secondary/50 transition-colors flex items-center gap-2"
+          class="flex-1 min-w-0 px-3 py-2.5 hover:bg-secondary transition-colors flex items-center gap-1.5"
           @click="view = 'list'; loadFeedback()"
         >
-          <Icon name="lucide:inbox" size="14" class="text-muted-foreground shrink-0" />
-          <span class="text-xs font-semibold truncate">{{ t('widget.myFeedback') }}</span>
-          <span class="text-[11px] text-muted-foreground shrink-0">({{ totalCount }})</span>
-          <span v-if="unreadCount" class="text-[11px] font-semibold text-primary shrink-0 truncate">
+          <Icon name="lucide:clipboard-list" size="14" class="text-muted-foreground shrink-0" />
+          <span class="truncate">{{ t('widget.myFeedback') }}</span>
+          <span class="font-medium text-muted-foreground shrink-0">({{ totalCount }})</span>
+          <span v-if="unreadCount" class="font-bold text-primary shrink-0 truncate">
             · {{ t('widget.withUpdates', { count: unreadCount }) }}
           </span>
         </button>
@@ -474,23 +477,23 @@ onUnmounted(() => {
           :href="boardUrl"
           target="_blank"
           rel="noopener noreferrer"
-          class="px-3 py-2.5 hover:bg-secondary/50 transition-colors flex items-center gap-1.5 text-muted-foreground"
+          class="px-3 py-2.5 font-medium text-muted-foreground hover:bg-secondary hover:text-primary transition-colors flex items-center gap-1.5"
           :class="totalCount ? 'border-l border-border shrink-0' : 'flex-1'"
         >
           <Icon name="lucide:globe" size="14" class="shrink-0" />
-          <span class="text-xs truncate">{{ totalCount ? t('widget.allFeedback') : t('widget.seeOthers') }}</span>
-          <Icon name="lucide:arrow-up-right" size="12" class="shrink-0" />
+          <span class="truncate">{{ totalCount ? t('widget.allFeedback') : t('widget.seeOthers') }}</span>
+          <Icon name="lucide:arrow-up-right" size="11" class="shrink-0" />
         </a>
       </div>
 
-      <div ref="bodyEl" class="flex-1 overflow-y-auto px-3 py-4 space-y-3">
+      <div ref="bodyEl" class="flex-1 overflow-y-auto bg-background p-3.5 space-y-2.5">
         <div v-for="(m, i) in messages" :key="i" class="flex" :class="m.role === 'user' ? 'justify-end' : 'justify-start'">
-          <div class="max-w-[85%]">
+          <div class="max-w-[82%]">
             <div
-              class="px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed"
+              class="px-3 py-2.5 rounded-lg text-[13.5px] leading-normal"
               :class="m.role === 'user'
                 ? 'bg-primary text-primary-foreground rounded-br-sm'
-                : 'bg-secondary rounded-bl-sm'"
+                : 'bg-card border border-border rounded-bl-sm'"
             >
               <WidgetEmbedMessageText v-if="m.text" :text="m.text" />
               <div v-if="m.images?.length" class="flex flex-wrap gap-1.5" :class="m.text ? 'mt-2' : ''">
@@ -514,7 +517,7 @@ onUnmounted(() => {
         </div>
 
         <div v-if="sending" class="flex justify-start">
-          <div class="px-3.5 py-2.5 rounded-2xl rounded-bl-sm bg-secondary text-xs text-muted-foreground flex items-center gap-2">
+          <div class="px-3.5 py-2.5 rounded-lg rounded-bl-sm bg-card border border-border text-xs text-muted-foreground flex items-center gap-1.5">
             <span class="flex items-center gap-1" aria-hidden="true">
               <span v-for="n in 3" :key="n" class="w-1 h-1 rounded-full bg-current opacity-40 typing-dot" :style="{ animationDelay: `${(n - 1) * 0.16}s` }" />
             </span>
@@ -523,7 +526,7 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <div class="p-3 border-t border-border shrink-0">
+      <div class="px-3 py-2.5 bg-card shrink-0">
         <p v-if="uploadError" class="mb-2 flex items-start gap-1.5 text-[11px] text-destructive">
           <Icon name="lucide:alert-circle" size="13" class="shrink-0 mt-px" />
           <span class="flex-1">{{ uploadError }}</span>
@@ -541,7 +544,7 @@ onUnmounted(() => {
           <div
             v-for="(a, i) in attachments"
             :key="a.key"
-            class="relative w-12 h-12 rounded-lg overflow-hidden border border-border group"
+            class="relative h-12 w-16 rounded-md overflow-hidden border border-border group"
           >
             <img :src="resolveAttachmentUrl(a.key)!" :alt="a.name" class="w-full h-full object-cover">
             <button
@@ -552,14 +555,14 @@ onUnmounted(() => {
               <Icon name="lucide:x" size="14" />
             </button>
           </div>
-          <div v-if="uploading" class="w-12 h-12 rounded-lg border border-border grid place-items-center">
+          <div v-if="uploading" class="h-12 w-16 rounded-md border border-border grid place-items-center">
             <Icon name="lucide:loader-2" size="14" class="animate-spin text-muted-foreground" />
           </div>
         </div>
 
         <!-- Controls sit on their own row so the textarea can grow into the card
              instead of stretching the buttons beside it. -->
-        <div class="rounded-xl border border-border bg-background focus-within:border-primary transition-colors">
+        <div class="rounded-md border border-border bg-card transition-shadow focus-within:border-primary focus-within:ring-[3px] focus-within:ring-primary/15">
           <input
             ref="fileInput"
             type="file"
@@ -573,14 +576,14 @@ onUnmounted(() => {
             v-model="draft"
             rows="1"
             :placeholder="t('widget.placeholder')"
-            class="w-full max-h-28 px-3 pt-2.5 bg-transparent text-xs resize-none focus:outline-none no-scrollbar"
+            class="w-full min-h-12 max-h-[120px] px-3 py-2 bg-transparent text-[13.5px] leading-normal resize-none focus:outline-none no-scrollbar"
             @keydown.enter.exact.prevent="send"
             @paste="onPaste"
           />
-          <div class="flex items-center justify-between px-2 pb-2 pt-1">
+          <div class="flex items-center justify-between px-1.5 py-1">
             <button
               :disabled="uploading || sending"
-              class="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              class="h-6.5 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-secondary hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               :aria-label="t('widget.attachImage')"
               @click="fileInput?.click()"
             >
@@ -588,7 +591,7 @@ onUnmounted(() => {
             </button>
             <button
               :disabled="(!draft.trim() && !attachments.length) || sending || uploading"
-              class="px-4 h-7 rounded-lg bg-primary text-primary-foreground text-xs font-heading font-bold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              class="px-3.5 py-1.5 rounded-md bg-primary text-primary-foreground text-[12.5px] font-heading font-semibold hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               @click="send"
             >
               {{ t('widget.send') }}
@@ -598,15 +601,15 @@ onUnmounted(() => {
       </div>
     </template>
 
-    <p v-if="status !== 'loading'" class="py-1.5 text-center text-[10px] text-muted-foreground shrink-0">
+    <p v-if="status !== 'loading'" class="py-1.5 bg-card text-center text-[10.5px] text-muted-foreground shrink-0">
       {{ t('board.poweredBy') }}FeedLog
     </p>
   </div>
 </template>
 
 <style scoped>
-/* The composer scrolls past max-h-28, but a scrollbar inside a 400px panel is
-   more noise than affordance. */
+/* The composer scrolls past max-h-[120px], but a scrollbar inside a 400px panel
+   is more noise than affordance. */
 .no-scrollbar {
   scrollbar-width: none;
 }
