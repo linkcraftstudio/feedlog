@@ -4,7 +4,7 @@ import { getRequestURL } from 'h3'
 import { board, conversation, message, organizationWidget } from '#layers/feedlog/server/db/schemas'
 import { buildWidgetSystemPrompt, historyToMessages, parseWidgetAiResponse, parseWidgetHistory } from '#layers/feedlog/server/utils/widget-ai'
 import { isConversationId, ownedConversation } from '#layers/feedlog/server/utils/conversation'
-import type { WidgetAiOutput } from '#layers/feedlog/server/utils/widget-ai'
+import type { WidgetAiOutput, WidgetHistoryTurn } from '#layers/feedlog/server/utils/widget-ai'
 import type { CreatedPost } from '#layers/feedlog/server/utils/post-create'
 import { isActorAdmin } from '#layers/feedlog/shared/utils/notifications'
 import { getEnabledRuleScenarios } from '#layers/feedlog/shared/utils/widget-settings'
@@ -19,6 +19,7 @@ interface WidgetMessageResponse {
   conversationId: string
   type: 'feedback' | 'support' | 'clarify' | 'unrecognized'
   reply: string
+  conversationTitle?: string
   post?: {
     id: string
     slug: string
@@ -85,15 +86,17 @@ export default defineEventHandler(async (event): Promise<WidgetMessageResponse> 
   }
 
   // A conversation belongs to the one visitor who started it, in that one org.
+  let needsTitle = true
   if (requestedId) {
     const [owned] = await db
-      .select({ id: conversation.id })
+      .select({ title: conversation.title })
       .from(conversation)
       .where(ownedConversation(requestedId, orgId, userId))
       .limit(1)
     if (!owned) {
       throw createError({ statusCode: 404, message: 'Conversation not found' })
     }
+    needsTitle = owned.title === null
   }
 
   const boards = await db
@@ -114,6 +117,7 @@ export default defineEventHandler(async (event): Promise<WidgetMessageResponse> 
     orgInfo?.name || 'this product',
     boards.map(b => ({ name: b.name, description: b.description })),
     getEnabledRuleScenarios(widgetRow ?? null),
+    needsTitle,
   )
 
   // Stored before the model is asked anything: a failed call then leaves an
@@ -201,6 +205,10 @@ export default defineEventHandler(async (event): Promise<WidgetMessageResponse> 
     reply = ai.reply?.trim() || 'Thanks — I turned that into a feedback post for you.'
   }
 
+  const nextTitle = needsTitle && ai.type !== 'clarify'
+    ? (truncateTitle(ai.conversationTitle?.trim() || fallbackTitle(history, text)) || null)
+    : null
+
   // The post and the reply that announces it commit together: a post no
   // conversation points at is unreachable from the widget.
   const created = await db.transaction(async (tx) => {
@@ -222,7 +230,12 @@ export default defineEventHandler(async (event): Promise<WidgetMessageResponse> 
       postId: post?.id ?? null,
     })
     await tx.update(conversation)
-      .set({ previewText: reply, lastMessageAt: new Date(), unread: true })
+      .set({
+        previewText: reply,
+        lastMessageAt: new Date(),
+        unread: true,
+        ...(nextTitle ? { title: nextTitle } : {}),
+      })
       .where(eq(conversation.id, conversationId))
     return post
   })
@@ -251,6 +264,7 @@ export default defineEventHandler(async (event): Promise<WidgetMessageResponse> 
     conversationId,
     type: ai.type,
     reply,
+    ...(nextTitle ? { conversationTitle: nextTitle } : {}),
     ...(created ? { post: postSummary(created, boardRow?.name ?? null) } : {}),
   }
 })
@@ -278,6 +292,14 @@ const TITLE_MAX = 200
 function truncateTitle(title: string): string {
   const chars = Array.from(title)
   return chars.length > TITLE_MAX ? chars.slice(0, TITLE_MAX).join('') : title
+}
+
+// history is the client's copy: a wrong opening message costs only a label.
+const CONVERSATION_TITLE_CHARS = 20
+function fallbackTitle(history: WidgetHistoryTurn[], current: string): string {
+  const first = history.find(h => h.role === 'user')?.text || current
+  const chars = Array.from(first)
+  return chars.length > CONVERSATION_TITLE_CHARS ? chars.slice(0, CONVERSATION_TITLE_CHARS).join('') : first
 }
 
 // No email configured still guides the visitor to support, just without one to

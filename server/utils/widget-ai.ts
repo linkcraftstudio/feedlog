@@ -13,6 +13,7 @@ export interface WidgetAiOutput {
   title?: string
   content?: string
   boardName?: string
+  conversationTitle?: string
 }
 
 export interface WidgetPromptBoard {
@@ -73,6 +74,7 @@ export function buildWidgetSystemPrompt(
   productName: string,
   boards: WidgetPromptBoard[],
   ruleScenarios: string[],
+  askForTitle = false,
 ): string {
   const boardLines = boards.length
     ? boards.map(b => `- "${b.name}"${b.description ? ` — ${b.description}` : ''}`).join('\n')
@@ -153,8 +155,20 @@ Assume you filed "Export button spins forever" earlier:
 - Always answer in the SAME language as the user's message.
 
 ## Output — return ONLY this JSON, no prose, no code fence:
-{ "type": "...", "reply": "...", "title": "...", "content": "...", "boardName": "..." }
-Include title / content / boardName ONLY when type = "feedback".`
+{ "type": "...", "reply": "...", "title": "...", "content": "...", "boardName": "...",
+  "conversationTitle": "..." }
+Include title / content / boardName ONLY when type = "feedback".
+Include conversationTitle ONLY when a section below asks for it.${askForTitle
+  ? `
+
+## Conversation title
+This conversation has no title yet. If (and only if) your "type" this turn is
+feedback / support / unrecognized — never clarify — also return:
+- "conversationTitle": a specific one-line summary of what this conversation is about,
+  <= 40 characters. It labels the conversation in a list.
+  Write it in the SAME language the user is writing in. If the user writes English, the
+  title MUST be English; if Chinese, Chinese. Never use a third language.`
+  : ''}`
 }
 
 function isValidOutput(obj: unknown): obj is WidgetAiOutput {
