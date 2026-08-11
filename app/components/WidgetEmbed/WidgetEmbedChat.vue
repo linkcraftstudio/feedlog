@@ -228,6 +228,8 @@ async function carryOver() {
 async function syncToOpenId() {
   if (props.openId === conversationId.value && messages.value.length) return
 
+  fullCarry.value = null
+
   if (!props.openId) {
     messages.value = [{ role: 'assistant', text: t('widget.greeting', { product: props.productName }) }]
     conversationId.value = null
