@@ -53,11 +53,6 @@ const orgInitial = computed(() => org.value.name.trim().charAt(0).toUpperCase() 
 // workspace the same way.
 const productName = computed(() => org.value.name || t('widget.thisProduct'))
 
-// A plain link, not a `navigate` message: the SDK's handler only builds post
-// URLs, so the board root has no route through it. The visitor arrives signed in
-// once they have opened any post, which is what mints the cookie on this host.
-const boardUrl = computed(() => (import.meta.client ? window.location.origin : '/'))
-
 useHead(() => ({
   htmlAttrs: { class: isDark.value ? 'dark' : '' },
   script: themeParam.value === 'auto'
@@ -327,14 +322,10 @@ onUnmounted(() => {
       <WidgetEmbedChat
         v-else
         :product-name="productName"
-        :board-url="boardUrl"
-        :total-count="totalCount"
-        :unread-count="feedbackUnread"
         :open-id="activeConversationId"
         @auth-required="onAuthRequired"
         @filed="onFiled"
         @replied="onReplied"
-        @open-feedback="onOpenFeedback"
       />
     </KeepAlive>
 

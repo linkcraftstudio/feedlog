@@ -705,8 +705,6 @@
   "widget": {
     "title": "反馈",
     "subtitle": "帮我们把 {product} 做得更好 —— 说说问题和想法",
-    "allFeedback": "全部反馈",
-    "seeOthers": "看看其他人提了什么",
     "thisProduct": "这个产品",
     "greeting": "你好,我是反馈助手 —— AI,不是人工客服 👋 说说哪里有问题、或者你希望有什么,我会帮你提交给 {product} 团队。",
     "placeholder": "说说遇到的问题,或者你的想法……",

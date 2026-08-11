@@ -705,8 +705,6 @@
   "widget": {
     "title": "Feedback",
     "subtitle": "Help us make {product} better — share problems and ideas",
-    "allFeedback": "All feedback",
-    "seeOthers": "See what others have suggested",
     "thisProduct": "this product",
     "greeting": "Hi, I'm the feedback assistant — an AI, not a human agent 👋 Describe what's broken or missing, and I'll file it for the {product} team.",
     "placeholder": "Describe a problem or share an idea…",

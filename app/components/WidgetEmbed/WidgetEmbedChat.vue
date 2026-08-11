@@ -5,16 +5,12 @@ import { widgetProtocolKey } from '~/composables/useWidgetProtocol'
 
 const props = defineProps<{
   productName: string
-  boardUrl: string
-  totalCount: number
-  unreadCount: number
   openId: string | null
 }>()
 
 const emit = defineEmits<{
   authRequired: []
   filed: []
-  openFeedback: []
   replied: [id: string]
 }>()
 
@@ -282,37 +278,6 @@ onActivated(() => {
 </script>
 
 <template>
-  <!-- With nothing filed there is nothing to link to, so the whole bar
-       becomes the invitation to go read what others asked for. -->
-  <div
-    class="mx-3.5 mt-3.5 rounded-md border border-border bg-card shadow-warm text-[12.5px] font-semibold flex items-stretch shrink-0 overflow-hidden"
-    :class="totalCount ? '' : 'border-dashed'"
-  >
-    <button
-      v-if="totalCount"
-      class="flex-1 min-w-0 px-3 py-2.5 hover:bg-secondary transition-colors flex items-center gap-1.5"
-      @click="emit('openFeedback')"
-    >
-      <Icon name="lucide:clipboard-list" size="14" class="text-muted-foreground shrink-0" />
-      <span class="truncate">{{ t('widget.myFeedback') }}</span>
-      <span class="font-medium text-muted-foreground shrink-0">({{ totalCount }})</span>
-      <span v-if="unreadCount" class="font-bold text-primary shrink-0 truncate">
-        · {{ t('widget.withUpdates', { count: unreadCount }, unreadCount) }}
-      </span>
-    </button>
-    <a
-      :href="boardUrl"
-      target="_blank"
-      rel="noopener noreferrer"
-      class="px-3 py-2.5 font-medium text-muted-foreground hover:bg-secondary hover:text-primary transition-colors flex items-center gap-1.5"
-      :class="totalCount ? 'border-l border-border shrink-0' : 'flex-1'"
-    >
-      <Icon name="lucide:globe" size="14" class="shrink-0" />
-      <span class="truncate">{{ totalCount ? t('widget.allFeedback') : t('widget.seeOthers') }}</span>
-      <Icon name="lucide:arrow-up-right" size="11" class="shrink-0" />
-    </a>
-  </div>
-
   <div v-if="loadingThread" class="flex-1 grid place-items-center bg-background">
     <Icon name="lucide:loader-2" size="20" class="animate-spin text-muted-foreground" />
   </div>
