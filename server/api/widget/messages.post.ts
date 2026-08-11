@@ -33,8 +33,7 @@ export default defineEventHandler(async (event): Promise<WidgetMessageResponse> 
   const { session, orgId } = await requireAuthInOrg(event)
   const userId = session.user.id
 
-  const ip = getRequestIP(event, { xForwardedFor: true }) || 'unknown'
-  if (!await checkRateLimit(`widget-messages:${ip}`, RATE_LIMIT)) {
+  if (!await checkRateLimit(`widget-messages:${userId}`, RATE_LIMIT)) {
     throw createError({ statusCode: 429, message: 'Too many messages, try again shortly' })
   }
 
