@@ -89,6 +89,7 @@ const feedback = ref<WidgetFeedbackItem[]>([])
 const listLoading = ref(false)
 const nextCursor = ref<string | null>(null)
 const totalCount = ref(0)
+const totalKnown = ref(false)
 
 // Counted by the server, not by the loaded rows: an unread item can sit past the
 // page this frame has fetched. unreadCount is the merged badge (posts +
@@ -134,6 +135,7 @@ async function loadFeedback(append = false) {
     feedback.value = append ? [...feedback.value, ...res.data] : res.data
     nextCursor.value = res.pagination.nextCursor
     totalCount.value = res.total
+    totalKnown.value = true
   }
   catch { /* leave the list as-is */ }
   finally {
@@ -325,6 +327,7 @@ onUnmounted(() => {
         :items="conversations"
         :org-initial="orgInitial"
         :total-count="totalCount"
+        :total-known="totalKnown"
         :unread-count="feedbackUnread"
         @open="onOpenConversation"
         @open-feedback="onOpenFeedback"

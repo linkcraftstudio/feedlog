@@ -5,6 +5,7 @@ defineProps<{
   items: WidgetConversationItem[]
   orgInitial: string
   totalCount: number
+  totalKnown: boolean
   unreadCount: number
 }>()
 
@@ -51,7 +52,7 @@ function rowTitle(c: WidgetConversationItem): string {
           v-if="unreadCount"
           class="shrink-0 inline-flex items-center h-5 px-2.25 rounded-full bg-primary text-primary-foreground text-[11px] font-bold whitespace-nowrap"
         >{{ t('widget.newBadge', { count: unreadCount }) }}</span>
-        <span v-else-if="totalCount" class="text-[15px] leading-5 text-muted-foreground tabular-nums">{{ totalCount }}</span>
+        <span v-else-if="totalKnown" class="text-[15px] leading-5 text-muted-foreground tabular-nums">{{ totalCount }}</span>
         <span class="shrink-0 inline-flex text-muted-foreground">
           <Icon name="lucide:chevron-right" size="16" />
         </span>
