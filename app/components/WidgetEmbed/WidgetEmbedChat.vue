@@ -230,7 +230,7 @@ async function carryOver() {
 
 // Kept alive: another conversation arrives as a prop change, never a re-mount.
 async function syncToOpenId() {
-  if (props.openId === conversationId.value) return
+  if (props.openId === conversationId.value && messages.value.length) return
 
   if (!props.openId) {
     messages.value = [{ role: 'assistant', text: t('widget.greeting', { product: props.productName }) }]
