@@ -249,13 +249,14 @@ async function syncToOpenId() {
       post: m.post ?? undefined,
     }))
     conversationId.value = props.openId
-    scrollToBottom()
   }
   catch {
     messages.value = [{ role: 'assistant', text: t('widget.loadFailed') }]
   }
   finally {
     loadingThread.value = false
+    await nextTick()
+    scrollToBottom()
   }
 }
 
