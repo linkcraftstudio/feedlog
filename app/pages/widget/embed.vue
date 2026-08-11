@@ -100,14 +100,13 @@ const totalCount = ref(0)
 const unreadCount = ref(0)
 const feedbackUnread = ref(0)
 
-// The SDK owns the badge; it only learns of changes from here.
-watch(unreadCount, c => protocol.reportUnread(c))
-
 interface BadgeCounts { count: number, feedback: number }
 
+// The SDK owns the badge; it only learns of it from here.
 function applyBadge(res: BadgeCounts) {
   unreadCount.value = res.count
   feedbackUnread.value = res.feedback
+  protocol.reportUnread(res.count)
 }
 
 async function loadUnread() {
