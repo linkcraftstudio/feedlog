@@ -39,6 +39,7 @@ const conversationId = ref<string | null>(null)
 const draft = ref('')
 const sending = ref(false)
 const loadingThread = ref(false)
+const fullCarry = ref<{ text: string, files: Attachment[] } | null>(null)
 const bodyEl = ref<HTMLElement | null>(null)
 const draftEl = ref<HTMLTextAreaElement | null>(null)
 
@@ -182,8 +183,14 @@ async function send() {
     if (res.post) emit('filed')
   }
   catch (e) {
+    const statusCode = (e as { statusCode?: number })?.statusCode
+    // Nothing was stored, so the bubble goes back to being unsent text.
+    if (statusCode === 409) {
+      messages.value.pop()
+      fullCarry.value = { text, files: imageFiles }
+    }
     // 401 means the SDK must re-exchange; anything else is a plain failure.
-    if ((e as { statusCode?: number })?.statusCode === 401) {
+    else if (statusCode === 401) {
       // Park before signalling — the SDK rebuilds this frame in response, so
       // anything written after requestAuth() is lost. The bubble goes first: it
       // never reached the server, and replaying it would claim otherwise.
@@ -207,6 +214,18 @@ interface StoredMessage {
   text: string
   images: string[]
   post: ChatMessage['post'] | null
+}
+
+// Re-sent as if freshly typed, so it takes the normal path into a new one.
+async function carryOver() {
+  const carried = fullCarry.value
+  if (!carried) return
+  fullCarry.value = null
+  messages.value = []
+  conversationId.value = null
+  draft.value = carried.text
+  attachments.value = carried.files
+  await send()
 }
 
 // Kept alive: another conversation arrives as a prop change, never a re-mount.
@@ -327,6 +346,10 @@ onActivated(() => {
       </div>
     </div>
 
+    <p v-if="fullCarry" class="mx-auto max-w-[92%] py-1 text-center text-[11px] leading-4 text-muted-foreground">
+      {{ t('widget.conversationFullNote') }}
+    </p>
+
     <div v-if="sending" class="flex justify-start">
       <div class="px-3.5 py-2.5 rounded-lg rounded-bl-sm bg-card border border-border text-xs text-muted-foreground flex items-center gap-1.5">
         <span class="flex items-center gap-1" aria-hidden="true">
@@ -337,7 +360,21 @@ onActivated(() => {
     </div>
   </div>
 
-  <div class="px-3 py-2.5 bg-card shrink-0">
+  <div v-if="fullCarry" class="p-3 border-t border-border bg-card shrink-0">
+    <div class="rounded-xl border border-border bg-background p-3">
+      <p class="text-xs font-semibold leading-[16.5px]">{{ t('widget.conversationFullTitle') }}</p>
+      <p class="mt-2 px-2.5 py-2 rounded-lg bg-secondary text-xs leading-[17px] line-clamp-2">{{ fullCarry.text }}</p>
+      <button
+        class="mt-2.5 w-full h-9 rounded-full bg-primary text-primary-foreground text-[13px] font-bold inline-flex items-center justify-center gap-2 hover:brightness-105 transition-all"
+        @click="carryOver"
+      >
+        {{ t('widget.startNewConversation') }}
+        <Icon name="lucide:send-horizontal" size="15" />
+      </button>
+    </div>
+  </div>
+
+  <div v-else class="px-3 py-2.5 bg-card shrink-0">
     <p v-if="uploadError" class="mb-2 flex items-start gap-1.5 text-[11px] text-destructive">
       <Icon name="lucide:alert-circle" size="13" class="shrink-0 mt-px" />
       <span class="flex-1">{{ uploadError }}</span>

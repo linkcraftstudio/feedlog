@@ -15,6 +15,19 @@ export function ownedConversation(id: string, orgId: string, userId: string) {
   return and(eq(conversation.id, id), eq(conversation.orgId, orgId), eq(conversation.userId, userId))
 }
 
+// Chosen from response time, not the model's window: the same link answers a
+// 200k-token call in ~10s and an 800k one in ~50s, which nobody waits through.
+export const CONVERSATION_TOKEN_BUDGET = 120_000
+
+// CJK runs about a token per character, everything else about four characters
+// per token. Close enough to place a ceiling; a tokenizer dependency is not.
+const CJK = /[\u3000-\u9fff\uf900-\ufaff]/g
+
+export function estimateTokens(text: string): number {
+  const cjk = text.match(CJK)?.length ?? 0
+  return cjk + Math.ceil((text.length - cjk) / 4)
+}
+
 export function withinRetention() {
   return gt(conversation.lastMessageAt, sql`now() - make_interval(days => ${CONVERSATION_RETENTION_DAYS})`)
 }

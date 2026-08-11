@@ -3,7 +3,7 @@ import { asc, eq } from 'drizzle-orm'
 import { getRequestURL } from 'h3'
 import { board, conversation, message, organizationWidget } from '#layers/feedlog/server/db/schemas'
 import { buildWidgetSystemPrompt, historyToMessages, parseWidgetAiResponse, parseWidgetHistory } from '#layers/feedlog/server/utils/widget-ai'
-import { isConversationId, ownedConversation } from '#layers/feedlog/server/utils/conversation'
+import { CONVERSATION_TOKEN_BUDGET, estimateTokens, isConversationId, ownedConversation } from '#layers/feedlog/server/utils/conversation'
 import type { WidgetAiOutput, WidgetHistoryTurn } from '#layers/feedlog/server/utils/widget-ai'
 import type { CreatedPost } from '#layers/feedlog/server/utils/post-create'
 import { isActorAdmin } from '#layers/feedlog/shared/utils/notifications'
@@ -59,6 +59,17 @@ export default defineEventHandler(async (event): Promise<WidgetMessageResponse> 
   const history = parseWidgetHistory(body?.history)
   if (!history) {
     throw createError({ statusCode: 422, message: 'Malformed conversation history' })
+  }
+
+  // Judged before anything is written or sent upstream, so a full conversation
+  // costs neither a row to roll back nor a call to pay for.
+  const budget = history.reduce((n, h) => n + estimateTokens(h.text), estimateTokens(text))
+  if (budget >= CONVERSATION_TOKEN_BUDGET) {
+    throw createError({
+      statusCode: 409,
+      message: 'This conversation is full',
+      data: { code: 'conversation_full' },
+    })
   }
 
   const rawId = body?.conversationId

@@ -737,6 +737,9 @@
     "timeAgoHour": "{n}h",
     "timeAgoDay": "{n}d",
     "timeAgoWeek": "{n}w",
-    "timeAgoMonth": "{n}mo"
+    "timeAgoMonth": "{n}mo",
+    "conversationFullNote": "This conversation has reached its length limit. Your next message starts a new one.",
+    "conversationFullTitle": "This conversation is full",
+    "startNewConversation": "Start a new conversation"
   }
 }

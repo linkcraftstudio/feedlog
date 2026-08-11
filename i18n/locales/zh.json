@@ -737,6 +737,9 @@
     "timeAgoHour": "{n} 小时",
     "timeAgoDay": "{n} 天",
     "timeAgoWeek": "{n} 周",
-    "timeAgoMonth": "{n} 个月"
+    "timeAgoMonth": "{n} 个月",
+    "conversationFullNote": "这个会话已达到长度上限,下一条消息会开启新会话。",
+    "conversationFullTitle": "会话已满",
+    "startNewConversation": "开启新会话"
   }
 }
