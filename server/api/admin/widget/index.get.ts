@@ -14,6 +14,7 @@ export default defineEventHandler(async (event): Promise<ResolvedWidgetSettings 
       supportEmail: organizationWidget.supportEmail,
       disabledBuiltins: organizationWidget.disabledBuiltins,
       customRules: organizationWidget.customRules,
+      conversationRetentionDays: organizationWidget.conversationRetentionDays,
     })
     .from(organizationWidget)
     .where(eq(organizationWidget.orgId, orgId))

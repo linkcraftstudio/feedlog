@@ -1,7 +1,8 @@
-import { pgTable, text, boolean, varchar, jsonb, timestamp, uuid, primaryKey, index } from 'drizzle-orm/pg-core'
+import { pgTable, text, boolean, varchar, jsonb, timestamp, uuid, integer, primaryKey, index } from 'drizzle-orm/pg-core'
 import { relations, sql } from 'drizzle-orm'
 import { uuidv7 } from 'uuidv7'
 import { organization } from './auth'
+import { CONVERSATION_RETENTION_DEFAULT_DAYS } from '../../../shared/constants/conversation'
 import type { WidgetCustomRule } from '../../../shared/constants/widget-rules'
 
 // One row per org, created lazily on first save (no row = all defaults). Writes
@@ -12,6 +13,7 @@ export const organizationWidget = pgTable('organization_widget', {
   supportEmail: varchar('support_email', { length: 320 }),
   disabledBuiltins: jsonb('disabled_builtins').$type<string[]>().notNull().default([]),
   customRules: jsonb('custom_rules').$type<WidgetCustomRule[]>().notNull().default([]),
+  conversationRetentionDays: integer('conversation_retention_days').notNull().default(CONVERSATION_RETENTION_DEFAULT_DAYS),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 })

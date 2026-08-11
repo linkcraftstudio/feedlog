@@ -1,4 +1,5 @@
 import { z } from 'zod/v4'
+import { CONVERSATION_RETENTION_MAX_DAYS, CONVERSATION_RETENTION_MIN_DAYS } from '../constants/conversation'
 import { WIDGET_BUILTIN_RULE_IDS, WIDGET_MAX_ENABLED_RULES, WIDGET_MAX_RULE_LENGTH } from '../constants/widget-rules'
 
 // Handoff rule text goes into the AI system prompt verbatim, so the limits are
@@ -19,6 +20,10 @@ export const updateWidgetSettingsSchema = z.object({
   disabledBuiltins: z.array(z.enum(WIDGET_BUILTIN_RULE_IDS as [string, ...string[]])).optional(),
   // Sent whole: the client posts the current list, not a diff.
   customRules: z.array(customRuleSchema).optional(),
+  conversationRetentionDays: z.int('Retention must be a whole number of days')
+    .min(CONVERSATION_RETENTION_MIN_DAYS, `Retention must be at least ${CONVERSATION_RETENTION_MIN_DAYS} days`)
+    .max(CONVERSATION_RETENTION_MAX_DAYS, `Retention must be ${CONVERSATION_RETENTION_MAX_DAYS} days or less`)
+    .optional(),
 })
 
 export type UpdateWidgetSettingsInput = z.infer<typeof updateWidgetSettingsSchema>

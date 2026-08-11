@@ -1,0 +1,1 @@
+ALTER TABLE "organization_widget" ADD COLUMN "conversation_retention_days" integer DEFAULT 14 NOT NULL;

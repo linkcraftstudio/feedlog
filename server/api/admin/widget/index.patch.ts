@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm'
 import { getRequestURL } from 'h3'
 import { uuidv7 } from 'uuidv7'
 import { organizationWidget } from '#layers/feedlog/server/db/schemas'
+import { CONVERSATION_RETENTION_DEFAULT_DAYS } from '#layers/feedlog/shared/constants/conversation'
 import type { WidgetCustomRule } from '#layers/feedlog/shared/constants/widget-rules'
 import { checkEnabledRuleCap, updateWidgetSettingsSchema } from '#layers/feedlog/shared/schemas/widget'
 import { resolveWidgetSettings } from '#layers/feedlog/shared/utils/widget-settings'
@@ -30,6 +31,7 @@ export default defineEventHandler(async (event): Promise<ResolvedWidgetSettings 
       supportEmail: organizationWidget.supportEmail,
       disabledBuiltins: organizationWidget.disabledBuiltins,
       customRules: organizationWidget.customRules,
+      conversationRetentionDays: organizationWidget.conversationRetentionDays,
     })
     .from(organizationWidget)
     .where(eq(organizationWidget.orgId, orgId))
@@ -50,6 +52,9 @@ export default defineEventHandler(async (event): Promise<ResolvedWidgetSettings 
       scenario: r.scenario,
       enabled: r.enabled,
     })) as WidgetCustomRule[],
+    conversationRetentionDays: body.conversationRetentionDays
+      ?? existing?.conversationRetentionDays
+      ?? CONVERSATION_RETENTION_DEFAULT_DAYS,
   }
 
   const capError = checkEnabledRuleCap(merged.disabledBuiltins, merged.customRules)

@@ -26,7 +26,7 @@ export default defineEventHandler(async (event): Promise<{ data: WidgetConversat
   const [owned] = await db
     .select({ id: conversation.id })
     .from(conversation)
-    .where(and(ownedConversation(id, orgId, session.user.id), withinRetention()))
+    .where(and(ownedConversation(id, orgId, session.user.id), withinRetention(orgId)))
     .limit(1)
   if (!owned) {
     throw createError({ statusCode: 404, message: 'Conversation not found' })

@@ -1,8 +1,6 @@
 import { and, eq, gt, sql } from 'drizzle-orm'
-import { conversation } from '../db/schemas'
-
-// A visibility window, not a deletion job: rows stay, reads stop returning them.
-export const CONVERSATION_RETENTION_DAYS = 180
+import { conversation, organizationWidget } from '../db/schemas'
+import { CONVERSATION_RETENTION_DEFAULT_DAYS } from '../../shared/constants/conversation'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -28,6 +26,9 @@ export function estimateTokens(text: string): number {
   return cjk + Math.ceil((text.length - cjk) / 4)
 }
 
-export function withinRetention() {
-  return gt(conversation.lastMessageAt, sql`now() - make_interval(days => ${CONVERSATION_RETENTION_DAYS})`)
+export function withinRetention(orgId: string) {
+  return gt(conversation.lastMessageAt, sql`now() - make_interval(days => coalesce(
+    (select ${organizationWidget.conversationRetentionDays} from ${organizationWidget}
+      where ${organizationWidget.orgId} = ${orgId}),
+    ${CONVERSATION_RETENTION_DEFAULT_DAYS}))`)
 }

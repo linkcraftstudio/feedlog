@@ -1,5 +1,10 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
+import {
+  CONVERSATION_RETENTION_DEFAULT_DAYS,
+  CONVERSATION_RETENTION_MAX_DAYS,
+  CONVERSATION_RETENTION_MIN_DAYS,
+} from '~~/shared/constants/conversation'
 import { WIDGET_MAX_ENABLED_RULES } from '~~/shared/constants/widget-rules'
 
 // /dashboard/settings/widget — install guide + the rules that decide when the
@@ -94,6 +99,23 @@ const emailDirty = computed(() => emailDraft.value.trim() !== (settings.value?.s
 async function saveEmail() {
   if (!emailDirty.value) return
   if (await commit({ supportEmail: emailDraft.value.trim() })) {
+    toast.success(t('settings.widget.saved'))
+  }
+}
+
+// ---- conversation retention ----------------------------------------------
+const retentionDraft = ref(CONVERSATION_RETENTION_DEFAULT_DAYS)
+watch(settings, s => { retentionDraft.value = s?.conversationRetentionDays ?? CONVERSATION_RETENTION_DEFAULT_DAYS }, { immediate: true })
+const retentionValue = computed(() => Math.trunc(Number(retentionDraft.value)))
+const retentionValid = computed(() => Number.isFinite(retentionValue.value)
+  && retentionValue.value >= CONVERSATION_RETENTION_MIN_DAYS
+  && retentionValue.value <= CONVERSATION_RETENTION_MAX_DAYS)
+const retentionDirty = computed(() => retentionValid.value
+  && retentionValue.value !== (settings.value?.conversationRetentionDays ?? CONVERSATION_RETENTION_DEFAULT_DAYS))
+
+async function saveRetention() {
+  if (!retentionDirty.value) return
+  if (await commit({ conversationRetentionDays: retentionValue.value })) {
     toast.success(t('settings.widget.saved'))
   }
 }
@@ -279,6 +301,37 @@ async function removeRule(id: string) {
                   </button>
                 </div>
                 <p class="text-[11px] text-muted-foreground mt-1.5">{{ $t('settings.widget.emailHint') }}</p>
+              </div>
+
+              <div class="pt-5 border-t border-border">
+                <label class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('settings.widget.retentionLabel') }}</label>
+                <div class="mt-2 flex items-center gap-2">
+                  <div class="flex-1 flex items-center gap-2">
+                    <input
+                      v-model="retentionDraft"
+                      type="number"
+                      :min="CONVERSATION_RETENTION_MIN_DAYS"
+                      :max="CONVERSATION_RETENTION_MAX_DAYS"
+                      class="w-28 h-10 px-3 rounded-lg border bg-background text-sm tabular-nums focus:outline-none focus:border-primary transition-colors"
+                      :class="retentionValid ? 'border-border' : 'border-destructive'"
+                      @keydown.enter="saveRetention"
+                    >
+                    <span class="text-sm text-muted-foreground">{{ $t('settings.widget.retentionUnit') }}</span>
+                  </div>
+                  <button
+                    v-if="retentionDirty"
+                    class="h-10 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-heading font-bold hover:opacity-90 transition-all shrink-0"
+                    :disabled="saving"
+                    @click="saveRetention"
+                  >
+                    {{ $t('settings.widget.save') }}
+                  </button>
+                </div>
+                <p class="text-[11px] mt-1.5" :class="retentionValid ? 'text-muted-foreground' : 'text-destructive'">
+                  {{ retentionValid
+                    ? $t('settings.widget.retentionHint')
+                    : $t('settings.widget.retentionRange', { min: CONVERSATION_RETENTION_MIN_DAYS, max: CONVERSATION_RETENTION_MAX_DAYS }) }}
+                </p>
               </div>
 
               <div class="pt-5 border-t border-border">

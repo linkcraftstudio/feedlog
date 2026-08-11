@@ -1,3 +1,4 @@
+import { CONVERSATION_RETENTION_DEFAULT_DAYS } from '../constants/conversation'
 import {
   WIDGET_BUILTIN_RULES,
   WIDGET_BUILTIN_RULE_IDS,
@@ -12,6 +13,7 @@ export interface WidgetConfigRow {
   supportEmail: string | null
   disabledBuiltins: string[]
   customRules: WidgetCustomRule[]
+  conversationRetentionDays: number
 }
 
 // Both wordings travel to the client: the admin page shows whichever matches
@@ -26,6 +28,7 @@ export interface ResolvedBuiltinRule {
 export interface ResolvedWidgetSettings {
   enabled: boolean
   supportEmail: string | null
+  conversationRetentionDays: number
   rules: {
     builtins: ResolvedBuiltinRule[]
     custom: WidgetCustomRule[]
@@ -55,6 +58,7 @@ export function resolveWidgetSettings(row: WidgetConfigRow | undefined | null): 
   return {
     enabled,
     supportEmail,
+    conversationRetentionDays: row?.conversationRetentionDays ?? CONVERSATION_RETENTION_DEFAULT_DAYS,
     rules: { builtins, custom: customRules },
     enabledCount: countEnabledRules(disabledBuiltins, customRules),
   }

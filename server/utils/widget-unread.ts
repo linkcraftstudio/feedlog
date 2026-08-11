@@ -22,7 +22,7 @@ export async function countWidgetBadge(orgId: string, userId: string): Promise<{
       eq(conversation.orgId, orgId),
       eq(conversation.userId, userId),
       eq(conversation.unread, true),
-      withinRetention(),
+      withinRetention(orgId),
     ))
 
   const feedback = Number(posts?.value ?? 0)

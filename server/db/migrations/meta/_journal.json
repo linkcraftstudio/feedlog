@@ -71,6 +71,13 @@
       "when": 1786352064552,
       "tag": "0009_public_ironclad",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786443369000,
+      "tag": "0010_careful_firebird",
+      "breakpoints": true
     }
   ]
 }

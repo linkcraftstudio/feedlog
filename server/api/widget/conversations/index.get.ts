@@ -37,7 +37,7 @@ export default defineEventHandler(async (event): Promise<{ data: WidgetConversat
     .where(and(
       eq(conversation.orgId, orgId),
       eq(conversation.userId, session.user.id),
-      withinRetention(),
+      withinRetention(orgId),
     ))
     .orderBy(desc(conversation.lastMessageAt), desc(conversation.id))
 
