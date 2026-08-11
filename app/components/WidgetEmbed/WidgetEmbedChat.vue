@@ -319,7 +319,7 @@ onActivated(() => {
 
   <div v-else ref="bodyEl" class="flex-1 overflow-y-auto bg-background p-3.5 space-y-2.5">
     <div v-for="(m, i) in messages" :key="i" class="flex" :class="m.role === 'user' ? 'justify-end' : 'justify-start'">
-      <div class="max-w-[82%]">
+      <div :class="m.post ? 'max-w-[92%]' : 'max-w-[82%]'">
         <div
           class="px-3 py-2.5 rounded-lg text-[13.5px] leading-normal"
           :class="m.role === 'user'
