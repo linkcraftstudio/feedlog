@@ -68,6 +68,11 @@ const view = ref<'conversations' | 'chat' | 'list'>('chat')
 const conversations = ref<WidgetConversationItem[]>([])
 const activeConversationId = ref<string | null>(null)
 const chatKey = ref(0)
+let authed = false
+
+function panelVisible() {
+  return document.body.getBoundingClientRect().height > 0
+}
 
 const headerTitle = computed(() => {
   if (view.value === 'conversations') return t('widget.messages')
@@ -185,6 +190,10 @@ function onOpenConversation(id: string) {
 }
 
 function onReplied(id: string) {
+  if (!panelVisible()) {
+    void loadUnread()
+    return
+  }
   void markConversationRead(id)
 }
 
@@ -198,24 +207,34 @@ function onBack() {
   void loadConversations()
 }
 
-async function settleView() {
-  await Promise.all([loadConversations(), loadUnread()])
+function resetToRoot() {
+  chatKey.value++
   activeConversationId.value = null
   view.value = conversations.value.length ? 'conversations' : 'chat'
+}
+
+async function settleView() {
+  await Promise.all([loadConversations(), loadUnread()])
+  resetToRoot()
   void loadFeedback()
 }
 
-let reopenObserver: IntersectionObserver | null = null
-function watchReopen() {
+let panelObserver: ResizeObserver | null = null
+const probeArmed = ref(true)
+
+function onFirstRender() {
+  probeArmed.value = false
+  if (!authed) return
   let shown = true
-  reopenObserver = new IntersectionObserver(([entry]) => {
-    if (!entry || entry.isIntersecting === shown) return
-    shown = entry.isIntersecting
-    if (!shown) return
-    chatKey.value++
-    void settleView()
+  panelObserver = new ResizeObserver(([entry]) => {
+    const now = (entry?.contentRect.height ?? 0) > 0
+    if (now === shown) return
+    shown = now
+    if (shown) void settleView()
+    else resetToRoot()
   })
-  reopenObserver.observe(document.documentElement)
+  panelObserver.observe(document.documentElement)
+  void settleView()
 }
 
 // ---- lifecycle -----------------------------------------------------------
@@ -238,13 +257,13 @@ onMounted(async () => {
     })
     .catch(() => {})
 
-  const [authed] = await Promise.all([loadSession(), config])
+  const [signedIn] = await Promise.all([loadSession(), config])
+  authed = signedIn
   if (authed) {
     // Awaited: the SDK hides this frame until ready(), so settling the view
     // here costs a round trip but never flashes the wrong one.
     await settleView()
     document.addEventListener('visibilitychange', refreshOnVisible)
-    watchReopen()
   }
 
   // ready last, so the SDK drops its loading state only once this frame has
@@ -254,12 +273,14 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener('visibilitychange', refreshOnVisible)
-  reopenObserver?.disconnect()
+  panelObserver?.disconnect()
 })
 </script>
 
 <template>
   <div class="h-screen flex flex-col bg-background text-foreground">
+    <span v-if="probeArmed" class="render-probe" aria-hidden="true" @animationstart="onFirstRender" />
+
     <!-- Header -->
     <header class="h-16 px-4 border-b border-border bg-card flex items-center gap-2.5 shrink-0">
       <button
@@ -359,3 +380,19 @@ onUnmounted(() => {
     </p>
   </div>
 </template>
+
+<style scoped>
+.render-probe {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+  opacity: 0;
+  animation: render-probe 1ms linear;
+}
+
+@keyframes render-probe {
+  from { opacity: 0; }
+  to { opacity: 0; }
+}
+</style>
