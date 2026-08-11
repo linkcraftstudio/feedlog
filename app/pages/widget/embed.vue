@@ -67,6 +67,7 @@ useHead(() => ({
 const view = ref<'conversations' | 'chat' | 'list'>('chat')
 const conversations = ref<WidgetConversationItem[]>([])
 const activeConversationId = ref<string | null>(null)
+const chatKey = ref(0)
 
 const headerTitle = computed(() => {
   if (view.value === 'conversations') return t('widget.messages')
@@ -195,6 +196,26 @@ function onBack() {
   void loadConversations()
 }
 
+async function settleView() {
+  await Promise.all([loadConversations(), loadUnread()])
+  activeConversationId.value = null
+  view.value = conversations.value.length ? 'conversations' : 'chat'
+  void loadFeedback()
+}
+
+let reopenObserver: IntersectionObserver | null = null
+function watchReopen() {
+  let shown = true
+  reopenObserver = new IntersectionObserver(([entry]) => {
+    if (!entry || entry.isIntersecting === shown) return
+    shown = entry.isIntersecting
+    if (!shown) return
+    chatKey.value++
+    void settleView()
+  })
+  reopenObserver.observe(document.documentElement)
+}
+
 // ---- lifecycle -----------------------------------------------------------
 onMounted(async () => {
   const mq = window.matchMedia('(prefers-color-scheme: dark)')
@@ -219,10 +240,9 @@ onMounted(async () => {
   if (authed) {
     // Awaited: the SDK hides this frame until ready(), so settling the view
     // here costs a round trip but never flashes the wrong one.
-    await Promise.all([loadConversations(), loadUnread()])
-    if (conversations.value.length) view.value = 'conversations'
-    void loadFeedback()
+    await settleView()
     document.addEventListener('visibilitychange', refreshOnVisible)
+    watchReopen()
   }
 
   // ready last, so the SDK drops its loading state only once this frame has
@@ -232,6 +252,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener('visibilitychange', refreshOnVisible)
+  reopenObserver?.disconnect()
 })
 </script>
 
@@ -298,7 +319,7 @@ onUnmounted(() => {
     </div>
 
     <!-- Chat only: a trip to the list must not wipe the conversation. -->
-    <KeepAlive v-else include="WidgetEmbedChat">
+    <KeepAlive v-else include="WidgetEmbedChat" :max="1">
       <WidgetEmbedConversationList
         v-if="view === 'conversations'"
         :items="conversations"
@@ -321,6 +342,7 @@ onUnmounted(() => {
 
       <WidgetEmbedChat
         v-else
+        :key="chatKey"
         :product-name="productName"
         :open-id="activeConversationId"
         @auth-required="onAuthRequired"
