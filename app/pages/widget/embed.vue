@@ -210,13 +210,12 @@ function onBack() {
 function resetToRoot() {
   chatKey.value++
   activeConversationId.value = null
-  view.value = conversations.value.length ? 'conversations' : 'chat'
+  view.value = conversations.value.length || totalCount.value ? 'conversations' : 'chat'
 }
 
 async function settleView() {
-  await Promise.all([loadConversations(), loadUnread()])
+  await Promise.all([loadConversations(), loadUnread(), loadFeedback()])
   resetToRoot()
-  void loadFeedback()
 }
 
 let panelObserver: ResizeObserver | null = null
