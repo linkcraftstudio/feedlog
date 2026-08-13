@@ -155,6 +155,12 @@ function toHistory() {
       : { role: 'assistant' as const, text: m.text, type: m.type, ...(m.post ? { postTitle: m.post.title } : {}) })
 }
 
+function onEnterKey(e: KeyboardEvent) {
+  if (e.isComposing || e.keyCode === 229) return
+  e.preventDefault()
+  void send()
+}
+
 async function send() {
   const text = draft.value.trim()
   const imageFiles = [...attachments.value]
@@ -393,7 +399,7 @@ onActivated(() => {
         rows="1"
         :placeholder="t('widget.placeholder')"
         class="w-full min-h-12 max-h-[120px] px-3 py-2 bg-transparent text-[13.5px] leading-normal resize-none focus:outline-none no-scrollbar"
-        @keydown.enter.exact.prevent="send"
+        @keydown.enter.exact="onEnterKey"
         @paste="onPaste"
       />
       <div class="flex items-center justify-between px-1.5 py-1">
