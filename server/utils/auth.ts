@@ -42,10 +42,16 @@ export async function requireAuth(event: H3Event) {
 // different org); this closes the same-org coincidence. End-user write paths
 // (requireAuthInOrg) deliberately don't call this — posting/voting/commenting
 // is exactly what an SSO end-user is for.
+// Guests are covered here too: they hold no membership, so the permission checks
+// below would already refuse them, but a guest identity is never staff by
+// construction and saying so up front keeps that from resting on a lookup.
 function assertNotSsoSession(session: Awaited<ReturnType<typeof requireAuth>>) {
   const ssoOrgId = (session.session as { ssoOrgId?: string | null }).ssoOrgId
   if (ssoOrgId) {
     throw createError({ statusCode: 403, message: 'SSO sessions cannot access staff areas' })
+  }
+  if ((session.user as { isAnonymous?: boolean | null }).isAnonymous) {
+    throw createError({ statusCode: 403, message: 'Guest sessions cannot access staff areas' })
   }
 }
 
@@ -123,6 +129,7 @@ export function getOrgMemberRole(
 ): string | null {
   if (!session || !orgId) return null
   if ((session.session as { ssoOrgId?: string | null }).ssoOrgId) return null
+  if ((session.user as { isAnonymous?: boolean | null }).isAnonymous) return null
   const orgList = (session as { orgList?: { orgId: string; role: string }[] }).orgList
   return orgList?.find(o => o.orgId === orgId)?.role ?? null
 }

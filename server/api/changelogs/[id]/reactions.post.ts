@@ -5,6 +5,7 @@ import { reactionSchema } from '#layers/feedlog/shared/schemas/changelog'
 // POST /api/changelogs/:id/reactions — Add reaction (any authenticated user, idempotent).
 export default defineEventHandler(async (event) => {
   const { session, orgId } = await requireAuthInOrg(event)
+  await assertGuestMay(event, session, 'allowVote')
   const id = getRouterParam(event, 'id')!
   const body = await readValidatedBody(event, reactionSchema.parse)
 

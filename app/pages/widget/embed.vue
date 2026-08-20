@@ -15,7 +15,7 @@ const route = useRoute()
 const { t } = useI18n()
 
 const embed = useWidgetEmbed()
-const { status, widgetFetch, loadSession } = embed
+const { status, allowGuest, widgetFetch, loadSession } = embed
 const protocol = useWidgetProtocol()
 provide(widgetEmbedKey, embed)
 provide(widgetProtocolKey, protocol)
@@ -221,9 +221,7 @@ async function settleView() {
 let panelObserver: ResizeObserver | null = null
 const probeArmed = ref(true)
 
-function onFirstRender() {
-  probeArmed.value = false
-  if (!authed) return
+function watchPanelVisibility() {
   let shown = true
   panelObserver = new ResizeObserver(([entry]) => {
     const now = (entry?.contentRect.height ?? 0) > 0
@@ -233,8 +231,25 @@ function onFirstRender() {
     else resetToRoot()
   })
   panelObserver.observe(document.documentElement)
+}
+
+function onFirstRender() {
+  probeArmed.value = false
+  if (!authed) return
+  watchPanelVisibility()
   void settleView()
 }
+
+// A guest who just sent their first message now has an identity, so the lists
+// and the badge start applying to them. No settleView: they are mid-conversation
+// and resetting to the root would throw them out of it.
+watch(status, (now, before) => {
+  if (now !== 'authenticated' || before !== 'guest') return
+  authed = true
+  watchPanelVisibility()
+  document.addEventListener('visibilitychange', refreshOnVisible)
+  void loadUnread()
+})
 
 // ---- lifecycle -----------------------------------------------------------
 onMounted(async () => {
@@ -248,15 +263,20 @@ onMounted(async () => {
   // failure costs only the brand colour and the name.
   const config = $fetch<{
     org: { name: string, logo: string | null }
+    allowGuest: boolean
     branding: { primary: string, primaryForeground: string }
   }>('/api/widget/config')
     .then((cfg) => {
       applyBrand(cfg.branding)
       org.value = cfg.org
+      allowGuest.value = cfg.allowGuest
     })
     .catch(() => {})
 
   const [signedIn] = await Promise.all([loadSession(), config])
+  // Nobody yet, but writing is allowed: open on the composer rather than the
+  // wall. The identity appears on the first send, not here.
+  if (!signedIn && allowGuest.value) status.value = 'guest'
   authed = signedIn
   if (authed) {
     // Awaited: the SDK hides this frame until ready(), so settling the view
@@ -323,7 +343,7 @@ onUnmounted(() => {
       </button>
     </header>
 
-    <!-- Signed out -->
+    <!-- Signed out, and this org does not accept guests -->
     <div v-if="status === 'anonymous'" class="flex-1 flex flex-col items-center justify-center gap-3 px-8 text-center">
       <Icon name="lucide:message-circle" size="28" class="text-muted-foreground" />
       <p class="font-heading font-bold text-sm">{{ t('widget.loginTitle') }}</p>

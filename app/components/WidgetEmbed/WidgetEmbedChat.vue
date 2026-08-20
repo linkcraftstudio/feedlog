@@ -15,7 +15,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-const { user, widgetFetch } = inject(widgetEmbedKey)!
+const { user, widgetFetch, ensureIdentity } = inject(widgetEmbedKey)!
 const protocol = inject(widgetProtocolKey)!
 
 type WidgetAiType = 'feedback' | 'support' | 'clarify' | 'unrecognized'
@@ -80,6 +80,12 @@ function onPaste(e: ClipboardEvent) {
 
 async function uploadFiles(files: File[]) {
   if (!files.length) return
+  // An attachment is a write like any other, so it is enough on its own to earn
+  // a guest identity.
+  if (!await ensureIdentity()) {
+    uploadError.value = t('widget.uploadFailed')
+    return
+  }
   uploadError.value = ''
   pendingUploads.value++
   for (const file of files) {
@@ -166,6 +172,12 @@ async function send() {
   const imageFiles = [...attachments.value]
   const images = imageFiles.map(a => a.key)
   if ((!text && !images.length) || sending.value || uploading.value) return
+  // Where a guest is minted: the visitor has now written something, which is the
+  // first moment they are worth a row.
+  if (!await ensureIdentity()) {
+    messages.value.push({ role: 'assistant', text: t('widget.sendFailed') })
+    return
+  }
   const history = toHistory()
   messages.value.push({ role: 'user', text, images })
   draft.value = ''

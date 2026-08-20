@@ -59,6 +59,10 @@ export async function resolvePostThreadRecipients(orgId: string, postId: string,
     WHERE ps.post_id IN (SELECT id FROM family)
       AND ps.user_id <> ${actorId}
       AND u.email IS NOT NULL
+      -- A guest's address is a reserved-domain placeholder; mailing it would only
+      -- generate bounces. They still get the widget's unread dot, and once they
+      -- claim the content onto a real account the mail starts flowing.
+      AND u.is_anonymous IS NOT TRUE
       ${excludeVoters}
       AND NOT EXISTS (
         SELECT 1 FROM member m

@@ -16,11 +16,16 @@ const { t, locale } = useI18n()
 const boardStore = useBoardStore()
 const { boards } = storeToRefs(boardStore)
 
-const { data: session } = useAuthSession()
-const isLoggedIn = computed(() => !!session.value?.user)
 const loginModal = useLoginModal()
+const { hasAccount, guestMay, mayAct, ensureIdentity } = useGuestSession()
 // The user pressed submit while signed out; resume once a session appears.
 const awaitingLogin = ref(false)
+// Shown when this submission will go out under a guest identity — either one is
+// already minted, or one is about to be. Sits directly above the button, at the
+// moment the draft is finished and the hand is moving to submit; below it would
+// be past the end of the reading path. State first, benefit second: the reader's
+// first question is whether they can post at all without an account.
+const showGuestHint = computed(() => !hasAccount.value && guestMay('allowPost'))
 
 const selectedBoardId = ref<string | null>(null)
 const title = ref('')
@@ -108,13 +113,13 @@ async function handleSubmit() {
     return
   }
 
-  // Only reachable from a pre-filled link: every other entry point still gates
-  // on sign-in before opening the form. Arriving with a draft already written
-  // is what earns the deferral — the auth prompt waits until it would cost the
-  // reporter something to walk away.
-  if (!isLoggedIn.value) {
+  // Where a guest identity is minted, if the org allows one — deliberately here
+  // and not on open, so a visitor who changes their mind leaves nothing behind.
+  // When guest posting is off this opens the sign-in modal instead and the draft
+  // waits; that path is reachable from a pre-filled link, where the reporter
+  // arrives already holding text worth not throwing away.
+  if (!await ensureIdentity('allowPost')) {
     awaitingLogin.value = true
-    loginModal.open()
     return
   }
 
@@ -144,8 +149,10 @@ async function handleSubmit() {
 
 // Sign-in happens in place (OAuth runs in a popup, email posts via fetch), so
 // the draft is still in memory here — finish the submit the user already asked
-// for instead of making them press the button twice.
-watch(isLoggedIn, (v) => {
+// for instead of making them press the button twice. Keyed on the account, not
+// on "is signed in": a guest is already signed in, so that would never fire for
+// the visitor this is meant to help.
+watch(hasAccount, (v) => {
   if (!v || !awaitingLogin.value) return
   awaitingLogin.value = false
   void handleSubmit()
@@ -238,6 +245,14 @@ watch(open, (v) => {
         <!-- Error message -->
         <p v-if="error" class="text-sm text-destructive shrink-0">{{ error }}</p>
 
+        <p v-if="showGuestHint" class="text-xs text-muted-foreground shrink-0 -mb-1">
+          {{ $t('post.submit.guestHint.before') }}<button
+            type="button"
+            class="text-primary font-semibold underline underline-offset-2 hover:opacity-80 transition-opacity"
+            @click="loginModal.open()"
+          >{{ $t('post.submit.guestHint.link') }}</button>{{ $t('post.submit.guestHint.after') }}
+        </p>
+
         <!-- Submit button -->
         <button
           class="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground text-[15px] font-heading font-bold rounded-[10px] transition-all transform active:scale-[0.99] shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
@@ -245,7 +260,7 @@ watch(open, (v) => {
           @click="handleSubmit"
         >
           <template v-if="submitting">{{ $t('post.submit.submitting') }}</template>
-          <template v-else-if="!isLoggedIn">{{ $t('post.submit.signInAndSubmit') }}</template>
+          <template v-else-if="!mayAct('allowPost')">{{ $t('post.submit.signInAndSubmit') }}</template>
           <template v-else>{{ $t('post.submit.submit') }}</template>
         </button>
       </div>

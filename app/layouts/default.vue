@@ -3,7 +3,21 @@ const { signOut } = useAuth()
 const { data: session } = await useAuthSession()
 const localePath = useLocalePath()
 
-const user = computed(() => session.value?.user)
+const { isGuest, hasAccount, claimIfPending } = useGuestSession()
+// A guest is not an account. The header keeps offering sign-in and shows no
+// avatar or sign-out, because the visitor never created the identity behind it.
+const user = computed(() => isGuest.value ? undefined : session.value?.user)
+
+// Fold in anything the visitor wrote as a guest. Silent — from their side
+// nothing happened, their feedback is simply still theirs.
+//
+// On load, not on every flip of `hasAccount`: signing in switches accounts, and
+// the auth-reload plugin hard-reloads the app on that switch. A claim started in
+// the realm being replaced has its request aborted mid-navigation, so it never
+// sees its own answer and never clears the token — and the realm that comes up
+// next claims all over again. Claiming on load puts it in the realm that lives
+// long enough to finish, and every sign-in path ends in one.
+if (hasAccount.value) claimIfPending()
 // SSO sessions (signed in via the customer's product) are end-user only.
 const isSsoSession = computed(
   () => !!(session.value as { session?: { ssoOrgId?: string | null } } | null)?.session?.ssoOrgId,

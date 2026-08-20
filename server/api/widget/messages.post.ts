@@ -31,6 +31,9 @@ interface WidgetMessageResponse {
 
 export default defineEventHandler(async (event): Promise<WidgetMessageResponse> => {
   const { session, orgId } = await requireAuthInOrg(event)
+  // Everything a visitor does in the widget ends in a post, so guest posting is
+  // what decides whether the widget works at all without a sign-in.
+  await assertGuestMay(event, session, 'allowPost')
   const userId = session.user.id
 
   if (!await checkRateLimit(`widget-messages:${userId}`, RATE_LIMIT)) {

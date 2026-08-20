@@ -174,9 +174,7 @@ function toggleSort(col: 'createdAt' | 'votes' | 'comments') {
 }
 
 
-function initials(name: string | null) {
-  return (name || '?').slice(0, 2).toUpperCase()
-}
+const { authorName } = useAuthorDisplay()
 
 // Pagination
 const pageNumbers = computed(() => {
@@ -407,20 +405,8 @@ function onPostDeleted(postId: string) {
                   <p class="text-[11px] text-muted-foreground truncate mt-0.5">{{ fb.excerpt }}</p>
                   <div class="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground">
                     <div class="flex items-center gap-1">
-                      <img
-                        v-if="fb.author?.image"
-                        :src="fb.author.image"
-                        :alt="fb.author.name"
-                        class="w-4 h-4 rounded-full object-cover"
-                        referrerpolicy="no-referrer"
-                      >
-                      <div
-                        v-else
-                        class="w-4 h-4 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold text-[7px]"
-                      >
-                        {{ initials(fb.author?.name) }}
-                      </div>
-                      <span class="font-medium">{{ fb.author?.name ?? $t('common.anonymous') }}</span>
+                      <UserAvatar :author="fb.author" :size="4" />
+                      <span class="font-medium">{{ authorName(fb.author) }}</span>
                     </div>
                     <span>{{ formatDate(fb.createdAt) }}</span>
                     <div class="flex items-center gap-0.5">
@@ -505,20 +491,8 @@ function onPostDeleted(postId: string) {
                 <!-- Author -->
                 <td class="px-4 py-4">
                   <div class="flex items-center gap-2">
-                    <img
-                      v-if="fb.author?.image"
-                      :src="fb.author.image"
-                      :alt="fb.author.name"
-                      class="w-6 h-6 rounded-full object-cover shrink-0"
-                      referrerpolicy="no-referrer"
-                    >
-                    <div
-                      v-else
-                      class="w-6 h-6 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold text-[9px]"
-                    >
-                      {{ initials(fb.author?.name) }}
-                    </div>
-                    <span class="text-xs font-medium truncate">{{ fb.author?.name ?? $t('common.anonymous') }}</span>
+                    <UserAvatar :author="fb.author" :size="6" />
+                    <span class="text-xs font-medium truncate">{{ authorName(fb.author) }}</span>
                   </div>
                 </td>
                 <!-- Comments -->

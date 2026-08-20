@@ -6,13 +6,13 @@ const hasWelcome = computed(() => branding.value.welcomeTitle || branding.value.
 
 // Auth & login modal
 const { data: session } = useAuthSession()
-const isLoggedIn = computed(() => !!session.value?.user)
 const isSsoSession = computed(
   () => !!(session.value as { session?: { ssoOrgId?: string | null } } | null)?.session?.ssoOrgId,
 )
 const orgCtx = useOrgContext()
 const canEditPortal = computed(() => !!session.value?.user && !!orgCtx.value.role && !isSsoSession.value)
 const loginModal = useLoginModal()
+const { mayAct, ensureIdentity } = useGuestSession()
 const timeAgo = useTimeAgo()
 
 // Board store
@@ -150,10 +150,6 @@ async function selectBoard(boardId: string | null) {
 // Status configuration (centralized)
 
 
-// User initials
-function initials(name: string | null) {
-  return (name || '?').slice(0, 2).toUpperCase()
-}
 
 // Post detail store
 const postDetailStore = usePostDetailStore()
@@ -162,6 +158,14 @@ const postDetailStore = usePostDetailStore()
 const showDetail = ref(false)
 const showSubmit = ref(false)
 const detailSlug = ref<string | null>(null)
+
+// The composer opens before any identity exists; a guest is only minted when the
+// draft is actually submitted.
+const canOpenSubmit = computed(() => mayAct('allowPost'))
+function openSubmit() {
+  if (!canOpenSubmit.value) return loginModal.open()
+  showSubmit.value = true
+}
 
 // Pre-filled submit links: /?new=1&title=...&body=...&b=...
 // This is the one entry point that opens the form to signed-out visitors — they
@@ -228,7 +232,7 @@ function onPostDeleted(postId: string) {
 
 // Vote / unvote on list items
 async function handleVote(post: PostListItem) {
-  if (!isLoggedIn.value) return loginModal.open()
+  if (!await ensureIdentity('allowVote')) return
   const wasVoted = post.hasVoted
   post.hasVoted = !wasVoted
   post.voteCount += wasVoted ? -1 : 1
@@ -360,7 +364,7 @@ async function handleVote(post: PostListItem) {
       ref="searchToolbar"
       v-model="searchQuery"
       v-model:sort="sortBy"
-      @new-request="isLoggedIn ? (showSubmit = true) : loginModal.open()"
+      @new-request="openSubmit()"
     />
 
     <!-- Post list with loading state -->
@@ -375,7 +379,7 @@ async function handleVote(post: PostListItem) {
         <p class="fl-empty__hint">{{ $t('board.noMatchesHint') }}</p>
         <Button
           class="h-10 px-4 rounded-lg text-[15px] font-heading font-semibold"
-          @click="isLoggedIn ? showSubmit = true : loginModal.open()"
+          @click="openSubmit()"
         >
           <Icon name="lucide:plus" size="18" />
           {{ $t('board.newRequest') }}
@@ -449,10 +453,7 @@ async function handleVote(post: PostListItem) {
               <span>{{ $t('board.comments', { n: p.commentCount }) }}</span>
             </div>
             <div class="flex items-center gap-2">
-              <img v-if="p.author?.image" :src="p.author.image" :alt="p.author.name" class="w-5 h-5 rounded-full object-cover shrink-0" referrerpolicy="no-referrer">
-              <div v-else class="w-5 h-5 rounded-full bg-foreground/10 flex items-center justify-center text-foreground font-bold text-[9px] shrink-0">
-                {{ initials(p.author?.name) }}
-              </div>
+              <UserAvatar :author="p.author" :size="5" />
               <div class="flex items-center gap-1.5">
                 <Icon name="lucide:clock" size="14" />
                 <span>{{ timeAgo(p.createdAt) }}</span>

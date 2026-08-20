@@ -42,6 +42,7 @@ export default defineEventHandler(async (event): Promise<PagePaginatedList<PostL
       authorId: post.authorId,
       authorName: user.name,
       authorImage: user.image,
+      authorIsAnonymous: user.isAnonymous,
       createdAt: post.createdAt,
     })
     .from(post)
@@ -63,7 +64,7 @@ export default defineEventHandler(async (event): Promise<PagePaginatedList<PostL
       commentCount: r.commentCount,
       mergedCount: r.mergedCount,
       hasVoted: false,
-      author: { id: r.authorId, name: r.authorName, image: r.authorImage },
+      author: { id: r.authorId, name: r.authorName, image: r.authorImage, isAnonymous: !!r.authorIsAnonymous },
       createdAt: r.createdAt,
     })),
     pagination: { page, pageSize, total: countResult?.total ?? 0 },

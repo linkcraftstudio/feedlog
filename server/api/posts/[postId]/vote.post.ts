@@ -5,6 +5,7 @@ import { isActorAdmin } from '#layers/feedlog/shared/utils/notifications'
 // POST /api/posts/:id/vote — Vote on a post (any authenticated user, idempotent).
 export default defineEventHandler(async (event) => {
   const { session, orgId } = await requireAuthInOrg(event)
+  await assertGuestMay(event, session, 'allowVote')
   const postId = getRouterParam(event, 'postId')!
 
   const db = useDB()

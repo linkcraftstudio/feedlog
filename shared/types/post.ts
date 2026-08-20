@@ -37,6 +37,9 @@ export interface PostAuthor {
   id: string
   name: string | null
   image: string | null
+  // True = written without signing in. The UI ignores `name` in that case and
+  // composes a localized label off the id instead.
+  isAnonymous?: boolean
   // Optional because only the detail endpoint sets it, and only for staff.
   email?: string | null
 }

@@ -59,9 +59,7 @@ async function loadMoreSubComments() {
 // Track lazily-loaded comments for second-level merged posts (keyed by post id)
 const level2Comments = ref<Record<string, { data: any[]; loading: boolean; cursor: string | null }>>({})
 
-function initials(name: string | null) {
-  return (name || '?').slice(0, 2).toUpperCase()
-}
+const { authorName } = useAuthorDisplay()
 
 function handleUnmerge() {
   const postId = mp.value?.post.id
@@ -96,26 +94,17 @@ async function loadLevel2Comments(postId: string) {
     <div class="flex gap-4">
       <!-- Avatar -->
       <div class="w-10 h-10 rounded-full shrink-0 flex items-center justify-center shadow-sm relative overflow-visible">
-        <img
-          v-if="comment.author.image"
-          :src="comment.author.image"
-          :alt="comment.author.name"
-          class="w-10 h-10 rounded-full object-cover"
-          referrerpolicy="no-referrer"
-        >
-        <div v-else class="w-10 h-10 rounded-full bg-foreground/10 flex items-center justify-center text-foreground font-bold text-sm">
-          {{ initials(comment.author.name) }}
-        </div>
+        <UserAvatar :author="comment.author" :size="10" />
       </div>
 
       <div class="flex-1 min-w-0">
         <!-- Header with merge badge -->
         <div class="flex items-center flex-wrap gap-2 mb-3">
-          <span class="font-heading font-bold text-sm">{{ comment.author.name }}</span>
+          <span class="font-heading font-bold text-sm">{{ authorName(comment.author) }}</span>
           <span class="text-xs text-muted-foreground">{{ timeAgo(comment.createdAt) }}</span>
           <span class="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md flex items-center gap-1 ml-1">
             <Icon name="lucide:git-merge" size="14" />
-            {{ $t('post.merge.mergedPostBy', { name: comment.author.name }) }}
+            {{ $t('post.merge.mergedPostBy', { name: authorName(comment.author) }) }}
           </span>
 
           <!-- Admin unmerge menu -->
@@ -150,20 +139,11 @@ async function loadLevel2Comments(postId: string) {
         <!-- Second-level merged post card -->
         <div v-if="sc.type === 'mergedPost' && sc.mergedPost?.post" class="flex gap-4">
           <div class="w-10 h-10 rounded-full shrink-0 flex items-center justify-center shadow-sm relative z-10">
-            <img
-              v-if="sc.author.image"
-              :src="sc.author.image"
-              :alt="sc.author.name"
-              class="w-10 h-10 rounded-full object-cover"
-              referrerpolicy="no-referrer"
-            >
-            <div v-else class="w-10 h-10 rounded-full bg-foreground/10 flex items-center justify-center text-foreground font-bold text-sm">
-              {{ initials(sc.author.name) }}
-            </div>
+            <UserAvatar :author="sc.author" :size="10" />
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center flex-wrap gap-2 mb-3">
-              <span class="font-heading font-bold text-sm">{{ sc.author.name }}</span>
+              <span class="font-heading font-bold text-sm">{{ authorName(sc.author) }}</span>
               <span class="text-xs text-muted-foreground">{{ timeAgo(sc.createdAt) }}</span>
               <span class="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md flex items-center gap-1 ml-1">
                 <Icon name="lucide:git-merge" size="14" />
@@ -196,12 +176,11 @@ async function loadLevel2Comments(postId: string) {
             <div v-if="level2Comments[sc.mergedPost.post.id]?.data?.length" class="mt-3 space-y-3">
               <div v-for="l2c in level2Comments[sc.mergedPost.post.id].data" :key="l2c.id" class="flex gap-3">
                 <div class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center shadow-sm">
-                  <img v-if="l2c.author.image" :src="l2c.author.image" :alt="l2c.author.name" class="w-8 h-8 rounded-full object-cover" referrerpolicy="no-referrer">
-                  <div v-else class="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center text-foreground font-bold text-xs">{{ initials(l2c.author.name) }}</div>
+                  <UserAvatar :author="l2c.author" :size="8" />
                 </div>
                 <div class="flex-1 min-w-0 bg-card border border-border rounded-lg p-3 shadow-sm">
                   <div class="flex items-center gap-2 mb-1">
-                    <span class="font-heading font-bold text-xs">{{ l2c.author.name }}</span>
+                    <span class="font-heading font-bold text-xs">{{ authorName(l2c.author) }}</span>
                     <span class="text-[10px] text-muted-foreground">{{ timeAgo(l2c.createdAt) }}</span>
                   </div>
                   <p class="text-sm text-foreground/90">{{ l2c.content }}</p>
@@ -225,20 +204,11 @@ async function loadLevel2Comments(postId: string) {
         <!-- Regular sub-comment -->
         <div v-else class="flex gap-4">
           <div class="w-10 h-10 rounded-full shrink-0 flex items-center justify-center shadow-sm relative z-10">
-            <img
-              v-if="sc.author.image"
-              :src="sc.author.image"
-              :alt="sc.author.name"
-              class="w-10 h-10 rounded-full object-cover"
-              referrerpolicy="no-referrer"
-            >
-            <div v-else class="w-10 h-10 rounded-full bg-foreground/10 flex items-center justify-center text-foreground font-bold text-sm">
-              {{ initials(sc.author.name) }}
-            </div>
+            <UserAvatar :author="sc.author" :size="10" />
           </div>
           <div class="flex-1 min-w-0 bg-card border border-border rounded-lg p-4 shadow-sm">
             <div class="flex items-center gap-2 mb-2">
-              <span class="font-heading font-bold text-sm">{{ sc.author.name }}</span>
+              <span class="font-heading font-bold text-sm">{{ authorName(sc.author) }}</span>
               <span class="text-xs text-muted-foreground">{{ timeAgo(sc.createdAt) }}</span>
             </div>
             <p class="text-sm text-foreground/90">{{ sc.content }}</p>

@@ -20,7 +20,8 @@ export default defineEventHandler(async (event): Promise<PagePaginatedList<PostL
   const flat = (rows: Array<{
     id: string; slug: string; title: string; excerpt: string | null; status: string
     boardId: string | null; voteCount: number; commentCount: number; mergedCount: number
-    authorId: string; authorName: string | null; authorImage: string | null; createdAt: Date
+    authorId: string; authorName: string | null; authorImage: string | null
+    authorIsAnonymous: boolean | null; createdAt: Date
   }>): PagePaginatedList<PostListItem> => ({
     data: rows.map(r => ({
       id: r.id,
@@ -33,7 +34,7 @@ export default defineEventHandler(async (event): Promise<PagePaginatedList<PostL
       commentCount: r.commentCount,
       mergedCount: r.mergedCount,
       hasVoted: false,
-      author: { id: r.authorId, name: r.authorName, image: r.authorImage },
+      author: { id: r.authorId, name: r.authorName, image: r.authorImage, isAnonymous: !!r.authorIsAnonymous },
       createdAt: r.createdAt,
     })),
     pagination: { page: 1, pageSize: rows.length, total: rows.length },
@@ -68,6 +69,7 @@ export default defineEventHandler(async (event): Promise<PagePaginatedList<PostL
       authorId: post.authorId,
       authorName: user.name,
       authorImage: user.image,
+      authorIsAnonymous: user.isAnonymous,
       createdAt: post.createdAt,
     })
     .from(post)

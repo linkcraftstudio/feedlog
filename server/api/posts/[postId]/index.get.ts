@@ -25,6 +25,7 @@ export default defineEventHandler(async (event): Promise<PostDetail> => {
       authorName: user.name,
       authorImage: user.image,
       authorEmail: user.email,
+      authorIsAnonymous: user.isAnonymous,
       createdAt: post.createdAt,
       updatedAt: post.updatedAt,
     })
@@ -82,7 +83,11 @@ export default defineEventHandler(async (event): Promise<PostDetail> => {
 
   // Gates author.email below: shipping it to end users would hand every
   // reporter's address to anyone who opens a post.
+  //
+  // A guest's address is a reserved-domain placeholder nobody can write to, so it
+  // is withheld from staff as well — showing it only invites someone to try.
   const isStaff = !!getOrgMemberRole(session, orgId)
+  const showAuthorEmail = isStaff && !row.authorIsAnonymous
 
   // If merged, fetch canonical post info
   let canonicalPost: { slug: string; title: string } | undefined
@@ -112,7 +117,8 @@ export default defineEventHandler(async (event): Promise<PostDetail> => {
       id: row.authorId,
       name: row.authorName,
       image: row.authorImage,
-      ...(isStaff ? { email: row.authorEmail } : {}),
+      isAnonymous: !!row.authorIsAnonymous,
+      ...(showAuthorEmail ? { email: row.authorEmail } : {}),
     },
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

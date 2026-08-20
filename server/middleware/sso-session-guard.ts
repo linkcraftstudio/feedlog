@@ -1,18 +1,23 @@
-// Blocks identity elevation on product-SSO sessions.
+// Blocks identity elevation on sessions that were never proven to belong to a
+// person: product-SSO sessions and guest (no sign-in) sessions.
 //
 // An SSO session asserts an org-provided email that FeedLog never verified, so
 // it must not set/change a password, change email, edit profile, or bind a
 // login method — any of which would turn a borrowed email into a fully-owned
-// account. Nor may it reach org-management or admin endpoints: better-auth's
-// organization plugin enforces permission off the member table, and its admin
-// plugin off user.role — both bypass our requireOrg* gates and the host-binding
-// collar, so an SSO session whose email matches an owner/admin could otherwise
-// drive them. Blocking the /api/auth/organization/ and /api/auth/admin/ prefixes
-// wholesale stays robust as better-auth adds endpoints.
+// account. A guest session is the same problem one step further along: its email
+// is a placeholder nobody vouched for, so changing it would hand the guest an
+// address they never proved they own, ready for a later real login to link onto.
 //
-// Keyed on session.ssoOrgId, NOT user.emailVerified: the latter is global and a
-// separate verified login could flip it true for an SSO session to ride on.
-// `auth` is auto-imported.
+// Neither may reach org-management or admin endpoints: better-auth's organization
+// plugin enforces permission off the member table, and its admin plugin off
+// user.role — both bypass our requireOrg* gates and the host-binding collar, so
+// an SSO session whose email matches an owner/admin could otherwise drive them.
+// Blocking the /api/auth/organization/ and /api/auth/admin/ prefixes wholesale
+// stays robust as better-auth adds endpoints.
+//
+// Keyed on session.ssoOrgId / user.isAnonymous, NOT user.emailVerified: the
+// latter is global and a separate verified login could flip it true for an SSO
+// session to ride on. `auth` is auto-imported.
 
 const BLOCKED_AUTH_ENDPOINTS = new Set([
   'set-password',
@@ -24,7 +29,7 @@ const BLOCKED_AUTH_ENDPOINTS = new Set([
   'unlink-account',
 ])
 
-function isBlockedForSso(path: string): boolean {
+function isBlockedPath(path: string): boolean {
   if (!path.startsWith('/api/auth/')) return false
   const rest = path.slice('/api/auth/'.length)
   if (rest.startsWith('organization/') || rest.startsWith('admin/')) return true
@@ -33,14 +38,15 @@ function isBlockedForSso(path: string): boolean {
 }
 
 export default defineEventHandler(async (event) => {
-  if (!isBlockedForSso(event.path)) return
+  if (!isBlockedPath(event.path)) return
 
   const session = await auth.api.getSession({ headers: event.headers })
   const ssoOrgId = (session?.session as { ssoOrgId?: string | null } | undefined)?.ssoOrgId
-  if (ssoOrgId) {
+  const isGuest = !!(session?.user as { isAnonymous?: boolean | null } | undefined)?.isAnonymous
+  if (ssoOrgId || isGuest) {
     throw createError({
       statusCode: 403,
-      message: 'SSO sessions cannot manage credentials, profile, or organization',
+      message: 'This session cannot manage credentials, profile, or organization',
     })
   }
 })

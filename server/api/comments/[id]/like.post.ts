@@ -4,6 +4,9 @@ import { commentLike, comment, post } from '#layers/feedlog/server/db/schemas'
 // POST /api/comments/:id/like — Like a comment (any authenticated user, idempotent).
 export default defineEventHandler(async (event) => {
   const { session, orgId } = await requireAuthInOrg(event)
+  // A like is a one-click reaction with no content, the same shape as a post
+  // upvote — so it rides the voting switch, not the commenting one.
+  await assertGuestMay(event, session, 'allowVote')
   const commentId = getRouterParam(event, 'id')!
 
   const db = useDB()

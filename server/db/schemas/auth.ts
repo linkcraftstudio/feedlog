@@ -13,6 +13,10 @@ export const user = pgTable("user", {
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
   role: text("role"),
+  // better-auth anonymous plugin field. True = a guest row minted for someone who
+  // wrote something without signing in; its email is a reserved-domain placeholder.
+  // input:false on the plugin side, so no client can set it through the API.
+  isAnonymous: boolean("is_anonymous").default(false),
   banned: boolean("banned").default(false),
   banReason: text("ban_reason"),
   banExpires: timestamp("ban_expires"),

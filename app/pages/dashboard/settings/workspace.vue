@@ -106,6 +106,8 @@ function reset() {
             </div>
           </section>
 
+          <GuestActionsSection :org="org" :is-owner="isOwner" @saved="loadOrg" />
+
           <OrgBrandingSection :org="org" :is-owner="isOwner" @saved="loadOrg" />
         </template>
       </div>

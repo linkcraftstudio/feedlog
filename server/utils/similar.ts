@@ -18,7 +18,7 @@ export interface SimilarPost {
   voteCount: number
   commentCount: number
   hasVoted: boolean
-  author: { id: string; name: string | null; image: string | null }
+  author: { id: string; name: string | null; image: string | null; isAnonymous: boolean }
 }
 
 // Search similar posts using pgvector cosine distance
@@ -45,6 +45,7 @@ export async function searchSimilarByEmbedding(
       authorId: post.authorId,
       authorName: user.name,
       authorImage: user.image,
+      authorIsAnonymous: user.isAnonymous,
     })
     .from(post)
     .innerJoin(postEmbedding, eq(post.id, postEmbedding.postId))
@@ -79,6 +80,7 @@ export async function searchSimilarByTrgm(
       authorId: post.authorId,
       authorName: user.name,
       authorImage: user.image,
+      authorIsAnonymous: user.isAnonymous,
     })
     .from(post)
     .innerJoin(postSearch, eq(post.id, postSearch.postId))
@@ -131,6 +133,7 @@ async function attachHasVoted(
     id: string; slug: string; title: string; excerpt: string | null
     status: string; voteCount: number; commentCount: number
     authorId: string; authorName: string | null; authorImage: string | null
+    authorIsAnonymous: boolean | null
   }[],
   userId?: string,
 ): Promise<SimilarPost[]> {
@@ -144,7 +147,7 @@ async function attachHasVoted(
       voteCount: r.voteCount,
       commentCount: r.commentCount,
       hasVoted: false,
-      author: { id: r.authorId, name: r.authorName, image: r.authorImage },
+      author: { id: r.authorId, name: r.authorName, image: r.authorImage, isAnonymous: !!r.authorIsAnonymous },
     }))
   }
 
@@ -168,6 +171,6 @@ async function attachHasVoted(
     voteCount: r.voteCount,
     commentCount: r.commentCount,
     hasVoted: votedSet.has(r.id),
-    author: { id: r.authorId, name: r.authorName, image: r.authorImage },
+    author: { id: r.authorId, name: r.authorName, image: r.authorImage, isAnonymous: !!r.authorIsAnonymous },
   }))
 }

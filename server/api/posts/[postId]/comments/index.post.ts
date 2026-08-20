@@ -22,13 +22,20 @@ export default defineEventHandler(async (event) => {
   const db = useDB()
 
   // Verify post exists, belongs to org, and is not merged.
-  const [p] = await db.select({ id: post.id, mergedTo: post.mergedTo, slug: post.slug, title: post.title }).from(post)
+  const [p] = await db.select({ id: post.id, authorId: post.authorId, mergedTo: post.mergedTo, slug: post.slug, title: post.title }).from(post)
     .where(and(eq(post.id, postId), eq(post.orgId, orgId))).limit(1)
   if (!p) {
     throw createError({ statusCode: 404, message: 'Post not found' })
   }
   if (p.mergedTo) {
     throw createError({ statusCode: 403, message: 'Cannot comment on a merged post' })
+  }
+
+  // Guests may always keep talking under their own report — adding a detail or
+  // answering an admin's follow-up is part of filing it. The switch governs
+  // speaking up on other people's posts.
+  if (p.authorId !== session.user.id) {
+    await assertGuestMay(event, session, 'allowComment')
   }
 
   // Determine parent for reply flattening
@@ -104,7 +111,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const [author] = await db
-    .select({ id: user.id, name: user.name, image: user.image })
+    .select({ id: user.id, name: user.name, image: user.image, isAnonymous: user.isAnonymous })
     .from(user)
     .where(eq(user.id, session.user.id))
 
@@ -116,7 +123,11 @@ export default defineEventHandler(async (event) => {
     replyCount: created!.replyCount,
     likeCount: created!.likeCount,
     hasLiked: false,
-    author: { ...(author ?? { id: session.user.id, name: null, image: null }), isAdmin: isActorAdmin(session, orgId) },
+    author: {
+      ...(author ?? { id: session.user.id, name: null, image: null }),
+      isAnonymous: !!author?.isAnonymous,
+      isAdmin: isActorAdmin(session, orgId),
+    },
     content: created!.content,
     editedAt: created!.editedAt,
     createdAt: created!.createdAt,

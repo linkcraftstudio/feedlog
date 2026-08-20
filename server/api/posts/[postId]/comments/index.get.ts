@@ -48,6 +48,7 @@ export default defineEventHandler(async (event) => {
         authorId: comment.authorId,
         authorName: user.name,
         authorImage: user.image,
+        authorIsAnonymous: user.isAnonymous,
         content: comment.content,
         editedAt: comment.editedAt,
         createdAt: comment.createdAt,
@@ -108,6 +109,7 @@ export default defineEventHandler(async (event) => {
       authorId: comment.authorId,
       authorName: user.name,
       authorImage: user.image,
+      authorIsAnonymous: user.isAnonymous,
       content: comment.content,
       type: comment.type,
       metadata: comment.metadata,
@@ -136,6 +138,7 @@ export default defineEventHandler(async (event) => {
         authorId: comment.authorId,
         authorName: user.name,
         authorImage: user.image,
+        authorIsAnonymous: user.isAnonymous,
         content: comment.content,
         editedAt: comment.editedAt,
         createdAt: comment.createdAt,
@@ -187,6 +190,7 @@ export default defineEventHandler(async (event) => {
           authorId: post.authorId,
           authorName: user.name,
           authorImage: user.image,
+          authorIsAnonymous: user.isAnonymous,
         })
         .from(post)
         .leftJoin(user, eq(post.authorId, user.id))
@@ -203,6 +207,7 @@ export default defineEventHandler(async (event) => {
           authorId: comment.authorId,
           authorName: user.name,
           authorImage: user.image,
+          authorIsAnonymous: user.isAnonymous,
           content: comment.content,
           type: comment.type,
           metadata: comment.metadata,
@@ -226,7 +231,7 @@ export default defineEventHandler(async (event) => {
         slug: r.slug,
         title: r.title,
         excerpt: r.excerpt,
-        author: { id: r.authorId, name: r.authorName, image: r.authorImage },
+        author: { id: r.authorId, name: r.authorName, image: r.authorImage, isAnonymous: !!r.authorIsAnonymous },
       })
     }
 
@@ -259,6 +264,7 @@ export default defineEventHandler(async (event) => {
           authorId: post.authorId,
           authorName: user.name,
           authorImage: user.image,
+          authorIsAnonymous: user.isAnonymous,
         })
         .from(post)
         .leftJoin(user, eq(post.authorId, user.id))
@@ -270,7 +276,7 @@ export default defineEventHandler(async (event) => {
           title: r.title,
           excerpt: r.excerpt,
           commentCount: r.commentCount,
-          author: { id: r.authorId, name: r.authorName, image: r.authorImage },
+          author: { id: r.authorId, name: r.authorName, image: r.authorImage, isAnonymous: !!r.authorIsAnonymous },
         })
       }
     }
@@ -366,7 +372,7 @@ function formatComment(r: any, adminIds: Set<string>) {
     replyCount: r.replyCount ?? undefined,
     likeCount: r.likeCount,
     hasLiked: r.hasLiked ?? false,
-    author: { id: r.authorId, name: r.authorName, image: r.authorImage, isAdmin: adminIds.has(r.authorId) },
+    author: { id: r.authorId, name: r.authorName, image: r.authorImage, isAnonymous: !!r.authorIsAnonymous, isAdmin: adminIds.has(r.authorId) },
     content: r.content,
     type: r.type ?? 'comment',
     editedAt: r.editedAt,

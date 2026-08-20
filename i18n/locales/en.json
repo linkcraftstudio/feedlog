@@ -17,6 +17,7 @@
     "delete": "Delete",
     "save": "Save",
     "anonymous": "Anonymous",
+    "guest": "Guest {tag}",
     "theme": {
       "label": "Theme",
       "auto": "Auto",
@@ -202,6 +203,11 @@
       "signInAndSubmit": "Sign in & Post",
       "dialogTitle": "Submit Feedback",
       "dialogDescription": "Submit new feedback",
+      "guestHint": {
+        "before": "Posting as a guest. ",
+        "link": "Sign in",
+        "after": " to get notified when someone replies."
+      },
       "errors": {
         "selectBoard": "Please select a board",
         "titleRequired": "Title is required",
@@ -612,6 +618,24 @@
         "light": "Light",
         "dark": "Dark"
       }
+    },
+    "guest": {
+      "title": "Guest actions",
+      "subtitle": "What visitors can do without signing in.",
+      "allowPost": {
+        "title": "Guest posting",
+        "desc": "Let visitors submit feedback without signing in.",
+        "note": "Also lets the embedded widget be used without signing in."
+      },
+      "allowVote": {
+        "title": "Guest voting",
+        "desc": "Let visitors upvote posts without signing in."
+      },
+      "allowComment": {
+        "title": "Guest commenting",
+        "desc": "Let visitors comment on other people's posts without signing in."
+      },
+      "saveFailed": "Failed to save guest actions."
     },
     "portal": {
       "title": "Portal",

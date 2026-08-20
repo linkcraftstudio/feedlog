@@ -5,6 +5,7 @@ import { isActorAdmin } from '#layers/feedlog/shared/utils/notifications'
 // POST /api/posts — Create a post (any authenticated user: end-user or staff).
 export default defineEventHandler(async (event) => {
   const { session, orgId } = await requireAuthInOrg(event)
+  await assertGuestMay(event, session, 'allowPost')
 
   const body = await readValidatedBody(event, createPostSchema.parse)
 

@@ -17,6 +17,7 @@
     "delete": "删除",
     "save": "保存",
     "anonymous": "匿名",
+    "guest": "访客 {tag}",
     "theme": {
       "label": "主题",
       "auto": "自动",
@@ -202,6 +203,11 @@
       "signInAndSubmit": "登录并发布",
       "dialogTitle": "提交反馈",
       "dialogDescription": "提交新反馈",
+      "guestHint": {
+        "before": "正在以访客身份提交。",
+        "link": "登录",
+        "after": "后可在有人回复时收到通知。"
+      },
       "errors": {
         "selectBoard": "请选择一个看板",
         "titleRequired": "请填写标题",
@@ -612,6 +618,24 @@
         "light": "浅色",
         "dark": "深色"
       }
+    },
+    "guest": {
+      "title": "访客权限",
+      "subtitle": "访客不登录时可以做哪些事。",
+      "allowPost": {
+        "title": "访客提交反馈",
+        "desc": "允许访客不登录就提交反馈。",
+        "note": "开启后，嵌入式 widget 也可免登录使用。"
+      },
+      "allowVote": {
+        "title": "访客投票",
+        "desc": "允许访客不登录就给反馈投票。"
+      },
+      "allowComment": {
+        "title": "访客评论",
+        "desc": "允许访客不登录就评论他人的反馈。"
+      },
+      "saveFailed": "保存访客权限失败。"
     },
     "portal": {
       "title": "门户",

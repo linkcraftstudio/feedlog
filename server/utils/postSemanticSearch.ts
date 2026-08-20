@@ -33,6 +33,7 @@ export async function searchPostsBySemantic(embedding: number[], opts: SemanticO
       authorId: post.authorId,
       authorName: user.name,
       authorImage: user.image,
+      authorIsAnonymous: user.isAnonymous,
       createdAt: post.createdAt,
     })
     .from(post)

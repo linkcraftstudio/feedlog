@@ -1,11 +1,14 @@
 import type { ResolvedBranding } from '#layers/feedlog/shared/utils/branding'
 import { resolveBranding } from '#layers/feedlog/shared/utils/branding'
+import type { ResolvedGuestAccess } from '#layers/feedlog/shared/utils/guest'
+import { resolveGuestAccess } from '#layers/feedlog/shared/utils/guest'
 
 export interface PortalOrg {
   name: string // org name, or 'FeedLog' for the default org
   logo: string | null
   isDefault: boolean // unconfigured default org → generic share-card copy
   branding: ResolvedBranding
+  guest: ResolvedGuestAccess
 }
 
 // Portal identity for share-card meta. Populated per-request by
@@ -16,5 +19,6 @@ export function usePortalOrg() {
     logo: null,
     isDefault: true,
     branding: resolveBranding(null),
+    guest: resolveGuestAccess(null),
   }))
 }

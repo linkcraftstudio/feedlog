@@ -7,8 +7,14 @@ const schema = z.object({
 })
 
 // POST /api/posts/similar — Search similar posts by input text (for submit modal + merge dialog)
+//
+// Session optional, like every other read of this content: the submit modal
+// searches while the reporter types, and a guest identity is only minted once
+// they press submit — so this runs with nobody attached for the whole time the
+// form is being filled in. It returns the same posts the public list already
+// serves; the session only decides whether hasVoted can be filled in.
 export default defineEventHandler(async (event) => {
-  const session = await requireAuth(event)
+  const session = await getUserSession(event)
   const orgId = event.context.orgId!
   const body = await readValidatedBody(event, schema.parse)
 
@@ -16,7 +22,7 @@ export default defineEventHandler(async (event) => {
     ? body.title + '\n' + body.content
     : body.title
 
-  const userId = session.user.id
+  const userId = session?.user.id
   const plainText = stripMarkdown(text)
   const limit = body.limit ?? 3
 

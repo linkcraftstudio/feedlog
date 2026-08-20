@@ -2,6 +2,9 @@ export interface CommentAuthor {
   id: string
   name: string | null
   image: string | null
+  // True = written without signing in. The UI ignores `name` in that case and
+  // composes a localized label off the id instead.
+  isAnonymous?: boolean
   isAdmin?: boolean
 }
 

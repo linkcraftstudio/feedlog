@@ -76,8 +76,9 @@ export async function createPostRecord(
 
 export async function fetchPostAuthor(authorId: string) {
   const [author] = await useDB()
-    .select({ id: user.id, name: user.name, image: user.image })
+    .select({ id: user.id, name: user.name, image: user.image, isAnonymous: user.isAnonymous })
     .from(user)
     .where(eq(user.id, authorId))
-  return author ?? { id: authorId, name: null, image: null }
+  if (!author) return { id: authorId, name: null, image: null, isAnonymous: false }
+  return { ...author, isAnonymous: !!author.isAnonymous }
 }

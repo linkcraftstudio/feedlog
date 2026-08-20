@@ -23,6 +23,8 @@ const emit = defineEmits<{
   unmerge: [postId: string]
 }>()
 
+const { authorName } = useAuthorDisplay()
+
 const isMergedPost = computed(() => props.comment.type === 'mergedPost')
 
 const hasMoreChildren = computed(() => {
@@ -40,8 +42,8 @@ const childReplyAuthorMap = computed(() => {
   if (props.depth) return undefined
   const map = new Map<string, string>()
   for (const child of props.comment.children ?? []) {
-    if (child.author?.name) {
-      map.set(child.id, child.author.name)
+    if (child.author) {
+      map.set(child.id, authorName(child.author))
     }
   }
   return map
@@ -71,9 +73,6 @@ async function handleDelete() {
   emit('delete', props.comment.id)
 }
 
-function initials(name: string | null) {
-  return (name || '?').slice(0, 2).toUpperCase()
-}
 
 </script>
 
@@ -90,21 +89,7 @@ function initials(name: string | null) {
   <div v-else class="relative flex flex-col gap-4">
     <div class="flex gap-4" :class="depth ? 'ml-10' : ''">
       <!-- Avatar -->
-      <img
-        v-if="comment.author?.image"
-        :src="comment.author.image"
-        :alt="comment.author.name"
-        class="shrink-0 rounded-full object-cover shadow-sm"
-        :class="depth ? 'w-8 h-8' : 'w-10 h-10'"
-        referrerpolicy="no-referrer"
-      >
-      <div
-        v-else
-        class="shrink-0 rounded-full bg-foreground/10 flex items-center justify-center text-foreground font-bold shadow-sm"
-        :class="depth ? 'w-8 h-8 text-xs' : 'w-10 h-10 text-sm'"
-      >
-        {{ initials(comment.author?.name) }}
-      </div>
+      <UserAvatar :author="comment.author" :size="depth ? 8 : 10" shadow />
 
       <!-- Content -->
       <div
@@ -113,7 +98,7 @@ function initials(name: string | null) {
       >
         <div class="flex items-center gap-2 mb-2">
           <span class="font-heading font-bold" :class="depth ? 'text-xs' : 'text-sm'">
-            {{ comment.author?.name ?? $t('common.anonymous') }}
+            {{ authorName(comment.author) }}
           </span>
           <span
             v-if="comment.author?.isAdmin"
