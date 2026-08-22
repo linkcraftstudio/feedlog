@@ -55,7 +55,7 @@ watch(draft, () => {
 // endpoint wants, and uploading early lets a failure surface while the visitor
 // is still composing.
 // Mirrors `ensure.maxSize` in server/api/upload.post.ts.
-const MAX_UPLOAD_MB = 10
+const MAX_UPLOAD_MB = 16
 interface Attachment { key: string, name: string }
 const attachments = ref<Attachment[]>([])
 const pendingUploads = ref(0)
