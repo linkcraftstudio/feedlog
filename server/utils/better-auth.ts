@@ -38,17 +38,28 @@ if (!hasOAuth && !emailLoginEnabled) {
   )
 }
 
-const socialProviders: Record<string, { clientId: string; clientSecret: string }> = {}
+// overrideUserInfoOnSignIn re-syncs name / avatar / email from the provider on
+// every OAuth sign-in. FeedLog has no self-serve profile editor, so the provider
+// is the source of truth — without this a rename on their side would stay
+// invisible here forever. Note it only fires on a fresh OAuth callback, not on
+// an existing session.
+const socialProviders: Record<string, {
+  clientId: string
+  clientSecret: string
+  overrideUserInfoOnSignIn: boolean
+}> = {}
 if (hasGoogle) {
   socialProviders.google = {
     clientId: env.GOOGLE_CLIENT_ID!,
     clientSecret: env.GOOGLE_CLIENT_SECRET!,
+    overrideUserInfoOnSignIn: true,
   }
 }
 if (hasGithub) {
   socialProviders.github = {
     clientId: env.GITHUB_CLIENT_ID!,
     clientSecret: env.GITHUB_CLIENT_SECRET!,
+    overrideUserInfoOnSignIn: true,
   }
 }
 
