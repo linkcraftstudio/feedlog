@@ -88,12 +88,25 @@ async function copyToken() {
 // Granting or withdrawing the delete capability. Takes effect on the token's
 // very next request — no re-minting, so whatever the agent already has keeps
 // working either way.
-async function onToggleDelete(tk: AgentToken) {
+//
+// The switch is driven from the server's answer rather than from local state:
+// on failure nothing is mutated, so the control snaps back to the truth instead
+// of showing a permission the token does not actually have.
+const pendingPerm = ref<Set<string>>(new Set())
+
+async function onToggleDelete(tk: AgentToken, next: boolean) {
+  if (pendingPerm.value.has(tk.id)) return
+  pendingPerm.value = new Set(pendingPerm.value).add(tk.id)
   try {
-    await setAllowDelete(tk.id, !tk.allowDelete)
+    await setAllowDelete(tk.id, next)
   }
   catch {
     toast.error(t('dashboard.agentTokens.deletePermFailed'))
+  }
+  finally {
+    const s = new Set(pendingPerm.value)
+    s.delete(tk.id)
+    pendingPerm.value = s
   }
 }
 
@@ -236,16 +249,21 @@ function formatDate(iso: string): string {
                     <span> &middot; {{ $t('dashboard.agentTokens.expiresOn', { date: formatDate(tk.expiresAt) }) }}</span>
                   </p>
                 </div>
-                <button
-                  class="h-8 px-3 rounded-lg border text-xs font-semibold transition-colors shrink-0"
-                  :class="tk.allowDelete
-                    ? 'border-red-300 text-red-700 bg-red-50 hover:bg-red-100 dark:border-red-900 dark:text-red-300 dark:bg-red-950/40'
-                    : 'border-border bg-background hover:bg-secondary'"
+                <label
+                  class="flex items-center gap-2 shrink-0 cursor-pointer select-none"
                   :title="$t('dashboard.agentTokens.deletePermHint')"
-                  @click="onToggleDelete(tk)"
                 >
-                  {{ tk.allowDelete ? $t('dashboard.agentTokens.deletePermOn') : $t('dashboard.agentTokens.deletePermOff') }}
-                </button>
+                  <span
+                    class="text-[11px] font-semibold transition-colors"
+                    :class="tk.allowDelete ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'"
+                  >{{ $t('dashboard.agentTokens.deletePermSwitch') }}</span>
+                  <Switch
+                    :model-value="tk.allowDelete"
+                    :disabled="pendingPerm.has(tk.id)"
+                    class="data-[state=checked]:bg-red-600"
+                    @update:model-value="(v: boolean) => onToggleDelete(tk, v)"
+                  />
+                </label>
                 <button
                   class="h-8 px-3 rounded-lg border border-border bg-background text-xs font-semibold hover:bg-secondary transition-colors shrink-0"
                   @click="askRevoke(tk)"
@@ -312,12 +330,15 @@ function formatDate(iso: string): string {
           </div>
 
           <div class="rounded-lg border border-border p-3">
-            <label class="flex items-start gap-2.5 cursor-pointer">
-              <input v-model="formAllowDelete" type="checkbox" class="mt-0.5 size-4 accent-red-600">
-              <span class="min-w-0">
-                <span class="text-sm font-semibold">{{ $t('dashboard.agentTokens.deletePermLabel') }}</span>
+            <label class="flex items-start gap-3 cursor-pointer">
+              <span class="min-w-0 flex-1">
+                <span
+                  class="text-sm font-semibold transition-colors"
+                  :class="formAllowDelete ? 'text-red-600 dark:text-red-400' : ''"
+                >{{ $t('dashboard.agentTokens.deletePermLabel') }}</span>
                 <span class="block text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{{ $t('dashboard.agentTokens.deletePermDesc') }}</span>
               </span>
+              <Switch v-model="formAllowDelete" class="mt-0.5 shrink-0 data-[state=checked]:bg-red-600" />
             </label>
           </div>
         </div>
