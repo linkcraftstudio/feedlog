@@ -623,6 +623,12 @@
       "roleManager": "Manager — can moderate cards and publish changelog entries",
       "roleContributor": "Contributor — can read, post, vote and comment only",
       "roleHint": "An agent can never be an owner, and never manages members or workspace settings.",
+      "deletePermLabel": "Allow this token to delete",
+      "deletePermDesc": "Lets the agent delete cards, comments, boards and changelog entries. Deleting cannot be undone, so this is off unless you ask for it. You can grant or withdraw it later without creating a new token.",
+      "deletePermOn": "Can delete",
+      "deletePermOff": "No deleting",
+      "deletePermHint": "Click to grant or withdraw permission to delete. Takes effect on the agent's next request.",
+      "deletePermFailed": "Couldn't change the delete permission",
       "expiryLabel": "Expires after (days)",
       "expiryHint": "Between 1 and {max} days.",
       "securityNote": "A token carries the full authority of its robot account. Treat it like a password: keep it out of shared files and version control, and revoke it the moment it is no longer needed."

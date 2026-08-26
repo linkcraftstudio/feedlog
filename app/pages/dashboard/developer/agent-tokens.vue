@@ -21,7 +21,7 @@ const { t } = useI18n()
 const ctx = useOrgContext()
 const isOwner = computed(() => ctx.value.role === 'owner')
 
-const { tokens, loading, refresh, create, remove } = useAgentTokens()
+const { tokens, loading, refresh, create, setAllowDelete, remove } = useAgentTokens()
 
 const used = computed(() => tokens.value.length)
 const canCreate = computed(() => used.value < AGENT_TOKEN_LIMIT)
@@ -35,12 +35,14 @@ const dialogOpen = ref(false)
 const formLabel = ref('')
 const formRole = ref<AgentTokenRole>('manager')
 const formDays = ref(AGENT_TOKEN_DEFAULT_DAYS)
+const formAllowDelete = ref(false)
 const creating = ref(false)
 
 function openCreate() {
   formLabel.value = ''
   formRole.value = 'manager'
   formDays.value = AGENT_TOKEN_DEFAULT_DAYS
+  formAllowDelete.value = false
   dialogOpen.value = true
 }
 
@@ -57,6 +59,7 @@ async function submitCreate() {
       label: formLabel.value.trim() || undefined,
       role: formRole.value,
       expiresInDays: Number(formDays.value) || AGENT_TOKEN_DEFAULT_DAYS,
+      allowDelete: formAllowDelete.value,
     })
     dialogOpen.value = false
     revealed.value = made
@@ -79,6 +82,18 @@ async function copyToken() {
   }
   catch {
     toast.error(t('dashboard.agentTokens.copyFailed'))
+  }
+}
+
+// Granting or withdrawing the delete capability. Takes effect on the token's
+// very next request — no re-minting, so whatever the agent already has keeps
+// working either way.
+async function onToggleDelete(tk: AgentToken) {
+  try {
+    await setAllowDelete(tk.id, !tk.allowDelete)
+  }
+  catch {
+    toast.error(t('dashboard.agentTokens.deletePermFailed'))
   }
 }
 
@@ -222,6 +237,16 @@ function formatDate(iso: string): string {
                   </p>
                 </div>
                 <button
+                  class="h-8 px-3 rounded-lg border text-xs font-semibold transition-colors shrink-0"
+                  :class="tk.allowDelete
+                    ? 'border-red-300 text-red-700 bg-red-50 hover:bg-red-100 dark:border-red-900 dark:text-red-300 dark:bg-red-950/40'
+                    : 'border-border bg-background hover:bg-secondary'"
+                  :title="$t('dashboard.agentTokens.deletePermHint')"
+                  @click="onToggleDelete(tk)"
+                >
+                  {{ tk.allowDelete ? $t('dashboard.agentTokens.deletePermOn') : $t('dashboard.agentTokens.deletePermOff') }}
+                </button>
+                <button
                   class="h-8 px-3 rounded-lg border border-border bg-background text-xs font-semibold hover:bg-secondary transition-colors shrink-0"
                   @click="askRevoke(tk)"
                 >
@@ -284,6 +309,16 @@ function formatDate(iso: string): string {
               class="mt-2 w-full h-10 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:border-primary transition-colors"
             >
             <p class="text-[11px] text-muted-foreground mt-1.5">{{ $t('dashboard.agentTokens.expiryHint', { max: AGENT_TOKEN_MAX_DAYS }) }}</p>
+          </div>
+
+          <div class="rounded-lg border border-border p-3">
+            <label class="flex items-start gap-2.5 cursor-pointer">
+              <input v-model="formAllowDelete" type="checkbox" class="mt-0.5 size-4 accent-red-600">
+              <span class="min-w-0">
+                <span class="text-sm font-semibold">{{ $t('dashboard.agentTokens.deletePermLabel') }}</span>
+                <span class="block text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{{ $t('dashboard.agentTokens.deletePermDesc') }}</span>
+              </span>
+            </label>
           </div>
         </div>
 

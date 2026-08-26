@@ -623,6 +623,12 @@
       "roleManager": "管理员 — 可审核卡片并发布更新日志",
       "roleContributor": "贡献者 — 仅可读取、发帖、投票和评论",
       "roleHint": "代理永远不能成为所有者，也不能管理成员或工作区设置。",
+      "deletePermLabel": "允许此令牌删除内容",
+      "deletePermDesc": "允许代理删除卡片、评论、看板和更新日志条目。删除无法撤销，因此默认关闭。你可以稍后授予或收回此权限，无需重新创建令牌。",
+      "deletePermOn": "可删除",
+      "deletePermOff": "不可删除",
+      "deletePermHint": "点击授予或收回删除权限。将在代理的下一次请求时生效。",
+      "deletePermFailed": "无法更改删除权限",
       "expiryLabel": "有效期（天）",
       "expiryHint": "1 到 {max} 天之间。",
       "securityNote": "令牌拥有其机器账号的全部权限。请像密码一样对待：不要放入共享文件或版本控制，不再需要时立即撤销。"

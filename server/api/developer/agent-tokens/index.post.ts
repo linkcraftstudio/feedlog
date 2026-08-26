@@ -23,6 +23,7 @@ export default defineEventHandler(async (event) => {
     label?: string
     role?: string
     expiresInDays?: number
+    allowDelete?: boolean
   }>(event).catch(() => ({} as Record<string, never>))
   const db = useDB()
 
@@ -47,6 +48,10 @@ export default defineEventHandler(async (event) => {
     : AGENT_TOKEN_DEFAULT_DAYS
   const expiresAt = resolveAgentExpiry(days)
 
+  // Off unless asked for. Deleting cannot be undone, so it is never the
+  // default — and it can be granted later without re-minting the token.
+  const allowDelete = body?.allowDelete === true
+
   const userId = await provisionAgentUser(db, { orgId, label, role })
   const minted = await mintAgentSession(userId, expiresAt)
 
@@ -59,6 +64,7 @@ export default defineEventHandler(async (event) => {
       label,
       prefix: agentTokenPrefix(minted.token),
       role,
+      allowDelete,
       createdBy: session.user.id,
       expiresAt,
     })
