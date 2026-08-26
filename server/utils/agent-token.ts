@@ -25,6 +25,7 @@ export interface AgentTokenView {
   label: string | null
   prefix: string
   role: string
+  allowDelete: boolean
   createdAt: string
   expiresAt: string
   expired: boolean
@@ -46,6 +47,7 @@ export function agentTokenToView(row: {
   label: string | null
   prefix: string
   role: string
+  allowDelete: boolean
   createdAt: Date | string
   expiresAt: Date | string
 }): AgentTokenView {
@@ -55,6 +57,7 @@ export function agentTokenToView(row: {
     label: row.label,
     prefix: row.prefix,
     role: row.role,
+    allowDelete: row.allowDelete,
     createdAt: iso(row.createdAt),
     expiresAt,
     expired: new Date(expiresAt).getTime() <= Date.now(),

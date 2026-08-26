@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core'
+import { pgTable, text, boolean, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 import { uuidv7 } from 'uuidv7'
 import { organization, user } from './auth'
@@ -33,6 +33,13 @@ export const agentToken = pgTable('agent_token', {
   // apart without being able to reveal either. Display only.
   prefix: text('prefix').notNull(),
   role: text('role').notNull(),
+  // Whether this token may delete content. Separate from the role on purpose:
+  // deleting is the one thing an agent does that cannot be undone, so it is a
+  // capability an owner grants deliberately rather than something that arrives
+  // bundled with `manager`. Off by default, and revocable at any time without
+  // re-minting the token — see server/middleware/agent-delete-guard.ts, which
+  // is where it is actually enforced.
+  allowDelete: boolean('allow_delete').notNull().default(false),
   // Who minted it. An org owner's user id — for the audit line in the UI.
   createdBy: text('created_by').notNull(),
   // Mirrors session.expires_at. Duplicated so the list can show an expiry (and

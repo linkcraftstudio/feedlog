@@ -11,6 +11,7 @@ export interface AgentToken {
   label: string | null
   prefix: string
   role: string
+  allowDelete: boolean
   createdAt: string
   expiresAt: string
   expired: boolean
@@ -24,6 +25,7 @@ export interface CreateAgentTokenInput {
   label?: string
   role?: AgentTokenRole
   expiresInDays?: number
+  allowDelete?: boolean
 }
 
 export function useAgentTokens() {
@@ -57,10 +59,22 @@ export function useAgentTokens() {
     return created
   }
 
+  // Grant or withdraw the delete capability on a token that already exists.
+  // Deliberately does not re-mint: the agent's configured token keeps working,
+  // it simply may or may not delete from the next request onwards.
+  async function setAllowDelete(id: string, allowDelete: boolean): Promise<void> {
+    const updated = await $fetch<AgentToken>(`/api/developer/agent-tokens/${id}`, {
+      method: 'PATCH',
+      body: { allowDelete },
+    })
+    const i = tokens.value.findIndex(t => t.id === id)
+    if (i >= 0) tokens.value[i] = updated
+  }
+
   async function remove(id: string): Promise<void> {
     await $fetch(`/api/developer/agent-tokens/${id}`, { method: 'DELETE' })
     tokens.value = tokens.value.filter(t => t.id !== id)
   }
 
-  return { tokens, loading, error, refresh, create, remove }
+  return { tokens, loading, error, refresh, create, setAllowDelete, remove }
 }

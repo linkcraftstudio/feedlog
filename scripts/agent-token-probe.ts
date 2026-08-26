@@ -177,6 +177,31 @@ async function main() {
     return { ok: status === 403, detail: `status ${status} (expected 403)` }
   })
 
+  // The delete capability. A token is minted without it, so a delete must be
+  // refused with 403 — and the refusal must come from the capability guard, not
+  // from the role, which is why a manager-level token is used for this.
+  if (POST_ID) {
+    await step('delete is refused without the capability', async () => {
+      const { status, body } = await req(`/api/admin/posts/${POST_ID}`, { method: 'DELETE' })
+      const msg = (body as { message?: string })?.message ?? ''
+      const fromCapability = msg.includes('not allowed to delete')
+      return {
+        ok: status === 403 && fromCapability,
+        detail: `status ${status}${fromCapability ? ', refused by the capability guard' : `, message: ${msg}`}`,
+      }
+    })
+    console.log('  NOTE  grant the capability in the dashboard and re-run to see the delete succeed')
+  }
+
+  // Withdrawing a vote is a DELETE too, and must stay allowed — it unwinds the
+  // agent's own action rather than destroying anyone's content.
+  if (POST_ID) {
+    await step('withdrawing a vote is still allowed', async () => {
+      const { status } = await req(`/api/posts/${POST_ID}/vote`, { method: 'DELETE' })
+      return { ok: status >= 200 && status < 300, detail: `status ${status}` }
+    })
+  }
+
   // A garbage token must be refused cleanly — 401, never a 500 and never a
   // silent success.
   await step('bogus token is refused', async () => {
