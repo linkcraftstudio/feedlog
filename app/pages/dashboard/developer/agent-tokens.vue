@@ -249,8 +249,12 @@ function formatDate(iso: string): string {
                     <span> &middot; {{ $t('dashboard.agentTokens.expiresOn', { date: formatDate(tk.expiresAt) }) }}</span>
                   </p>
                 </div>
-                <label
-                  class="flex items-center gap-2 shrink-0 cursor-pointer select-none"
+                <!-- Not a <label>: reka-ui's Switch renders a button plus a hidden
+                     checkbox, and a wrapping label forwards the click to the hidden
+                     input instead of the control. Template expressions are plain
+                     JavaScript too, so no type annotation on the handler argument. -->
+                <div
+                  class="flex items-center gap-2 shrink-0"
                   :title="$t('dashboard.agentTokens.deletePermHint')"
                 >
                   <span
@@ -260,10 +264,11 @@ function formatDate(iso: string): string {
                   <Switch
                     :model-value="tk.allowDelete"
                     :disabled="pendingPerm.has(tk.id)"
+                    :aria-label="$t('dashboard.agentTokens.deletePermSwitch')"
                     class="data-[state=checked]:bg-red-600"
-                    @update:model-value="(v: boolean) => onToggleDelete(tk, v)"
+                    @update:model-value="onToggleDelete(tk, $event)"
                   />
-                </label>
+                </div>
                 <button
                   class="h-8 px-3 rounded-lg border border-border bg-background text-xs font-semibold hover:bg-secondary transition-colors shrink-0"
                   @click="askRevoke(tk)"
@@ -330,7 +335,7 @@ function formatDate(iso: string): string {
           </div>
 
           <div class="rounded-lg border border-border p-3">
-            <label class="flex items-start gap-3 cursor-pointer">
+            <div class="flex items-start gap-3">
               <span class="min-w-0 flex-1">
                 <span
                   class="text-sm font-semibold transition-colors"
@@ -338,8 +343,12 @@ function formatDate(iso: string): string {
                 >{{ $t('dashboard.agentTokens.deletePermLabel') }}</span>
                 <span class="block text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{{ $t('dashboard.agentTokens.deletePermDesc') }}</span>
               </span>
-              <Switch v-model="formAllowDelete" class="mt-0.5 shrink-0 data-[state=checked]:bg-red-600" />
-            </label>
+              <Switch
+                v-model="formAllowDelete"
+                :aria-label="$t('dashboard.agentTokens.deletePermLabel')"
+                class="mt-0.5 shrink-0 data-[state=checked]:bg-red-600"
+              />
+            </div>
           </div>
         </div>
 
