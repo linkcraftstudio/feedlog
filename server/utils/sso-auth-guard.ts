@@ -1,12 +1,20 @@
 import type { H3Event } from 'h3'
+import { isAgentEmail } from '#layers/feedlog/shared/constants/agent'
 
 // better-auth's own endpoints bypass the requireOrg* helpers — the organization
 // plugin reads permission off the member table, the admin plugin off user.role —
 // so the host-binding collar in getUserSession never sees them. This guards them
-// for sessions nobody verified: product-SSO and guest.
+// for sessions nobody verified: product-SSO, guest, and agent-token.
 //
 // Unrecognised endpoints are refused, not allowed: better-auth adds routes in
 // minor bumps, and a new one must not become reachable on its own.
+//
+// Agent tokens are the third unverified caller, and they are refused outright
+// rather than scoped like an SSO session. An agent IS a real member of the org
+// it acts in (usually `manager`), so the org-scoped path below would judge it
+// entitled to invite-member and update-member-role — the one route by which an
+// agent could promote itself to owner. Keyed on the reserved-domain address,
+// which only provisionAgentUser issues and nothing can register.
 
 const GLOBAL_IDENTITY_ENDPOINTS = new Set([
   'set-password',
@@ -102,7 +110,8 @@ export async function guardSsoAuthRequest(event: H3Event, request: Request): Pro
   const session = await auth.api.getSession({ headers: event.headers })
   const ssoOrgId = (session?.session as { ssoOrgId?: string | null } | undefined)?.ssoOrgId
   const isGuest = !!(session?.user as { isAnonymous?: boolean | null } | undefined)?.isAnonymous
-  if (!ssoOrgId && !isGuest) return false
+  const isAgent = isAgentEmail(session?.user?.email)
+  if (!ssoOrgId && !isGuest && !isAgent) return false
 
   // Business endpoints already refuse a session on a host it wasn't issued for,
   // but this route skips the collar and would still hand back name and email.
@@ -110,7 +119,7 @@ export async function guardSsoAuthRequest(event: H3Event, request: Request): Pro
     return !!ssoOrgId && ssoOrgId !== event.context.orgId
   }
 
-  if (isGuest) {
+  if (isGuest || isAgent) {
     throw createError({
       statusCode: 403,
       message: 'This session cannot manage credentials, profile, or organization',

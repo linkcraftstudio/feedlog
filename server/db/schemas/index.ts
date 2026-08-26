@@ -22,6 +22,10 @@ export {
   organizationSsoRelations,
 } from './sso'
 export {
+  agentToken,
+  agentTokenRelations,
+} from './agent'
+export {
   postSubscription,
 } from './notifications'
 export type { NotificationPayload } from './notifications'
