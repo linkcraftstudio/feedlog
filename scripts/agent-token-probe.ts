@@ -14,7 +14,7 @@
 // bearer plugin did not cover that path, this is where it would fail.
 //
 // Usage:
-//   FEEDLOG_URL=http://192.168.200.88:3007 \
+//   FEEDLOG_URL=http://localhost:3000 \
 //   FEEDLOG_AGENT_TOKEN=... \
 //   pnpm dlx tsx scripts/agent-token-probe.ts
 //
