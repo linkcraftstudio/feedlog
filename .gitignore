@@ -35,11 +35,3 @@ logs
 # Agent scratch space (screenshots, debug dumps, ad-hoc scripts)
 tmp/
 .playwright-mcp/
-
-# Local-only working notes and credentials — never committed
-/local/
-# Any local/ folder, at any depth. Belt and braces: nested tools carry their own
-# .gitignore, but those only exist on branches where the tool exists, and a
-# credential must not become committable just because a branch predates it.
-local/
-**/local/
