@@ -85,6 +85,20 @@
       "when": 1787188021565,
       "tag": "0011_many_the_stranger",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1787781109531,
+      "tag": "0012_previous_night_thrasher",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1787785537767,
+      "tag": "0013_safe_leopardon",
+      "breakpoints": true
     }
   ]
 }

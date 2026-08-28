@@ -33,6 +33,7 @@ export function useDashboardNav(): DashboardNav {
     ]),
     developerNav: computed(() => [
       { label: t('nav.sso'), to: '/dashboard/developer/sso', icon: 'lucide:key-round' },
+      { label: t('nav.agentTokens'), to: '/dashboard/developer/agent-tokens', icon: 'lucide:bot' },
     ]),
   }
 }
