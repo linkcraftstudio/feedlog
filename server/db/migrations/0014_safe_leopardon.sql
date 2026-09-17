@@ -1,0 +1,1 @@
+ALTER TABLE "agent_token" ADD COLUMN "allow_delete" boolean DEFAULT false NOT NULL;

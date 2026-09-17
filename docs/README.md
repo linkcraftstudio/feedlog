@@ -21,6 +21,10 @@ else — OAuth, AI, file uploads, email — is optional.
 - **[Configuration reference](./configuration.md)** — every environment variable, grouped by purpose, with defaults and gotchas.
 - [`.env.example`](../.env.example) — the same list as an annotated `.env` template you can copy and edit.
 
+## Automation
+
+- **[Agent tokens](./agent-tokens.md)** — long-lived credentials that let a script, bot or AI agent work the board over plain HTTP, with no browser and no human re-authenticating.
+
 ## Community
 
 - [README](../README.md)
