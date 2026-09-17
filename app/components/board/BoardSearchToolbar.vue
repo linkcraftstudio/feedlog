@@ -2,6 +2,7 @@
 import { useMediaQuery } from '@vueuse/core'
 const q = defineModel<string>({ default: '' })
 const sortBy = defineModel<'top' | 'recent'>('sort', { default: 'recent' })
+const statusFilter = defineModel<BoardStatusFilter>('status', { default: 'active' })
 const emit = defineEmits<{ 'new-request': [] }>()
 
 const searchOpen = ref(false)
@@ -98,6 +99,7 @@ defineExpose({ reset })
     <div ref="controlsRow" class="fl-rightbar flex items-center relative">
       <Transition name="fl-controls">
         <div v-if="!searchOpen" class="flex items-center gap-3">
+          <BoardStatusPicker v-model="statusFilter" />
           <div class="flex bg-border/50 p-1 rounded-lg">
             <button
               class="px-4 py-1.5 rounded-[12px] text-sm font-medium transition-colors"
@@ -292,7 +294,9 @@ defineExpose({ reset })
 }
 .fl-controls-enter-to,
 .fl-controls-leave-from {
-  max-width: 320px;
+  /* Wide enough for the status filter, the sort switch and the search button —
+     the accordion clips whatever this cap cuts off. */
+  max-width: 520px;
 }
 
 .fl-rightbar {
