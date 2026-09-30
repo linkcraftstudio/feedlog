@@ -1,5 +1,6 @@
 import { eq, and, desc, asc, sql, inArray, isNull } from 'drizzle-orm'
 import { post, user, vote } from '#layers/feedlog/server/db/schemas'
+import { parseStatusParam } from '#layers/feedlog/shared/types/post'
 
 // GET /api/posts — Public post list (cursor pagination)
 export default defineEventHandler(async (event): Promise<CursorPaginatedList<PostListItem>> => {
@@ -7,7 +8,9 @@ export default defineEventHandler(async (event): Promise<CursorPaginatedList<Pos
   const query = getQuery(event)
 
   const boardId = query.boardId as string | undefined
-  const status = query.status as string | undefined
+  // `status` takes one name or a comma-separated list, so the board can ask for
+  // "everything still live" in one round trip. Unknown names are dropped.
+  const statuses = parseStatusParam(query.status)
   const sort = (query.sort as string) || 'createdAt'
   const order = (query.order as string) || 'desc'
   const cursor = query.cursor as string | undefined
@@ -19,7 +22,8 @@ export default defineEventHandler(async (event): Promise<CursorPaginatedList<Pos
   // Default: exclude merged posts
   const conditions: any[] = [eq(post.orgId, orgId), isNull(post.mergedTo)]
   if (boardId) conditions.push(eq(post.boardId, boardId))
-  if (status) conditions.push(eq(post.status, status))
+  if (statuses.length === 1) conditions.push(eq(post.status, statuses[0]!))
+  else if (statuses.length > 1) conditions.push(inArray(post.status, statuses))
 
   // Cursor conditions
   if (cursor) {

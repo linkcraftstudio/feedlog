@@ -17,7 +17,6 @@ const timeAgo = useTimeAgo()
 
 // Board store
 const boardStore = useBoardStore()
-await callOnce(() => boardStore.fetchBoards())
 const { boards, boardMap, totalPostCount } = storeToRefs(boardStore)
 
 // Currently selected board and sort order
@@ -38,6 +37,28 @@ const activeBoardId = computed(() => {
 })
 const sortBy = ref<'top' | 'recent'>('recent')
 
+// `?s=` mirrors `?b=`: the default view carries no param, so a bare board URL is
+// the default and every other selection is a shareable link. Unrecognised values
+// fall back to the default rather than emptying the board.
+const STATUS_FILTERS = new Set<string>(['active', 'all', ...POST_STATUSES])
+const statusFilter = computed<BoardStatusFilter>(() => {
+  const raw = (route.query.s as string) || ''
+  return STATUS_FILTERS.has(raw) ? raw as BoardStatusFilter : 'active'
+})
+// null = no status condition at all ("all").
+const statusList = computed(() => statusFilterToStatuses(statusFilter.value))
+
+function selectStatus(value: BoardStatusFilter) {
+  const query = { ...route.query }
+  if (value === 'active') delete query.s
+  else query.s = value
+  router.push({ query })
+}
+
+// Sidebar counts are fetched with the same filter — a badge reading 8 above a
+// list of 3 reads as a bug.
+await callOnce(() => boardStore.fetchBoards(statusList.value))
+
 // Post list
 const sort = computed(() => sortBy.value === 'top' ? 'votes' : 'createdAt')
 
@@ -53,6 +74,7 @@ async function fetchPosts(cursor?: string) {
   const data = await useApiFetch<CursorPaginatedList<PostListItem>>('/api/posts', {
     query: {
       boardId: activeBoardId.value || undefined,
+      status: statusList.value?.join(',') || undefined,
       sort: sort.value,
       pageSize: 10,
       cursor,
@@ -74,6 +96,23 @@ let boardSwitchClearing = false
 
 // Reset list when filters change
 watch(activeBoardId, async () => {
+  if (searchActive.value) return
+  startLoading()
+  fetchingPosts.value = true
+  try {
+    const data = await fetchPosts()
+    posts.value = data.data
+    nextCursor.value = data.pagination.nextCursor
+  } finally {
+    finishLoading()
+    fetchingPosts.value = false
+  }
+})
+
+watch(statusFilter, async () => {
+  void boardStore.fetchBoards(statusList.value)
+  // A committed search is filtered client-side (see `visiblePosts`), so there is
+  // nothing to refetch.
   if (searchActive.value) return
   startLoading()
   fetchingPosts.value = true
@@ -120,6 +159,16 @@ watch(searchQuery, async () => {
   } finally {
     searching.value = false
   }
+})
+
+// Search asks the server for a fixed nearest-N set, so the status filter is
+// applied to what comes back rather than pushed into the query: it narrows those
+// matches rather than searching deeper. Right trade — search here is a
+// duplicate check, not a way to browse.
+const visiblePosts = computed(() => {
+  if (!searchActive.value || !statusList.value) return posts.value
+  const allowed = new Set<string>(statusList.value)
+  return posts.value.filter(p => allowed.has(p.status))
 })
 
 async function loadMore() {
@@ -210,13 +259,22 @@ function onPostUpdated(updated: { id: string; status?: string; boardId?: string 
   // Board changed → the sidebar's per-board counts (served from the board store)
   // are now stale. Compare against the pre-update boardId, then refresh the store.
   if (updated.boardId !== undefined && updated.boardId !== posts.value[idx].boardId) {
-    void boardStore.fetchBoards()
+    void boardStore.fetchBoards(statusList.value)
   }
 
   // If status or board changed and no longer matches current filter, remove
   if (updated.boardId !== undefined && activeBoardId.value && updated.boardId !== activeBoardId.value) {
     posts.value.splice(idx, 1)
     return
+  }
+
+  // Status moved out of the current filter → drop it, same as a board change does.
+  if (updated.status !== undefined && statusList.value) {
+    void boardStore.fetchBoards(statusList.value) // the counts just shifted between statuses
+    if (!statusList.value.includes(updated.status as PostStatus)) {
+      posts.value.splice(idx, 1)
+      return
+    }
   }
 
   // Update fields in place
@@ -227,7 +285,7 @@ function onPostDeleted(postId: string) {
   const idx = posts.value.findIndex(p => p.id === postId)
   if (idx !== -1) posts.value.splice(idx, 1)
   // A deleted post drops its board's count (and the total) → refresh the store.
-  void boardStore.fetchBoards()
+  void boardStore.fetchBoards(statusList.value)
 }
 
 // Vote / unvote on list items
@@ -364,6 +422,8 @@ async function handleVote(post: PostListItem) {
       ref="searchToolbar"
       v-model="searchQuery"
       v-model:sort="sortBy"
+      :status="statusFilter"
+      @update:status="selectStatus"
       @new-request="openSubmit()"
     />
 
@@ -371,7 +431,7 @@ async function handleVote(post: PostListItem) {
     <div :class="{ 'opacity-50 pointer-events-none': fetchingPosts || searching }" class="transition-opacity duration-200">
 
     <!-- Empty state -->
-    <div v-if="posts.length === 0" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
+    <div v-if="visiblePosts.length === 0" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
       <!-- Search yielded nothing: nudge toward raising it (duplicate-prevention payoff) -->
       <template v-if="searchActive">
         <Icon name="lucide:search-x" size="48" class="mb-4 opacity-50" />
@@ -387,6 +447,13 @@ async function handleVote(post: PostListItem) {
           {{ $t('board.newRequest') }}
         </Button>
       </template>
+      <template v-else-if="statusFilter !== 'all'">
+        <Icon name="lucide:filter-x" size="48" class="mb-4 opacity-50" />
+        <p class="text-lg font-medium">{{ $t('board.noFeedbackFiltered') }}</p>
+        <button class="fl-empty__link" @click="selectStatus('all')">
+          {{ $t('board.showAllStatuses') }}
+        </button>
+      </template>
       <template v-else>
         <Icon name="lucide:inbox" size="48" class="mb-4 opacity-50" />
         <p class="text-lg font-medium">{{ $t('board.noFeedback') }}</p>
@@ -396,7 +463,7 @@ async function handleVote(post: PostListItem) {
     <!-- Feedback card list -->
     <div v-else class="flex flex-col gap-4">
       <article
-        v-for="p in posts"
+        v-for="p in visiblePosts"
         :key="p.id"
         class="feedback-card flex items-stretch gap-4 bg-card border border-border rounded-lg p-4 cursor-pointer"
         data-fdl-action="feedback_open"
@@ -511,6 +578,15 @@ async function handleVote(post: PostListItem) {
 
 nav::-webkit-scrollbar {
   display: none;
+}
+
+.fl-empty__link {
+  font-size: 14px;
+  margin-top: 8px;
+  font-weight: 500;
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .fl-empty__hint {
