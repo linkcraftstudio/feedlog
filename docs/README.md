@@ -19,6 +19,7 @@ Choose the guide that matches where you want to run FeedLog:
 else — OAuth, AI, file uploads, email — is optional.
 
 - **[Configuration reference](./configuration.md)** — every environment variable, grouped by purpose, with defaults and gotchas.
+- **[JWT SSO and external authentication](./sso.md)** — delegate login/signup and return authenticated users through FeedLog's JWT SSO endpoint.
 - [`.env.example`](../.env.example) — the same list as an annotated `.env` template you can copy and edit.
 - **[Widget configuration](./widget.md)** — launcher defaults, closing behavior, configuration APIs and host-dialog integration.
 

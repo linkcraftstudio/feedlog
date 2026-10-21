@@ -322,6 +322,11 @@
     "checkEmail": "查收邮件",
     "localAuthRequired": "你通过 {org} 登录，此操作需要直接登录。",
     "localAuthTitle": "直接登录",
+    "configUnavailable": {
+      "title": "登录暂时不可用",
+      "description": "FeedLog 无法加载登录设置，请重试。",
+      "retry": "重试"
+    },
     "backToSignIn": "← 返回登录",
     "signingIn": "登录中……",
     "fields": {

@@ -322,6 +322,11 @@
     "checkEmail": "Check your email",
     "localAuthRequired": "You're signed in through {org}. This action needs a direct sign-in.",
     "localAuthTitle": "Sign in directly",
+    "configUnavailable": {
+      "title": "Sign-in is temporarily unavailable",
+      "description": "FeedLog could not load its sign-in settings. Please try again.",
+      "retry": "Try again"
+    },
     "backToSignIn": "← Back to sign in",
     "signingIn": "Signing in...",
     "fields": {
