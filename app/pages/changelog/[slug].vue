@@ -21,6 +21,11 @@ const slug = route.params.slug as string
 
 const { data: entry, error } = await useFetch<ChangelogListItem>(`/api/changelogs/${slug}`)
 
+// Keep the not-found message, but answer 404 like the help article page does.
+if (import.meta.server && error.value) {
+  setResponseStatus(useRequestEvent()!, 404)
+}
+
 const coverUrl = computed(() => resolveAttachmentUrl(entry.value?.cover))
 
 const timeAgo = useTimeAgo()
