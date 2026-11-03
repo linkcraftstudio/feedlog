@@ -1345,5 +1345,62 @@
     "enterCode": "输入代码",
     "insertRowAt": "在第 {index} 行上方插入",
     "insertColumnAt": "在第 {index} 列左侧插入"
+  },
+  "onboarding": {
+    "guide": {
+      "srTitle": "FeedLog 入门引导",
+      "srDescription": "快速了解 FeedLog",
+      "slideLabel": "第 {n} 页",
+      "pauseMedia": "暂停动画",
+      "playMedia": "播放动画",
+      "back": "上一步",
+      "next": "下一步",
+      "tryDemo": "体验 FeedLog Demo",
+      "install": "查看接入指南",
+      "readyToIntegrate": "准备好接入了吗？",
+      "slides": {
+        "widget": {
+          "title": "几分钟内为你的网站接入 AI 客服",
+          "body": "嵌入 FeedLog Widget，提供 7×24 小时 AI 客服：基于知识库作答、标注引用来源，并记住历史对话。",
+          "image": "客户在 Widget 中提问，AI 作答"
+        },
+        "inbox": {
+          "title": "人工与 AI 无缝协作",
+          "body": "在 Inbox 中随时接管对话。团队的人工回复会成为 AI 的学习素材，让 AI 的回答越来越准确。",
+          "image": "团队成员在 Inbox 中接管对话"
+        },
+        "feedback": {
+          "title": "把客户对话变成产品洞察",
+          "body": "自动提取客户反馈并关联原始对话，帮助团队把真实的用户需求转化为可执行的路线图优先级。",
+          "image": "从对话中打开 AI 创建的反馈"
+        },
+        "start": {
+          "title": "准备好升级你的客户支持了吗？",
+          "body": "体验交互式 Demo，看看 FeedLog 的实际效果；或按照接入指南，把 AI 客服带进你的产品。",
+          "image": "开启你的 AI 客服之旅"
+        }
+      }
+    },
+    "entry": {
+      "label": "快速上手",
+      "hint": "随时可以在这里重新打开引导和 Demo Widget。"
+    },
+    "demo": {
+      "badge": "Demo",
+      "caption": "客户看到的样子",
+      "install": "安装到我的网站",
+      "landedTitle": "这段对话已进入你的 Inbox。",
+      "landedBody": "以团队身份回复试试。",
+      "end": "结束体验",
+      "open": "打开 Demo Widget",
+      "close": "关闭 Demo Widget",
+      "frameTitle": "Demo Widget"
+    },
+    "installCard": {
+      "title": "把 Widget 添加到 {name}",
+      "body": "安装 SDK 并粘贴下面的代码。你的客户会看到和刚才体验一样的 Widget，并根据你的帮助中心回答问题。",
+      "tryDemo": "体验 Demo Widget",
+      "dismiss": "关闭"
+    }
   }
 }

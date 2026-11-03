@@ -42,11 +42,31 @@ function hydrateAssistant() {
   assistantError.value = null
   assistantSaved.value = false
 }
+const onboarding = useOnboarding()
+const installSection = ref<HTMLElement | null>(null)
+const pulsing = ref(false)
+// Arriving from the onboarding guide or demo: expand the steps so the snippet is
+// visible at once and pulse the section once. Watched rather than run on mount,
+// because the demo's install link can also be used while already on this page.
+async function highlightInstall() {
+  if (!onboarding.state.value.highlightInstall || !settings.value) return
+  onboarding.state.value.highlightInstall = false
+  await nextTick()
+  const section = installSection.value
+  if (!section) return
+  section.querySelector<HTMLDetailsElement>('details')?.setAttribute('open', '')
+  section.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  // Restart the animation even if a previous pulse is still running.
+  pulsing.value = false
+  requestAnimationFrame(() => { pulsing.value = true })
+}
+watch(() => onboarding.state.value.highlightInstall, () => void highlightInstall())
 onMounted(async () => {
   if (!canEdit.value) return
   await refresh()
   hydrateLauncher()
   hydrateAssistant()
+  await highlightInstall()
 })
 
 function isValidOffset(value: number | string) {
@@ -170,12 +190,16 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
           {{ error }}
         </p>
         <template v-else-if="settings">
-          <WidgetInstallationSection
-            :base-url="settings.baseUrl"
-            :enabled="settings.enabled"
-            :saving="saving"
-            @toggle="toggleEnabled"
-          />
+          <OnboardingInstallCard />
+
+          <div ref="installSection" class="rounded-xl" :class="pulsing && 'onboarding-install-pulse'" @animationend="pulsing = false">
+            <WidgetInstallationSection
+              :base-url="settings.baseUrl"
+              :enabled="settings.enabled"
+              :saving="saving"
+              @toggle="toggleEnabled"
+            />
+          </div>
 
           <section
             class="rounded-xl border border-border bg-card overflow-hidden"
@@ -509,3 +533,15 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
     </Dialog>
   </div>
 </template>
+
+<style scoped>
+/* One emphasis pulse: the outline strengthens, holds briefly, then fades back to none. */
+.onboarding-install-pulse { animation: onboarding-install-pulse 1.6s ease-in-out; }
+@keyframes onboarding-install-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 0%, transparent); }
+  20%, 45% { box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary) 35%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-install-pulse { animation-duration: 0.01s; }
+}
+</style>

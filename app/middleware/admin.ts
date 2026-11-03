@@ -1,3 +1,5 @@
+import { resolveOnboardingStatus } from '#layers/feedlog/app/composables/useOnboarding'
+
 // /dashboard/* gate: any org staff (owner / manager / contributor) may enter.
 // Fine-grained capability checks happen inside individual pages / API calls.
 export default defineNuxtRouteMiddleware(async (to, from) => {
@@ -23,4 +25,5 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     if (import.meta.client && !useNuxtApp().isHydrating && from.matched.length && from.path !== to.path) return abortNavigation()
     return navigateTo(localePath(entry.value), { replace: true })
   }
+  await resolveOnboardingStatus()
 })

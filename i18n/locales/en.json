@@ -1345,5 +1345,62 @@
     "enterCode": "Type code",
     "insertRowAt": "Insert above row {index}",
     "insertColumnAt": "Insert left of column {index}"
+  },
+  "onboarding": {
+    "guide": {
+      "srTitle": "Getting started with FeedLog",
+      "srDescription": "A short tour of FeedLog",
+      "slideLabel": "Slide {n}",
+      "pauseMedia": "Pause animation",
+      "playMedia": "Play animation",
+      "back": "Back",
+      "next": "Next",
+      "tryDemo": "Try the FeedLog demo",
+      "install": "View integration guide",
+      "readyToIntegrate": "Ready to integrate?",
+      "slides": {
+        "widget": {
+          "title": "Bring AI Support to Your Website in Minutes",
+          "body": "Embed FeedLog Widget for 24/7 AI support, knowledge-based answers, source citations, and conversation memory.",
+          "image": "A customer asks a question in the widget and the AI answers"
+        },
+        "inbox": {
+          "title": "Seamless Human & AI Co-pilot",
+          "body": "Take over conversations anytime in Inbox. Human replies become learning material for AI, helping it deliver more accurate answers over time.",
+          "image": "A teammate takes over a conversation in the Inbox"
+        },
+        "feedback": {
+          "title": "Turn Customer Conversations into Product Insights",
+          "body": "Automatically extract customer feedback and link it to original conversations, helping your team turn real user needs into actionable Roadmap priorities.",
+          "image": "Feedback created by the AI, opened from its conversation"
+        },
+        "start": {
+          "title": "Ready to Transform Your Customer Support?",
+          "body": "Explore the interactive demo to see FeedLog in action, or follow the integration guide to bring AI support into your product.",
+          "image": "Start Your AI Support Journey"
+        }
+      }
+    },
+    "entry": {
+      "label": "Getting started",
+      "hint": "You can reopen the guide and the Demo Widget here anytime."
+    },
+    "demo": {
+      "badge": "Demo",
+      "caption": "Your customers' view",
+      "install": "Install on my site",
+      "landedTitle": "This chat is now in your Inbox.",
+      "landedBody": "Reply as your team.",
+      "end": "End demo",
+      "open": "Open demo widget",
+      "close": "Close demo widget",
+      "frameTitle": "Demo widget"
+    },
+    "installCard": {
+      "title": "Add the widget to {name}",
+      "body": "Install the package and paste the snippet below. Your customers get the same widget you just tried, answering from your Help Center.",
+      "tryDemo": "Try the Demo Widget",
+      "dismiss": "Dismiss"
+    }
   }
 }

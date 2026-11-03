@@ -28,12 +28,12 @@ before(async () => {
   try { await migrate(drizzle(connection), { migrationsFolder: 'server/db/migrations' }) }
   finally { await connection.end() }
   await pool.query(`INSERT INTO organization(id,name,slug) VALUES ('org','Product','org'),('other','Other','other');
-    INSERT INTO "user"(id,name,email) VALUES ('customer','Customer','customer@example.invalid'),('owner','Owner','owner@example.invalid'),
-      ('second-owner','Second owner','second-owner@example.invalid'),('manager','Manager','manager@example.invalid'),('contributor','Contributor','contributor@example.invalid'),('other','Other','other@example.invalid');
+    INSERT INTO "user"(id,name,email) VALUES ('customer','Customer','customer@example.com'),('owner','Owner','owner@example.com'),
+      ('second-owner','Second owner','second-owner@example.com'),('manager','Manager','manager@example.com'),('contributor','Contributor','contributor@example.com'),('other','Other','other@example.com');
     INSERT INTO member(id,organization_id,user_id,role,created_at) VALUES ('owner','org','owner','owner',now()),
       ('second-owner','org','second-owner','owner',now()),('manager','org','manager','manager',now()),('contributor','org','contributor','contributor',now()),('other','other','other','owner',now())`)
   registerEmailProvider({ name: 'handoff-test', async send(email) {
-    if (failOwner && email.to === 'second-owner@example.invalid') throw new Error('Synthetic failure')
+    if (failOwner && email.to === 'second-owner@example.com') throw new Error('Synthetic failure')
     emails.push(email)
   } })
   process.env.EMAIL_PROVIDER = 'handoff-test'
@@ -60,9 +60,9 @@ test('successful handoff creates one durable email task and only notifies same-t
   await handoff(runtime, f.id, 'org', f.runId, 'user_requested')
   assert.equal((await pool.query("SELECT count(*)::int AS n FROM scheduled_task WHERE kind='inbox_handoff_email' AND ref_id=$1", [f.runId])).rows[0].n, 1)
   await inboxTick(runtime)
-  assert.deepEqual(emails.map(e => e.to).sort(), ['owner@example.invalid', 'second-owner@example.invalid'])
+  assert.deepEqual(emails.map(e => e.to).sort(), ['owner@example.com', 'second-owner@example.com'])
   assert.ok(emails.every(e => e.html.includes(`conversationId=${f.id}`)))
-  assert.ok(emails.every(e => e.html.includes('A private question') && e.html.includes('Customer') && e.html.includes('customer@example.invalid')))
+  assert.ok(emails.every(e => e.html.includes('A private question') && e.html.includes('Customer') && e.html.includes('customer@example.com')))
   await inboxTick(runtime)
   assert.equal(emails.length, 2)
 })
@@ -76,14 +76,14 @@ test('a partial delivery retries only failed recipients, and missing-AI fallback
   assert.ok(emails[0]!.html.includes('AI unavailable'))
   assert.ok(emails[0]!.html.includes('A private question'))
   assert.ok(!emails[0]!.html.includes('ISSUE SUMMARY'))
-  assert.deepEqual(emails.map(e => e.to), ['owner@example.invalid'])
+  assert.deepEqual(emails.map(e => e.to), ['owner@example.com'])
   const task = (await pool.query("SELECT * FROM scheduled_task WHERE kind='inbox_handoff_email' AND ref_id=$1", [f.runId])).rows[0]
   assert.equal(JSON.parse(task.result).context.lastMessage, 'A private question')
   assert.equal(task.status, 'pending')
   failOwner = false
   await pool.query('UPDATE scheduled_task SET schedule_at=clock_timestamp() WHERE id=$1', [task.id])
   await inboxTick(runtime)
-  assert.deepEqual(emails.map(e => e.to).sort(), ['owner@example.invalid', 'second-owner@example.invalid'])
+  assert.deepEqual(emails.map(e => e.to).sort(), ['owner@example.com', 'second-owner@example.com'])
   assert.equal((await pool.query('SELECT status FROM scheduled_task WHERE id=$1', [task.id])).rows[0].status, 'done')
 })
 

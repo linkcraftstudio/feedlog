@@ -145,6 +145,7 @@ const authSteps = computed(() => [
               <button
                 type="button"
                 class="h-7 px-2.5 rounded-md border border-border text-[11px] font-semibold hover:bg-secondary"
+                data-fdl-action="widget_snippet_copy"
                 @click="copy(step.key, step.code)"
               >
                 {{ copiedKey === step.key ? $t('settings.widget.copied') : $t('settings.widget.copy') }}
@@ -174,6 +175,7 @@ const authSteps = computed(() => [
                   <button
                     type="button"
                     class="h-7 px-2.5 rounded-md border border-border text-[11px] font-semibold hover:bg-secondary"
+                    data-fdl-action="widget_snippet_copy"
                     @click="copy(step.key, step.code)"
                   >
                     {{ copiedKey === step.key ? $t('settings.widget.copied') : $t('settings.widget.copy') }}
@@ -194,6 +196,7 @@ const authSteps = computed(() => [
               <button
                 type="button"
                 class="h-7 px-2.5 rounded-md border border-border text-[11px] font-semibold hover:bg-secondary"
+                data-fdl-action="widget_snippet_copy"
                 @click="copy('custom-entry', customEntrySnippet)"
               >
                 {{ copiedKey === 'custom-entry' ? $t('settings.widget.copied') : $t('settings.widget.copy') }}

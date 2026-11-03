@@ -40,7 +40,7 @@ async function fixture(firstAnswerDeadline?: number) {
     id = uuidv7()
   await pool.query('INSERT INTO organization (id,name,slug) VALUES ($1,$1,$1)', [orgId])
   for (const uid of [userId, staffId])
-    await pool.query('INSERT INTO "user" (id,name,email) VALUES ($1,$1,$2)', [uid, `${uid}@example.invalid`])
+    await pool.query('INSERT INTO "user" (id,name,email) VALUES ($1,$1,$2)', [uid, `${uid}@example.com`])
   await pool.query("INSERT INTO member(id,organization_id,user_id,role,created_at) VALUES ($1,$2,$1,'manager',now())", [staffId, orgId])
   const actor = { orgId, customerId: userId, retentionDays: 14 } as Actor
   const first = await startRun(runtime, id, actor, send(), firstAnswerDeadline)

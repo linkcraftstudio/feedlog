@@ -2,7 +2,7 @@ import { betterAuth, type BetterAuthOptions } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { admin, anonymous, bearer, customSession, organization } from 'better-auth/plugins'
 import { defu } from 'defu'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { uuidv7 } from 'uuidv7'
 import { db } from '../db'
 import { member, organization as orgTable, user as userTable } from '../db/schemas'
@@ -129,12 +129,20 @@ async function loadOrgList(userId: string, confineToOrgId?: string | null) {
 // invited users sign in and click Accept on /invite?id=... themselves.
 async function bootstrapAfterUserCreate(newUser: { id: string; email: string }) {
   if (!systemAdminEmails.includes(newUser.email)) return
-  await db.insert(member).values({
+  // default-org comes from a migration, so the first owner joining is the
+  // install's "new organization" moment. Later admins and upgraded installs
+  // with an owner already in place get no sample data.
+  const [existingOwner] = await db.select({ id: member.id }).from(member)
+    .where(and(eq(member.organizationId, DEFAULT_ORG_ID), sql`'owner' = ANY(string_to_array(${member.role}, ','))`)).limit(1)
+  const inserted = await db.insert(member).values({
     id: uuidv7(),
     organizationId: DEFAULT_ORG_ID,
     userId: newUser.id,
     role: 'owner',
-  }).onConflictDoNothing()
+  }).onConflictDoNothing().returning({ id: member.id })
+  if (existingOwner || !inserted.length) return
+  const { seedOnboarding } = await import('../lib/onboarding/seed')
+  await seedOnboarding({ orgId: DEFAULT_ORG_ID, ownerId: newUser.id })
 }
 
 // The plugin picks the name before the row exists, so the id-derived tag can only

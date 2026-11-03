@@ -38,7 +38,7 @@ before(async () => {
   try { await migrate(drizzle(connection), { migrationsFolder: 'server/db/migrations' }) }
   finally { await connection.end() }
   await pool.query(`INSERT INTO organization(id,name,slug) VALUES ('org','Org','org');
-    INSERT INTO "user"(id,name,email) VALUES ('customer','Customer','customer@example.invalid'),('staff','Staff','staff@example.invalid'),('owner','Owner','owner@example.invalid');
+    INSERT INTO "user"(id,name,email) VALUES ('customer','Customer','customer@example.com'),('staff','Staff','staff@example.com'),('owner','Owner','owner@example.com');
     INSERT INTO member(id,organization_id,user_id,role,created_at) VALUES ('owner','org','owner','owner',now())`)
   registerEmailProvider({ name: 'scheduler-test', async send(email) { emails.push(email); if (failEmail) throw new Error('Synthetic mail failure') } })
   process.env.EMAIL_PROVIDER = 'scheduler-test'
@@ -105,7 +105,7 @@ test('quota notices go once to owners, tasks survive errors, successful delivery
   await reset(); await task()
   failQueue = new Error('quota_exhausted')
   assert.equal((await scheduleInbox(runtime, transport)).scheduled, false)
-  assert.equal(emails.length, 1); assert.equal(emails[0]!.to, 'owner@example.invalid')
+  assert.equal(emails.length, 1); assert.equal(emails[0]!.to, 'owner@example.com')
   await ageMessages(); await scheduleInbox(runtime, transport)
   assert.equal(emails.length, 1)
   assert.equal((await pool.query('SELECT status FROM scheduled_task')).rows[0].status, 'pending')
@@ -312,7 +312,7 @@ test('immediate delivery keeps its policy through automatic and manual retries',
 test('anonymous and empty-email customers do not queue either reply email mode', async () => {
   await reset()
   try {
-    for (const recipient of [{ anonymous: true, email: 'placeholder@example.invalid' }, { anonymous: false, email: '   ' }]) {
+    for (const recipient of [{ anonymous: true, email: 'placeholder@example.com' }, { anonymous: false, email: '   ' }]) {
       await pool.query("UPDATE \"user\" SET is_anonymous=$1,email=$2 WHERE id='customer'", [recipient.anonymous, recipient.email])
       const id = await conversation()
       for (const notifyByEmail of [false, true]) {
@@ -327,10 +327,27 @@ test('anonymous and empty-email customers do not queue either reply email mode',
     }
     assert.equal(emails.length, 0)
   } finally {
-    await pool.query("UPDATE \"user\" SET is_anonymous=false,email='customer@example.invalid' WHERE id='customer'")
+    await pool.query("UPDATE \"user\" SET is_anonymous=false,email='customer@example.com' WHERE id='customer'")
   }
 })
 
+
+test('a named customer with a reserved .invalid address records the reply email as unavailable', async () => {
+  await reset()
+  try {
+    await pool.query("UPDATE \"user\" SET is_anonymous=false,email='emma.chen-abcd1234@sample.invalid' WHERE id='customer'")
+    const id = await conversation()
+    const { rows: [row] } = await pool.query('SELECT last_seq FROM conversation WHERE id=$1', [id])
+    const saved = await staffCommand(runtime, id, 'org', 'staff', {
+      action: 'reply', requestId: uuidv7(), expectedLastSeq: Number(row.last_seq), notifyByEmail: true,
+      content: { parts: [{ type: 'text', text: 'Reply to a sample customer' }] },
+    })
+    assert.equal((await deliverReplyNow(runtime, 'org', id, saved.item.id))?.status, 'unavailable')
+    assert.equal(emails.length, 0)
+  } finally {
+    await pool.query("UPDATE \"user\" SET is_anonymous=false,email='customer@example.com' WHERE id='customer'")
+  }
+})
 
 test('reply deadlines remain 48 hours even with a stale test environment flag', async () => {
   await reset()
@@ -385,7 +402,7 @@ test('direct delivery sends without a scheduler, respects tenancy and does not d
 test('reply email uses preceding customer source and never copies the conversation title into its subject', async () => {
   await reset()
   const id = await conversation()
-  await pool.query("UPDATE conversation SET title='Private order SYNTHETIC-123 customer@example.invalid' WHERE id=$1", [id])
+  await pool.query("UPDATE conversation SET title='Private order SYNTHETIC-123 customer@example.com' WHERE id=$1", [id])
   await pool.query(`INSERT INTO conversation_item(id,conversation_id,seq,author_type,author_user_id,content,context)
     VALUES($1,$2,1,'customer','customer',$3,$4)`, [uuidv7(), id, JSON.stringify({parts:[{type:'text',text:'Help with a refund'}]}), JSON.stringify({origin:'https://product.example',pathname:'/support'})])
   const saved = await staffCommand(runtime, id, 'org', 'staff', {
