@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { publicItem } from '../server/lib/agent/runtime'
+import { handoffCustomerNotice } from '../shared/inbox/state'
 
 const handoff = (reason: string) => ({
   id: 'handoff:test', seq: 2, author_type: 'system',
@@ -50,4 +51,30 @@ test('rule handoffs expose only the matching notice category and public text', (
   }
   assert.equal(publicItem(handoff('support_rule'))?.handoffNotice, 'handoffRule')
   assert.equal(publicItem(handoff('user_requested'))?.handoffNotice, 'handoff')
+})
+
+test('customer history preserves the saved conversation language without internal routing details', () => {
+  for (const text of [
+    '你的问题已转交人工客服。你可以继续在这里补充情况或截图。',
+    'Your question has been passed to our support team. You can send more details or screenshots here.',
+    'درخواست شما به تیم پشتیبانی ارجاع داده شد. می‌توانید جزئیات بیشتری را همین‌جا ارسال کنید.',
+    'تم تحويل طلبك إلى فريق الدعم. يمكنك إرسال المزيد من التفاصيل هنا.',
+    'ご質問をサポートチームに引き継ぎました。ここで詳細を追加できます。',
+  ]) {
+    const row = handoff('support_rule')
+    Object.assign(row.content.parts[0], { customerNotice: text, rule: { id: 'private-rule', scenario: 'Private routing instruction' } })
+    const item = publicItem(row)
+    assert.equal(item?.customerNotice, text)
+    assert.deepEqual(item?.content, { parts: [{ type: 'text', text }] })
+    assert.doesNotMatch(JSON.stringify(item), /Private routing instruction|private-rule/)
+  }
+})
+
+test('customer confirmation is bounded plain text and legacy events retain their fallback', () => {
+  assert.equal(handoffCustomerNotice.parse('  A confirmation.  '), 'A confirmation.')
+  for (const value of ['', '   ', 'x'.repeat(1001), null]) assert.equal(handoffCustomerNotice.safeParse(value).success, false)
+  assert.equal(publicItem(handoff('user_requested'))?.customerNotice, undefined)
+  const hidden = handoff('ai_error')
+  Object.assign(hidden.content.parts[0], { customerNotice: 'Must stay hidden' })
+  assert.equal(publicItem(hidden), null)
 })

@@ -6,6 +6,7 @@ import assert from 'node:assert/strict'
 import { after, test } from 'node:test'
 import { uuidv7 } from 'uuidv7'
 import { createError } from 'h3'
+import { HANDOFF_NOTICE } from '../shared/inbox/state'
 import { chatInput, customerContent, pageContext } from '../shared/agent/content'
 import { readAgentEvents } from '../shared/agent/sse'
 import { agentRuntime, transaction, appendItem, lockConversation, publicItem, type Actor } from '../server/lib/agent/runtime'
@@ -33,6 +34,7 @@ async function fixture() {
   const otherId = `agent-v1-other-${uuidv7()}`
   await pool.query('INSERT INTO organization (id,name,slug,metadata) VALUES ($1,$2,$1,$3)', [orgId, 'Example Product', JSON.stringify({ portalModules: { helpCenter: true } })])
   for (const id of [userId, otherId]) await pool.query('INSERT INTO "user" (id,name,email) VALUES ($1,$2,$3)', [id, 'Test User', `${id}@example.invalid`])
+  await pool.query("INSERT INTO member(id,organization_id,user_id,role,created_at) VALUES ($1,$2,$1,'manager',now())", [otherId, orgId])
   const actor = { orgId, customerId: userId, retentionDays: 30, session: { user: { id: userId, email: `${userId}@example.invalid` } } } as Actor
   const conversationId = uuidv7()
   const cleanup = async () => {
@@ -212,12 +214,19 @@ test('handoff tool commits once, stops the active run and fences later feedback 
     const controller = new AbortController()
     const context = await loadAgentPromptContext(pool, f.actor)
     const bundle = feedlogTools(event, f.actor, f.conversationId, run.run!.id, run.item.id, controller.signal, () => {}, context, () => controller.abort())
-    const result = await bundle.tools.handoff_to_human.execute!({ reason: 'user_requested' }, {} as any)
+    const customerNotice = 'درخواست شما به تیم پشتیبانی ارجاع داده شد. می‌توانید جزئیات بیشتری را همین‌جا ارسال کنید.'
+    const result = await bundle.tools.handoff_to_human.execute!({ reason: 'user_requested', customer_notice: customerNotice }, {} as any)
     assert.deepEqual(result, { handoff: true, status: 'open', stop: true })
     assert.equal(controller.signal.aborted, true)
     assert.equal((await pool.query('SELECT status FROM conversation WHERE id=$1', [f.conversationId])).rows[0].status, 'open')
     await assert.rejects(() => bundle.tools.add_feedback_comment.execute!({ feedback_id: uuidv7(), content: 'Late write' }, {} as any))
     assert.equal((await pool.query("SELECT count(*)::int AS count FROM conversation_item WHERE conversation_id=$1 AND author_type='system'", [f.conversationId])).rows[0].count, 1)
+    const saved = (await pool.query("SELECT * FROM conversation_item WHERE conversation_id=$1 AND author_type='system'", [f.conversationId])).rows[0]
+    assert.equal(saved.content.parts[0].customerNotice, customerNotice)
+    assert.equal(publicItem(saved)?.customerNotice, customerNotice)
+    assert.deepEqual(publicItem(saved)?.content, { parts: [{ type: 'text', text: customerNotice }] })
+    await bundle.tools.handoff_to_human.execute!({ reason: 'user_requested', customer_notice: 'A different confirmation must not replace the saved text.' }, {} as any)
+    assert.deepEqual((await pool.query("SELECT * FROM conversation_item WHERE conversation_id=$1 AND author_type='system'", [f.conversationId])).rows, [saved])
   } finally { await f.cleanup() }
 })
 
@@ -234,7 +243,7 @@ test('feedback followed by handoff preserves one visible receipt before the noti
     const created = await bundle.tools.create_feedback.execute!({ board_id: boardId, title: 'Export option', content: 'I need an option to export my reports.' }, {} as any) as any
     const feedbackId = created.feedback.feedback_id
     assert.equal((await pool.query('SELECT source_conversation_id FROM post WHERE id=$1', [feedbackId])).rows[0].source_conversation_id, f.conversationId)
-    const call = () => bundle.tools.handoff_to_human.execute!({ reason: 'user_requested' }, {} as any)
+    const call = () => bundle.tools.handoff_to_human.execute!({ reason: 'user_requested', customer_notice: HANDOFF_NOTICE }, {} as any)
     assert.deepEqual(await call(), { handoff: true, status: 'open', stop: true })
     assert.equal(controller.signal.aborted, true)
     const items = () => pool.query('SELECT * FROM conversation_item WHERE conversation_id=$1 ORDER BY seq', [f.conversationId])
@@ -281,7 +290,7 @@ test('handoff recovers write, task and receipt-refresh failures without customer
           const release = client.release
           client.query = ((text: string, ...args: any[]) => {
             if ((failure === 'transition' && !failures && text.startsWith("UPDATE conversation SET status='open'"))
-              || (failure === 'task' && text.startsWith('INSERT INTO scheduled_task'))) {
+              || (failure === 'task' && text.startsWith('INSERT INTO scheduled_task') && !text.includes("'inbox_handoff_email'"))) {
               failures++
               return (query as any).call(client, 'SELECT 1/0')
             }
@@ -291,7 +300,7 @@ test('handoff recovers write, task and receipt-refresh failures without customer
           return client
         })
       }) as any
-      const result = await bundle.tools.handoff_to_human.execute!({ reason: 'user_requested' }, {} as any) as any
+      const result = await bundle.tools.handoff_to_human.execute!({ reason: 'user_requested', customer_notice: HANDOFF_NOTICE }, {} as any) as any
       pool.connect = originalConnect
       pool.query = originalQuery
       assert.ok(failures > 0, failure)
@@ -304,7 +313,7 @@ test('handoff recovers write, task and receipt-refresh failures without customer
       assert.equal(rows[1].content.parts[0].type, 'feedback_created')
       assert.equal(rows[2].content.parts[0].reason, 'user_requested')
       assert.equal((await pool.query('SELECT count(*)::int AS count FROM post WHERE source_conversation_id=$1', [f.conversationId])).rows[0].count, 1)
-      await bundle.tools.handoff_to_human.execute!({ reason: 'user_requested' }, {} as any)
+      await bundle.tools.handoff_to_human.execute!({ reason: 'user_requested', customer_notice: HANDOFF_NOTICE }, {} as any)
       assert.equal((await pool.query('SELECT count(*)::int AS count FROM conversation_item WHERE conversation_id=$1', [f.conversationId])).rows[0].count, 3)
       await pool.query("UPDATE scheduled_task SET schedule_at=clock_timestamp()-interval '1 minute' WHERE ref_id=$1 OR ref_id=$2", [f.conversationId, execution.run.id])
       await inboxTick(runtime)
@@ -326,7 +335,7 @@ test('rule handoffs validate configured IDs, preserve rule snapshots and hide de
       const run = await startRun(runtime, f.conversationId, f.actor, send('Please help with this support case'))
       const context = await loadAgentPromptContext(pool, f.actor)
       const bundle = feedlogTools(event, f.actor, f.conversationId, run.run!.id, run.item.id, new AbortController().signal, () => {}, context)
-      const call = (input: any) => bundle.tools.handoff_to_human.execute!(input, {} as any)
+      const call = (input: any) => bundle.tools.handoff_to_human.execute!({ customer_notice: HANDOFF_NOTICE, ...input }, {} as any)
       for (const invalid of [undefined, 'unknown', 'builtin-account-access', 'custom-off']) {
         assert.ok('error' in await call({ reason: 'support_rule', rule_id: invalid }))
       }
@@ -357,7 +366,7 @@ test('Widget hides internal lifecycle events and exposes only a short handoff no
     const visible = publicItem(item)
     if (kind === 'handoff') {
       assert.equal(visible?.notice, 'handoff')
-      assert.deepEqual(visible?.content, { parts: [{ type: 'text', text: "I've passed your request to our support team. They'll follow up and help you with it." }] })
+      assert.deepEqual(visible?.content, { parts: [{ type: 'text', text: HANDOFF_NOTICE }] })
     } else assert.equal(visible, null)
     assert.equal(item.content.parts[0]!.kind, kind)
   }

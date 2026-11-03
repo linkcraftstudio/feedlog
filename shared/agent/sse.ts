@@ -7,7 +7,7 @@ type AgentEvent =
   | [name: 'tool', data: Extract<StreamEvent, { type: 'tool' }>]
   | [name: 'text', data: { delta: string }]
   | [name: 'finish', data: { runId: string; itemId: string; lastSeq: number; content?: Content }]
-  | [name: 'handoff' | 'closed', data: { runId: string; noticeItemId?: string; lastSeq: number; handling: 'human' | 'closed'; reason?: 'ai_error'; handoffNotice?: HandoffNotice }]
+  | [name: 'handoff' | 'closed', data: { runId: string; noticeItemId?: string; lastSeq: number; handling: 'human' | 'closed'; reason?: 'ai_error'; handoffNotice?: HandoffNotice; customerNotice?: string }]
   | [name: 'superseded', data: { runId: string }]
   | [name: 'handoff_unavailable', data: { runId: string }]
   | [name: 'error', data: { message: string; code?: string }]

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
-import type { SystemEventPart } from '#layers/feedlog/shared/inbox/state'
+import { handoffNotice as customerNoticeKind, type SystemEventPart } from '#layers/feedlog/shared/inbox/state'
 import type { Content } from '#layers/feedlog/shared/agent/content'
 import InboxStatusBadge from '#layers/feedlog/app/components/inbox/StatusBadge.vue'
 import InboxCustomerDetails from '#layers/feedlog/app/components/inbox/CustomerDetails.vue'
@@ -57,6 +57,11 @@ function handoffNotice(part: SystemEventPart) {
   const key = part.reason === 'support_rule' && builtin && ['builtin-billing', 'builtin-account-access', 'builtin-privacy-legal'].includes(builtin)
     ? builtin : part.reason
   return t(`inbox.handoffNotices.${key}`)
+}
+function customerConfirmation(content: Content) {
+  const part = content.parts.find(part => part.type === 'system_event' && part.kind === 'handoff')
+  if (part?.type !== 'system_event') return ''
+  return part.customerNotice ?? t(`widget.conversationNotices.${customerNoticeKind(part.reason, part.rule?.id)}`)
 }
 const visibleItems = computed(() => (detail.value?.items ?? []).filter(item =>
   item.authorType !== 'system' || item.content.parts.some(showSystemNotice),
@@ -527,7 +532,7 @@ loading.value = false
               <div v-if="item.content.parts.some(part => part.type === 'system_event' && part.kind === 'handoff')" class="flex items-start gap-2.5">
                 <div class="grid size-7 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><Icon name="lucide:bot" size="14" /></div>
                 <div class="min-w-0 max-w-[85%]">
-                  <div class="w-fit max-w-full rounded-xl rounded-tl-sm border border-border bg-secondary/50 px-3.5 py-2.5 text-[13px] font-normal leading-relaxed" data-handoff-message>{{ t('widget.conversationNotices.handoff') }}</div>
+                  <div class="w-fit max-w-full rounded-xl rounded-tl-sm border border-border bg-secondary/50 px-3.5 py-2.5 text-[13px] font-normal leading-relaxed" dir="auto" data-handoff-message>{{ customerConfirmation(item.content) }}</div>
                   <div class="mt-1.5 flex items-center gap-1 px-0.5 text-[10px] text-muted-foreground">
                     <span class="font-semibold text-foreground dark:text-white">{{ t('widget.messageAI') }}</span><span aria-hidden="true">·</span><time :datetime="item.createdAt">{{ time(item.createdAt) }}</time>
                   </div>

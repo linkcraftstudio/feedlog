@@ -100,8 +100,8 @@ export function publicItem(item: Record<string, unknown>) {
     const part = (item.content as Content).parts.find(part => part.type === 'system_event')
     if (!part || part.type !== 'system_event' || part.kind !== 'handoff' || part.reason === 'ai_error') return null
     const noticeKind = handoffNotice(part.reason, part.rule?.id)
-    const text = HANDOFF_NOTICES[noticeKind]
-    return { id: item.id, seq: Number(item.seq), authorType: 'system' as const, notice: 'handoff' as const, handoffNotice: noticeKind, content: { parts: [{ type: 'text' as const, text }] }, context: null, agentRunId: null, createdAt: item.created_at }
+    const text = part.customerNotice ?? HANDOFF_NOTICES[noticeKind]
+    return { id: item.id, seq: Number(item.seq), authorType: 'system' as const, notice: 'handoff' as const, handoffNotice: noticeKind, ...(part.customerNotice ? { customerNotice: part.customerNotice } : {}), content: { parts: [{ type: 'text' as const, text }] }, context: null, agentRunId: null, createdAt: item.created_at }
   }
   return { id: item.id, seq: Number(item.seq), authorType: item.author_type, author: item.author_type === 'staff' ? { name: item.staff_name as string | null ?? null } : null, content: item.content, context: item.context, agentRunId: item.agent_run_id, createdAt: item.created_at }
 }
