@@ -215,7 +215,7 @@ export async function streamAgentReply(event: H3Event, actor: Actor, options: { 
         const notice = noticePart?.type === 'system_event' ? noticePart : undefined
         const reason = notice?.reason ?? 'ai_error'
         if (current && current.status !== 'ai_handling') {
-          await send(current.status === 'closed' ? 'closed' : 'handoff', { runId: run.id, noticeItemId: notice?.kind === 'handoff' ? current.notice_id ?? undefined : undefined, lastSeq: Number(current.last_seq), handling: handling(current.status), ...(reason === 'ai_error' ? { reason } : notice?.kind === 'handoff' ? { handoffNotice: handoffNotice(reason, notice.rule?.id) } : {}) })
+          await send(current.status === 'closed' ? 'closed' : 'handoff', { runId: run.id, noticeItemId: notice?.kind === 'handoff' ? current.notice_id ?? undefined : undefined, lastSeq: Number(current.last_seq), handling: handling(current.status), ...(reason === 'ai_error' ? { reason } : notice?.kind === 'handoff' ? { handoffNotice: handoffNotice(reason, notice.rule?.id), customerNotice: notice.customerNotice } : {}) })
         }
         if (current?.status === 'ai_handling') await send('handoff_unavailable', { runId: run.id })
         await requestSchedule(event)

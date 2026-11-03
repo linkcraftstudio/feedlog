@@ -44,7 +44,7 @@ export type Part = Content['parts'][number]
 export type FeedbackPart = Extract<Part, { feedback_id: string }>
 export type PageContext = z.infer<typeof pageContext>
 export type ChatInput = z.infer<typeof chatInput>
-export interface Item { author?: { name: string | null } | null; notice?: 'handoff' | 'closed' | 'reopened'; handoffNotice?: HandoffNotice; id: string; seq: number; authorType: 'customer' | 'agent' | 'staff' | 'system'; content: Content; context: PageContext | null; agentRunId: string | null; createdAt: string }
+export interface Item { author?: { name: string | null } | null; notice?: 'handoff' | 'closed' | 'reopened'; handoffNotice?: HandoffNotice; customerNotice?: string; id: string; seq: number; authorType: 'customer' | 'agent' | 'staff' | 'system'; content: Content; context: PageContext | null; agentRunId: string | null; createdAt: string }
 export interface Run { id: string; triggerItemId: string; status: 'running' | 'completed' | 'failed' | 'cancelled'; error: string | null; startedAt: string; deadlineAt: string; finishedAt: string | null }
 export interface Conversation { id: string; title: string | null; lastSeq: number; unread: boolean; handling?: 'ai' | 'human' | 'closed' }
 export interface Detail { conversation: Conversation; items: Item[]; runs: Run[]; nextBeforeSeq: number | null; nextAfterSeq?: number; hasMore?: boolean }

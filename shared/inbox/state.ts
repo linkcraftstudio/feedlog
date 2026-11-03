@@ -16,6 +16,7 @@ export const handoffRule = z.object({
   scenarioZh: z.string().min(1).optional(),
 }).strict()
 export type HandoffRule = z.infer<typeof handoffRule>
+export const handoffCustomerNotice = z.string().trim().min(1).max(1000)
 export const systemEventPart = z
   .object({
     type: z.literal('system_event'),
@@ -25,6 +26,7 @@ export const systemEventPart = z
     toStatus: inboxStatus,
     runId: z.uuid().optional(),
     rule: handoffRule.optional(),
+    customerNotice: handoffCustomerNotice.optional(),
     dueAt: z.iso.datetime().optional(),
     fromPriority: z.enum(['normal', 'high']).optional(),
     toPriority: z.enum(['normal', 'high']).optional(),

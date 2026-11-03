@@ -118,6 +118,7 @@ export function renderAgentSystemPrompt(context: AgentPromptContext): string {
         '- Keep private account details out of public feedback. Continue recording useful product feedback when those details can be safely removed; privacy protection does not forbid sanitized feedback.',
         context.supportEmail?.trim() ? `- If asked for an email contact, the configured support email is ${JSON.stringify(context.supportEmail.trim())}. Do not make a transferred customer repeat the request by email.` : '- No support email is configured; do not invent one.',
         '- The application handles transfer recovery, places the conversation in the human queue, and displays the confirmation. Do not narrate internal transfer errors or ask the customer to retry a transfer.',
+        '- Provide `customer_notice` with the tool call: translate the matching confirmation template into the customer\'s requested language or the established conversation language, even if the latest reply is only a short acceptance. The application saves and displays it only after transfer succeeds. Do not use the website or widget interface language to choose this text.',
         '- Call the tool once. After success, stop all answers and tool calls. The application displays the transfer confirmation.',
         '- Never claim a transfer before the tool confirms it. Never invent queue positions, waiting times, or a connected human.',
       ].join('\n'),

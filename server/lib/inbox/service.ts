@@ -7,7 +7,7 @@ import type { PoolClient } from 'pg'
 import { agentError, appendItem, transaction, type AgentRuntime } from '../agent/runtime'
 import type { Content, FeedbackPart } from '../../../shared/agent/content'
 import type { StaffCommand } from '../../../shared/inbox/schemas'
-import type { HandoffRule, HandoffReason, InboxStatus, SystemEventPart } from '../../../shared/inbox/state'
+import { handoffCustomerNotice, type HandoffRule, type HandoffReason, type InboxStatus, type SystemEventPart } from '../../../shared/inbox/state'
 
 export type InboxRuntime = Pick<AgentRuntime, 'pool'> & Partial<Pick<AgentRuntime, 'publishInboxEvent'>>
 export const takeoverPendingSql = `(c.status='ai_handling' AND EXISTS(
@@ -103,7 +103,9 @@ export async function handoffLocked(
   rule?: HandoffRule,
   feedbackResults: FeedbackPart[] = [],
   requestOrigin?: string,
+  customerNotice?: string,
 ) {
+  const noticeText = customerNotice === undefined ? undefined : handoffCustomerNotice.parse(customerNotice)
   const id = `handoff:${runId}`
   const {
     rows: [existing],
@@ -146,7 +148,7 @@ export async function handoffLocked(
     userId: null,
     data: { conversationId: row.id, reason },
   })
-  const notice = await eventItem(client, row.id, { kind: 'handoff', reason, ...(reason === 'support_rule' && rule ? { rule } : {}), fromStatus: row.status, toStatus: 'open' }, { id })
+  const notice = await eventItem(client, row.id, { kind: 'handoff', reason, ...(reason === 'support_rule' && rule ? { rule } : {}), ...(noticeText ? { customerNotice: noticeText } : {}), fromStatus: row.status, toStatus: 'open' }, { id })
   await scheduleHandoffEmail(client, runId, requestOrigin)
   return notice
 }
@@ -160,9 +162,10 @@ export async function handoff(
   rule?: HandoffRule,
   feedbackResults: FeedbackPart[] = [],
   requestOrigin?: string,
+  customerNotice?: string,
 ) {
   const save = (expired: boolean) => transaction(runtime, async (client) =>
-    handoffLocked(client, await lockInbox(client, id, orgId), runId, reason, expired, rule, feedbackResults, requestOrigin),
+    handoffLocked(client, await lockInbox(client, id, orgId), runId, reason, expired, rule, feedbackResults, requestOrigin, customerNotice),
   )
   try { return await save(allowExpired) }
   catch {

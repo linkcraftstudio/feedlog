@@ -327,8 +327,8 @@ async function submit(input: ChatInput) {
             // The event confirms persistence; render it before the history fetch.
             // Reusing its ID lets history update the same bubble without a gap.
             items.value.push({
-              id: data.noticeItemId, seq: data.lastSeq, authorType: 'system', notice: 'handoff', handoffNotice: data.handoffNotice,
-              content: { parts: [{ type: 'text', text: t(`widget.conversationNotices.${data.handoffNotice ?? 'handoff'}`) }] },
+              id: data.noticeItemId, seq: data.lastSeq, authorType: 'system', notice: 'handoff', handoffNotice: data.handoffNotice, customerNotice: data.customerNotice,
+              content: { parts: [{ type: 'text', text: data.customerNotice ?? t(`widget.conversationNotices.${data.handoffNotice ?? 'handoff'}`) }] },
               context: null, agentRunId: null, createdAt: new Date().toISOString(),
             })
           }
@@ -516,7 +516,7 @@ async function closeArticle() {
     <template v-for="item in items" :key="item.id">
       <div v-if="item.notice === 'handoff'" class="flex justify-start" :data-message-id="item.id" data-author="system">
         <div class="min-w-0 max-w-[82%]">
-          <div class="rounded-2xl rounded-bl-sm border border-border bg-card px-3 py-2.5 text-[13.5px] font-normal leading-normal" data-handoff-message>{{ t(`widget.conversationNotices.${item.handoffNotice ?? 'handoff'}`) }}</div>
+          <div class="rounded-2xl rounded-bl-sm border border-border bg-card px-3 py-2.5 text-[13.5px] font-normal leading-normal" dir="auto" data-handoff-message>{{ item.customerNotice ?? t(`widget.conversationNotices.${item.handoffNotice ?? 'handoff'}`) }}</div>
           <div class="mt-1.5 flex min-w-0 items-center gap-1 px-1 text-[10px] text-muted-foreground" data-message-meta>
             <span class="truncate font-semibold text-foreground dark:text-white">{{ t('widget.messageAI') }}</span>
             <span aria-hidden="true">·</span>

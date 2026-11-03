@@ -27,6 +27,25 @@ the selected closing behavior and visitor preferences remain unchanged.
 The preview supports dragging, opening, closing and resetting the launcher. It
 uses the current draft and does not create conversations or save visitor state.
 
+## Conversation language
+
+Widget controls, greetings and connection errors follow the configured Widget
+interface language (English or Chinese). AI replies follow the customer's
+requested language or the established conversation language, including languages
+without a Widget translation.
+
+AI-initiated human handoffs use `customer_notice` from the handoff tool call,
+translated from the matching confirmation template into the conversation
+language. The confirmation is saved in the handoff event only when the transfer
+succeeds. Both the live `handoff` stream event and customer history include this
+text as `customerNotice`; changing the interface language or reopening the
+conversation preserves it. Legacy handoff events without saved text retain the
+existing interface-language fallback. No database migration is required.
+
+Inbox displays the saved customer confirmation verbatim in the conversation
+bubble. Its internal handoff reason and rule details still follow the staff
+interface language; they are not part of the customer confirmation.
+
 ## Human takeover in Inbox
 
 In **Inbox**, filter by **AI handling** or **All**, open a conversation and click

@@ -2,6 +2,7 @@ import { AgentDependencyTimeout, withDependencyTimeout } from './dependency-time
 import { HelpEmbeddingError } from '../help-search/embedding'
 import { handoff } from '../inbox/service'
 import { handoffReason } from '../../../shared/inbox/state'
+import { handoffCustomerNoticeInput } from './handoff-notice'
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 import { uuidv7 } from 'uuidv7'
@@ -122,12 +123,12 @@ export function feedlogTools(event: H3Event, actor: Actor, conversationId: strin
     return `${content}\n\n${[...new Set(images)].map(key => `![](attachment:${key})`).join('\n')}`
   }
   const imageInput = z.array(z.string().min(1).max(1000)).max(10).optional().describe('Storage keys of images supplied by this customer in this conversation, relevant to the feedback.')
-  async function transfer({ reason, rule_id }: { reason: import('../../../shared/inbox/state').HandoffReason; rule_id?: string }) {
+  async function transfer({ reason, rule_id, customer_notice }: { reason: import('../../../shared/inbox/state').HandoffReason; rule_id?: string; customer_notice: string }) {
     const rule = reason === 'support_rule' ? promptContext.supportRules.find(rule => rule.id === rule_id) : undefined
     if (reason === 'support_rule' && !rule) return { error: 'Choose a matching configured support rule ID, or use the appropriate other handoff reason.' }
     if (reason !== 'support_rule' && rule_id) return { error: 'rule_id is only valid for support_rule.' }
     try {
-      const saved = await handoff(runtime, conversationId, actor.orgId, runId, reason, true, rule, await feedbackResults(), getRequestURL(event).origin)
+      const saved = await handoff(runtime, conversationId, actor.orgId, runId, reason, true, rule, await feedbackResults(), getRequestURL(event).origin, customer_notice)
       if (!saved) throw new Error('Handoff was not completed')
     } catch (error) {
       onHandoff?.(true)
@@ -140,7 +141,7 @@ export function feedlogTools(event: H3Event, actor: Actor, conversationId: strin
   const tools = {
     handoff_to_human: createTool({
       id: 'handoff_to_human', description: 'Transfer this conversation to human support and end AI handling only after an explicit request for a person, acceptance of an offer to involve one, or a matching mandatory support rule. A knowledge miss, frustration, a how-to question, or a failed tool alone is not consent. Feature suggestions, bug reports and requests to leave feedback use feedback tools; do not replace them with handoff. For a mixed request, finish the appropriate feedback action before calling this tool. Never call it in parallel with another tool.',
-      inputSchema: z.object({ reason: handoffReason, rule_id: z.string().min(1).optional().describe('Required for support_rule: the matching enabled rule ID from the configured support rules. Omit for other reasons.') }).strict(),
+      inputSchema: z.object({ reason: handoffReason, rule_id: z.string().min(1).optional().describe('Required for support_rule: the matching enabled rule ID from the configured support rules. Omit for other reasons.'), customer_notice: handoffCustomerNoticeInput }).strict(),
       execute: transfer,
     }),
     search_help_articles: tool('search_help_articles', helpArticleSearchDescription, helpArticleSearchInput, input => searchHelpArticles(pool, actor.orgId, input, getRequestURL(event).origin)),
