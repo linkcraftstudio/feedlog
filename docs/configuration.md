@@ -321,6 +321,12 @@ missing page details do not prevent sending a message. Context stores the HTTP(S
 origin and pathname, never query parameters or fragments, so reply emails can link
 back to the host product page.
 
+### `OPENAI_TOOL_CALL_EMPTY_CONTENT` &nbsp;⬜ optional, default `false`
+
+Set `true` if the provider rejects an assistant tool-call message with `content: null`.
+The Widget Agent then sends an empty string. Cloudflare Workers AI needs this for models
+such as `@cf/openai/gpt-oss-120b`.
+
 ---
 
 ## Transactional email
