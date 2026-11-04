@@ -389,6 +389,11 @@ The domain must be verified with your email provider.
 - The bundled `compose.yml` mounts an `app-data` named volume on
   `/app/.data` so the local-filesystem fallback survives restarts.
 
+### `AGENT_MAX_STEPS` &nbsp;⬜ optional, default `12`
+
+The most model steps in one Widget Agent run. A lower value limits cost and time, but a run that
+reaches it may end before it answers, so test it on your own help content.
+
 ### Agent inactivity timeout
 
 The first visible answer has a fixed 120-second budget. Image batches, reasoning,

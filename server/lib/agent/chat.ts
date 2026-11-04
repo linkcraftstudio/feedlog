@@ -125,7 +125,7 @@ export async function streamAgentReply(event: H3Event, actor: Actor, options: { 
       const modelSignal = AbortSignal.any([signal, modelController.signal])
       const output = await prepared.agent.stream([prepared.input], {
         runId: run.id, memory: { thread: id, resource: prepared.resourceId, options: { lastMessages: prepared.historySize } },
-        maxSteps: 12, toolCallConcurrency: 1, abortSignal: modelSignal, onError: error => { failed = true; executionError = error }, onAbort: () => { failed = true },
+        maxSteps: Number(process.env.AGENT_MAX_STEPS) || 12, toolCallConcurrency: 1, abortSignal: modelSignal, onError: error => { failed = true; executionError = error }, onAbort: () => { failed = true },
         onStepFinish: step => recordUsage(step.usage),
       })
       const gate = handoffTextGate()
