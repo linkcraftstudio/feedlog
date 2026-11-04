@@ -45,16 +45,16 @@ function hydrateAssistant() {
 const onboarding = useOnboarding()
 const installSection = ref<HTMLElement | null>(null)
 const pulsing = ref(false)
-// Arriving from the onboarding guide or demo: expand the steps so the snippet is
-// visible at once and pulse the section once. Watched rather than run on mount,
-// because the demo's install link can also be used while already on this page.
+// Arriving from the onboarding guide or demo: bring the section, whose first
+// step is the coding-agent prompt, into view and pulse it once. Watched rather
+// than run on mount, because the demo's install link can also be used while
+// already on this page.
 async function highlightInstall() {
   if (!onboarding.state.value.highlightInstall || !settings.value) return
   onboarding.state.value.highlightInstall = false
   await nextTick()
   const section = installSection.value
   if (!section) return
-  section.querySelector<HTMLDetailsElement>('details')?.setAttribute('open', '')
   section.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   // Restart the animation even if a previous pulse is still running.
   pulsing.value = false
