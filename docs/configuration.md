@@ -232,6 +232,10 @@ entirely — the rest of the app works without them.
 
 API key for the LLM provider.
 
+### `NUXT_PUBLIC_AGENT_NAME` &nbsp;⬜ optional, default `FeedLog AI`
+
+The name shown on Widget Agent replies.
+
 ### `OPENAI_BASE_URL` &nbsp;⬜ optional, default `https://api.openai.com/v1`
 
 Base URL of the OpenAI-compatible endpoint. Examples:
