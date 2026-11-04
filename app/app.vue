@@ -8,6 +8,7 @@ import { derivePortalThemeVars, styleObjectToCss } from '#layers/feedlog/shared/
 const ogImage = `${useRequestURL().origin}/og.png`
 const portal = usePortalOrg()
 const { mode, themed, resolvedDark } = useThemeMode()
+const { themeVars } = useRuntimeConfig().public
 const brandCss = computed(() => {
   if (!themed.value) return ''
   const color = portal.value.branding.primaryColor
@@ -20,7 +21,7 @@ const brandCss = computed(() => {
   // injected <style> lands relative to the bundled stylesheet (in dev Vite
   // appends CSS after head, which would otherwise re-win on source order).
   return [
-    `:root:root { ${styleObjectToCss(derivePortalThemeVars(color, false))} }`,
+    `:root:root { ${styleObjectToCss({ ...derivePortalThemeVars(color, false), ...themeVars })} }`,
     `:root.dark { ${styleObjectToCss(derivePortalThemeVars(color, true))} }`,
   ].join('\n')
 })

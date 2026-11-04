@@ -148,6 +148,19 @@ Force-toggle "verify email before sign-in".
 
 ---
 
+## Theme
+
+### `NUXT_PUBLIC_THEME_VARS` &nbsp;⬜ optional
+
+JSON map of CSS variables for the light theme, applied over the brand colour. Dark mode
+keeps its own palette.
+
+```bash
+NUXT_PUBLIC_THEME_VARS='{"--background":"#ffffff","--border":"#dddddd"}'
+```
+
+---
+
 ## Blob storage
 
 File uploads on feedback posts need a blob backend. The choice depends on
