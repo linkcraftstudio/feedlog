@@ -33,6 +33,7 @@ function parseBool(v: string | undefined): boolean | undefined {
 }
 
 const emailLoginEnabled = parseBool(env.AUTH_EMAIL_ENABLED) ?? !hasOAuth
+const signupDisabled = parseBool(env.AUTH_SIGNUP_DISABLED) ?? false
 const requireEmailVerification = parseBool(env.AUTH_EMAIL_VERIFY) ?? hasEmailProvider
 
 if (!hasOAuth && !emailLoginEnabled) {
@@ -67,6 +68,7 @@ if (hasGithub) {
 const emailAndPassword = emailLoginEnabled
   ? {
     enabled: true,
+    disableSignUp: signupDisabled,
     requireEmailVerification,
     password: { hash: hashPassword, verify: verifyPassword },
     ...(hasEmailProvider && {
@@ -361,6 +363,7 @@ export const authConfig = {
   github: hasGithub,
   email: emailLoginEnabled,
   emailVerification: !!emailVerification,
+  signupDisabled,
   // True when an outbound email provider (Resend) is configured. Surfaced
   // so the invite modal can warn admins when invites will be created but
   // not delivered, and they must copy the link manually.

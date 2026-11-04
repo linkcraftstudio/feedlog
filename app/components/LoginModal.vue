@@ -16,6 +16,7 @@ interface AuthMethods {
   github: boolean
   email: boolean
   emailVerification: boolean
+  signupDisabled: boolean
 }
 const { data: authCfg } = await useFetch<AuthMethods>('/api/auth-config', {
   key: 'auth-config',
@@ -394,7 +395,7 @@ const showPassword = ref(false)
           {{ $t('auth.signIn.withEmail') }}
         </Button>
 
-        <p v-if="emailEnabled" class="text-center text-sm text-muted-foreground">
+        <p v-if="emailEnabled && !authCfg?.signupDisabled" class="text-center text-sm text-muted-foreground">
           {{ $t('auth.signIn.noAccount') }}
           <button class="text-primary hover:underline font-medium" @click="switchTo('sign-up-email')">{{ $t('common.signUp') }}</button>
         </p>
@@ -462,7 +463,7 @@ const showPassword = ref(false)
           {{ $t('auth.signIn.otherOptions') }}
         </button>
 
-        <p class="text-center text-sm text-muted-foreground">
+        <p v-if="!authCfg?.signupDisabled" class="text-center text-sm text-muted-foreground">
           {{ $t('auth.signIn.noAccount') }}
           <button class="text-primary hover:underline font-medium" @click="switchTo('sign-up-email')">{{ $t('common.signUp') }}</button>
         </p>

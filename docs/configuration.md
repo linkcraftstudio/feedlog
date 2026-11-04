@@ -146,6 +146,11 @@ Force-toggle "verify email before sign-in".
 | `true` | Force-enabled (verification email is sent on signup; requires a working email provider, otherwise signup fails) |
 | `false` | Force-disabled |
 
+### `AUTH_SIGNUP_DISABLED` &nbsp;⬜ optional, default `false`
+
+Set `true` to refuse new email sign-ups and hide the sign-up links. Existing users still
+sign in. Create the first admin before you set it.
+
 ---
 
 ## Blob storage
