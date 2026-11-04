@@ -6,7 +6,7 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
   const { data } = await useAuthSession()
 
   if (!data.value?.user) {
-    return navigateTo('/')
+    return navigateTo(useRuntimeConfig().public.dashboardLoginOnly ? '/dashboard/login' : '/')
   }
 
   // An SSO session is not bounced: the server honours its real member role, and

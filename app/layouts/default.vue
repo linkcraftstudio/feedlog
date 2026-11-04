@@ -183,7 +183,7 @@ watch(() => route.path, () => { mobileNavOpen.value = false })
 
           <!-- Not logged in: Sign in button -->
           <button
-            v-if="!user"
+            v-if="!user && !$config.public.dashboardLoginOnly"
             class="flex items-center gap-2 font-heading font-semibold text-sm px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all"
             @click="showLoginModal = true"
           >
