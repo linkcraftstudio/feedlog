@@ -1,6 +1,6 @@
 import type { InjectionKey } from 'vue'
 import { pageContext, type PageContext } from '#layers/feedlog/shared/agent/content'
-import { WIDGET_TRANSLATIONS } from '#layers/feedlog/shared/utils/widget-locale'
+import { isWidgetTranslation, WIDGET_TRANSLATIONS } from '#layers/feedlog/shared/utils/widget-locale'
 import type { WidgetLanguage } from '#layers/feedlog/shared/utils/widget-locale'
 
 const PROTOCOL_VERSION = 1
@@ -14,6 +14,9 @@ export function useWidgetProtocol() {
   const hostOrigin = ref<string | null>(null)
   const theme = ref<'light' | 'dark' | 'auto' | undefined>()
   const locale = ref<WidgetLanguage | undefined>()
+  // The SDK reduces a tag to en or zh before it sends set-locale, which would undo a
+  // translation from the URL. Declining the capability keeps the URL's language.
+  const urlTranslation = isWidgetTranslation(String(useRoute().query.locale ?? '').toLowerCase().split('-')[0] ?? '')
   let captureState: (() => unknown) | undefined
   let restoreState: ((state: unknown) => void) | undefined
 
@@ -102,7 +105,7 @@ export function useWidgetProtocol() {
     init,
     send,
     requestPageContext,
-    ready: () => send('ready', { capabilities: { resumeState: !!captureState, theme: true, locale: true } }),
+    ready: () => send('ready', { capabilities: { resumeState: !!captureState, theme: true, locale: !urlTranslation } }),
     onResume: (capture: () => unknown, restore: (state: unknown) => void) => {
       captureState = capture
       restoreState = restore
