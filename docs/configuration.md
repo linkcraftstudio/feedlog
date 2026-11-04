@@ -241,6 +241,16 @@ Base URL of the OpenAI-compatible endpoint. Examples:
 - `https://<your-litellm-host>/v1` — LiteLLM proxy
 - `http://localhost:11434/v1` — Ollama (note: must support 768-dim embeddings)
 
+### `OPENAI_EMBEDDING_MODEL` &nbsp;⬜ optional, default `text-embedding-3-large`
+
+Model for duplicate detection and help search. It must return 768-dimension
+vectors. Vectors from different models cannot be compared, so changing it
+requires re-embedding existing posts and help articles.
+
+### `OPENAI_VISION_MODEL` &nbsp;⬜ optional, defaults to `OPENAI_TEXT_MODEL`
+
+Model for image attachments. Use it when the text model has no image input.
+
 ### `OPENAI_TEXT_MODEL` &nbsp;⬜ optional
 
 Model used for Widget Agent conversations and AI changelog drafting.
