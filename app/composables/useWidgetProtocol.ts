@@ -1,5 +1,6 @@
 import type { InjectionKey } from 'vue'
 import { pageContext, type PageContext } from '#layers/feedlog/shared/agent/content'
+import { WIDGET_TRANSLATIONS } from '#layers/feedlog/shared/utils/widget-locale'
 import type { WidgetLanguage } from '#layers/feedlog/shared/utils/widget-locale'
 
 const PROTOCOL_VERSION = 1
@@ -55,7 +56,7 @@ export function useWidgetProtocol() {
     else if (type === 'set-theme' && ['light', 'dark', 'auto'].includes(payload?.theme)) {
       theme.value = payload.theme
     }
-    else if (type === 'set-locale' && ['en', 'zh'].includes(payload?.locale)) {
+    else if (type === 'set-locale' && ['en', 'zh', ...WIDGET_TRANSLATIONS].includes(payload?.locale)) {
       locale.value = payload.locale
     }
   }

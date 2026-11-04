@@ -233,6 +233,7 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
+      widgetGreetings: {} as Record<string, string>,
       uploadPrefix: process.env.NUXT_PUBLIC_UPLOAD_PREFIX || 'uploads',
     },
   },

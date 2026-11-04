@@ -1,21 +1,26 @@
-import { resolveWidgetLocale, widgetLocaleRequest } from '#layers/feedlog/shared/utils/widget-locale'
+import { isWidgetTranslation, resolveWidgetLocale, widgetLocaleRequest } from '#layers/feedlog/shared/utils/widget-locale'
 import type { WidgetLanguage } from '#layers/feedlog/shared/utils/widget-locale'
 import type { Ref } from 'vue'
 
 export function useWidgetLocale(override: Ref<WidgetLanguage | undefined>) {
   const route = useRoute()
-  const { locale, loadLocaleMessages } = useI18n()
+  const { locale, loadLocaleMessages, setLocaleMessage } = useI18n()
   const request = computed(() => override.value ?? widgetLocaleRequest(route.query.locale, route.path))
-  useHead({ htmlAttrs: { lang: () => locale.value === 'zh' ? 'zh-CN' : 'en' } })
+  useHead({ htmlAttrs: { lang: () => locale.value === 'zh' ? 'zh-CN' : locale.value } })
   let sequence = 0
 
   async function apply() {
     const current = ++sequence
     const language = resolveWidgetLocale(request.value, navigator.languages?.length ? navigator.languages : [navigator.language])
-    await loadLocaleMessages(language)
+    if (isWidgetTranslation(language)) {
+      await loadLocaleMessages('en')
+      const messages = await import(`../../i18n/widget/${language}.json`)
+      setLocaleMessage(language, messages.default)
+    }
+    else await loadLocaleMessages(language)
     // A slower language download must not overwrite a newer host instruction.
     if (current !== sequence) return
-    locale.value = language
+    ;(locale as Ref<string>).value = language
   }
 
   const update = () => { void apply().catch(() => console.warn('[widget] Language messages could not be loaded')) }

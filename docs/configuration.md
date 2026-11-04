@@ -323,6 +323,20 @@ back to the host product page.
 
 ---
 
+## Widget languages
+
+The SDK `locale` option selects `en`, `zh`, `de`, `es`, `fr`, `it` or `pt`. The last five cover the widget only, and only when a host asks for them: `auto` keeps resolving to English or Chinese.
+
+### `NUXT_PUBLIC_WIDGET_GREETINGS` &nbsp;⬜ optional
+
+JSON map of the widget's first message per language. `{product}` is the organization name. A language with no entry keeps the default text.
+
+```bash
+NUXT_PUBLIC_WIDGET_GREETINGS='{"en":"Hi from {product}","fr":"Salut de {product}"}'
+```
+
+---
+
 ## Transactional email
 
 Used for password-reset emails and (optionally) email verification. When
