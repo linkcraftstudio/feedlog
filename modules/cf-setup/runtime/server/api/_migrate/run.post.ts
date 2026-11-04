@@ -1,5 +1,6 @@
 import { runRuntimeMigration } from '#layers/feedlog/server/utils/runtime-migrate'
 import { getUserSession } from '#layers/feedlog/server/utils/auth'
+import { systemAdminEmails } from '#layers/feedlog/server/utils/better-auth'
 import { probeDatabaseState, setCachedState } from '../../utils/migration-state'
 import { resolveConnectionString } from '../../utils/connection-string'
 
@@ -8,8 +9,9 @@ import { resolveConnectionString } from '../../utils/connection-string'
 //     exists yet to authorize, so the first caller gets to run the initial
 //     migrations. Subsequent calls hit the admin gate below.
 //   - pending state (tracker rows < journal entries): requires a logged-in
-//     admin. Upgrade migrations should not be triggerable by anonymous
-//     traffic.
+//     admin: role admin, or an email in SYSTEM_ADMIN_EMAILS. Nothing sets the
+//     role during sign-up. Upgrade migrations should not be triggerable by
+//     anonymous traffic.
 //   - migrated state: no-op, but still gated by admin to avoid info leaks.
 
 function isCloudflare(): boolean {
@@ -34,8 +36,8 @@ export default defineEventHandler(async (event) => {
   let triggerSource = 'bootstrap'
   if (!isBootstrap) {
     const session = await getUserSession(event).catch(() => null)
-    const role = (session?.user as { role?: string } | undefined)?.role
-    if (role !== 'admin') {
+    const user = session?.user as { role?: string, email?: string } | undefined
+    if (user?.role !== 'admin' && !systemAdminEmails.includes(user?.email ?? '')) {
       throw createError({
         statusCode: 403,
         statusMessage: 'Forbidden',
