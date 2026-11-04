@@ -1,3 +1,5 @@
+import { cp, readFile, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { addServerHandler, createResolver, defineNuxtModule } from '@nuxt/kit'
 
 // Patch module for Cloudflare Workers.
@@ -20,8 +22,20 @@ export default defineNuxtModule({
     name: 'cf-setup',
     configKey: 'cfSetup',
   },
-  setup() {
+  setup(_options, nuxt) {
     const resolver = createResolver(import.meta.url)
+
+    // wrangler bundles the Nitro chunk to the root, so its ../../wasm import
+    // resolves to nothing. Keep the Wasm next to the chunk and import it there.
+    nuxt.hook('nitro:init', (nitro) => {
+      nitro.hooks.hook('compiled', async () => {
+        if (!nitro.options.preset.startsWith('cloudflare')) return
+        const chunkDir = join(nitro.options.output.serverDir, 'chunks/nitro')
+        const chunk = join(chunkDir, 'nitro.mjs')
+        await cp(join(nitro.options.output.serverDir, 'wasm'), join(chunkDir, 'wasm'), { recursive: true })
+        await writeFile(chunk, (await readFile(chunk, 'utf8')).replaceAll('../../wasm/', './wasm/'))
+      })
+    })
 
     addServerHandler({
       route: '/setup',
