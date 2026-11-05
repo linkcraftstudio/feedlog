@@ -96,9 +96,9 @@ defineExpose({ reset })
       </div>
     </Transition>
 
-    <div ref="controlsRow" class="fl-rightbar flex items-center relative">
+    <div ref="controlsRow" class="fl-rightbar flex flex-wrap items-center relative">
       <Transition name="fl-controls">
-        <div v-if="!searchOpen" class="flex items-center gap-3">
+        <div v-if="!searchOpen" class="flex flex-wrap items-center gap-3">
           <BoardStatusPicker v-model="statusFilter" />
           <div class="flex bg-border/50 p-1 rounded-lg">
             <button
