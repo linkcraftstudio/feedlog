@@ -1,15 +1,60 @@
+import {
+  buildExternalAuthRedirectUrl,
+  selectExternalAuthUrl,
+  type ExternalAuthIntent,
+} from '#layers/feedlog/shared/utils/external-auth'
+
 // `reason` holds an i18n key rather than rendered text: the modal is mounted
 // elsewhere and may render in a different locale than the caller.
 export function useLoginModal() {
   const isOpen = useState('login-modal', () => false)
   const reason = useState<string | null>('login-modal-reason', () => null)
+  const intent = useState<ExternalAuthIntent>('login-modal-intent', () => 'login')
+  const { data: authConfig, status, refresh } = useAuthConfig()
+
+  async function redirectExternal(requestedIntent: ExternalAuthIntent): Promise<boolean> {
+    if (!import.meta.client || reason.value === LOCAL_AUTH_REASON) return false
+    // Remember which action failed so the retry affordance can resume it.
+    intent.value = requestedIntent
+    if (status.value !== 'success') {
+      try {
+        await refresh()
+      }
+      catch { /* The missing config below opens the retry state. */ }
+    }
+    if (!authConfig.value) {
+      isOpen.value = true
+      return true
+    }
+
+    const externalUrl = selectExternalAuthUrl({
+      login: authConfig.value?.externalLoginUrl ?? null,
+      signup: authConfig.value?.externalSignupUrl ?? null,
+    }, requestedIntent)
+    if (!externalUrl) return false
+
+    const destination = buildExternalAuthRedirectUrl(
+      externalUrl,
+      window.location.origin,
+      window.location.pathname + window.location.search,
+    )
+    if (!destination) return false
+    window.location.assign(destination)
+    return true
+  }
+
+  async function open(reasonKey?: string) {
+    reason.value = reasonKey ?? null
+    if (reasonKey !== LOCAL_AUTH_REASON && await redirectExternal('login')) return
+    isOpen.value = true
+  }
+
   return {
     isOpen,
     reason,
-    open: (reasonKey?: string) => {
-      reason.value = reasonKey ?? null
-      isOpen.value = true
-    },
+    intent,
+    open,
+    redirectExternal,
   }
 }
 

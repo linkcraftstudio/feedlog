@@ -146,6 +146,32 @@ Force-toggle "verify email before sign-in".
 | `true` | Force-enabled (verification email is sent on signup; requires a working email provider, otherwise signup fails) |
 | `false` | Force-disabled |
 
+### `EXTERNAL_LOGIN_URL` / `EXTERNAL_SIGNUP_URL` &nbsp;⬜ optional
+
+Delegate ordinary FeedLog sign-in and sign-up actions to an existing
+application. FeedLog appends the visitor's current FeedLog page in a
+`return_to` query parameter so the application can send the visitor back through
+the existing JWT SSO endpoint after authentication.
+
+```bash
+EXTERNAL_LOGIN_URL=https://app.example.com/login
+EXTERNAL_SIGNUP_URL=https://app.example.com/signup
+```
+
+Both values are optional. If only one is set, FeedLog uses it for both login and
+signup. If neither is set, the existing Better Auth modal and all local methods
+behave exactly as before. Configured query parameters on these URLs are kept,
+except that FeedLog owns and replaces `return_to`.
+
+External URLs must use HTTPS. Plain HTTP is accepted only for `localhost`,
+`127.0.0.1`, and `[::1]` development URLs. URLs with embedded credentials,
+credential-shaped query parameters, unsupported schemes, or the `/api/sso/jwt`
+path are ignored. Password/profile operations and other flows that explicitly
+require local credentials continue to open the local Better Auth modal.
+
+See [JWT SSO and external authentication](./sso.md) for the return flow and a
+server-side example.
+
 ---
 
 ## Blob storage

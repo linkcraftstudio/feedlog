@@ -11,20 +11,17 @@ const state = ref<ModalState>('sign-in')
 
 const loading = ref(false)
 
-interface AuthMethods {
-  google: boolean
-  github: boolean
-  email: boolean
-  emailVerification: boolean
-}
-const { data: authCfg } = await useFetch<AuthMethods>('/api/auth-config', {
-  key: 'auth-config',
-  // If the endpoint hiccups, fall back to email-only so the modal still renders.
-  default: () => ({ google: false, github: false, email: true, emailVerification: false }),
-})
+const loginModal = useLoginModal()
+const { reason, intent } = loginModal
+const { data: authCfg, status: authConfigStatus, refresh: refreshAuthConfig } = await useAuthConfig()
 const hasOAuth = computed(() => !!(authCfg.value?.google || authCfg.value?.github))
-const emailEnabled = computed(() => !!authCfg.value?.email)
+const localAuthRequired = computed(() => reason.value === LOCAL_AUTH_REASON)
+const emailEnabled = computed(() => localAuthRequired.value || !!authCfg.value?.email)
 const showSeparator = computed(() => hasOAuth.value && emailEnabled.value)
+const authConfigUnavailable = computed(() => isAuthConfigUnavailable(
+  authCfg.value,
+  localAuthRequired.value,
+))
 
 function initialState(): ModalState {
   // Skip the chooser when email is the only available method.
@@ -39,7 +36,6 @@ const form = reactive({
 
 // Set when the server refused the current session. Shown on the sign-in states
 // only — deeper in a sub-flow the prompt is just noise.
-const { reason } = useLoginModal()
 
 // Named in the prompt: readers recognise the product they came from, where a
 // generic mention of it means nothing.
@@ -94,6 +90,19 @@ function switchTo(target: ModalState) {
   form.password = ''
   form.name = ''
   state.value = target
+}
+
+async function showExternalOrLocal(target: 'sign-in' | 'sign-up-email') {
+  const intent = target === 'sign-up-email' ? 'signup' : 'login'
+  if (await loginModal.redirectExternal(intent)) return
+  switchTo(target)
+}
+
+async function retryAuthConfig() {
+  await refreshAuthConfig()
+  if (!authCfg.value) return
+  if (await loginModal.redirectExternal(intent.value)) return
+  state.value = intent.value === 'signup' ? 'sign-up-email' : initialState()
 }
 
 // --- Social OAuth (shared popup logic) ---
@@ -344,8 +353,25 @@ const showPassword = ref(false)
 <template>
   <Dialog v-if="open" :open="true" @update:open="open = $event">
     <DialogContent class="sm:max-w-sm">
+      <template v-if="authConfigUnavailable">
+        <DialogHeader class="text-center space-y-2">
+          <AppLogo :size="48" class="mx-auto" />
+          <DialogTitle class="font-heading text-xl">{{ $t('auth.configUnavailable.title') }}</DialogTitle>
+          <DialogDescription>{{ $t('auth.configUnavailable.description') }}</DialogDescription>
+        </DialogHeader>
+        <Button
+          class="w-full"
+          size="lg"
+          :disabled="authConfigStatus === 'pending'"
+          @click="retryAuthConfig"
+        >
+          <Spinner v-if="authConfigStatus === 'pending'" class="mr-2 size-4" />
+          {{ $t('auth.configUnavailable.retry') }}
+        </Button>
+      </template>
+
       <!-- State 1: Sign In (OAuth first) -->
-      <template v-if="state === 'sign-in'">
+      <template v-else-if="state === 'sign-in'">
         <DialogHeader class="text-center space-y-2">
           <AppLogo :size="48" class="mx-auto" />
           <DialogTitle class="font-heading text-xl">{{ signInTitle }}</DialogTitle>
@@ -396,7 +422,7 @@ const showPassword = ref(false)
 
         <p v-if="emailEnabled" class="text-center text-sm text-muted-foreground">
           {{ $t('auth.signIn.noAccount') }}
-          <button class="text-primary hover:underline font-medium" @click="switchTo('sign-up-email')">{{ $t('common.signUp') }}</button>
+          <button class="text-primary hover:underline font-medium" @click="showExternalOrLocal('sign-up-email')">{{ $t('common.signUp') }}</button>
         </p>
       </template>
 
@@ -464,7 +490,7 @@ const showPassword = ref(false)
 
         <p class="text-center text-sm text-muted-foreground">
           {{ $t('auth.signIn.noAccount') }}
-          <button class="text-primary hover:underline font-medium" @click="switchTo('sign-up-email')">{{ $t('common.signUp') }}</button>
+          <button class="text-primary hover:underline font-medium" @click="showExternalOrLocal('sign-up-email')">{{ $t('common.signUp') }}</button>
         </p>
       </template>
 
@@ -524,7 +550,7 @@ const showPassword = ref(false)
 
         <p class="text-center text-sm text-muted-foreground">
           {{ $t('auth.signUp.haveAccount') }}
-          <button class="text-primary hover:underline font-medium" @click="switchTo('sign-in')">{{ $t('common.signIn') }}</button>
+          <button class="text-primary hover:underline font-medium" @click="showExternalOrLocal('sign-in')">{{ $t('common.signIn') }}</button>
         </p>
       </template>
 
