@@ -174,6 +174,7 @@ export async function streamAgentReply(event: H3Event, actor: Actor, options: { 
       await send('finish', { runId: run.id, itemId: replyId, lastSeq, content })
       if (takeover) await sendTakeover(takeover)
     } catch (error) {
+      console.warn('[agent] Run failed', { runId: run.id, error: error instanceof Error ? error.message : String(error) })
       agentTiming('run_failed', { runId: run.id, elapsedMs: Math.round(performance.now() - started), deadlineExpired: activity.signal.aborted, dependencyTimeout: error instanceof AgentDependencyTimeout })
       try {
         if (handoffUnavailable) {
