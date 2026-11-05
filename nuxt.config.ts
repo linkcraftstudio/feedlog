@@ -215,6 +215,7 @@ export default defineNuxtConfig({
     alias: process.env.NITRO_PRESET?.startsWith('cloudflare')
       ? {
           'pg-native': resolver.resolve('./server/lib/agent/pg-native-unavailable.cjs'),
+          'debug': resolver.resolve('./server/lib/debug-unavailable.cjs'),
           '@vercel/queue': resolver.resolve('./server/lib/inbox/vercel-queue-unavailable.ts'),
         }
       : {},
