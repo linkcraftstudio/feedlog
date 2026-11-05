@@ -2,6 +2,9 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
   buildExternalAuthRedirectUrl,
+  mergePortalAuthMetadata,
+  parsePortalAuthConfig,
+  resolvePortalAuthConfig,
   resolveExternalAuthUrls,
   selectExternalAuthUrl,
   validateExternalAuthUrl,
@@ -15,8 +18,8 @@ describe('external authentication redirects', () => {
 
   it('selects distinct login and signup endpoints', () => {
     const urls = resolveExternalAuthUrls('https://accounts.example.com/login', 'https://accounts.example.com/signup')
-    assert.equal(selectExternalAuthUrl(urls, 'login'), 'https://accounts.example.com/login')
-    assert.equal(selectExternalAuthUrl(urls, 'signup'), 'https://accounts.example.com/signup')
+    assert.equal(selectExternalAuthUrl(urls, 'login', { portal: true }), 'https://accounts.example.com/login')
+    assert.equal(selectExternalAuthUrl(urls, 'signup', { portal: true }), 'https://accounts.example.com/signup')
   })
 
   it('uses the configured endpoint as the fallback for the missing intent', () => {
@@ -65,7 +68,8 @@ describe('external authentication redirects', () => {
 
   it('keeps explicitly local-credential flows local', () => {
     const urls = resolveExternalAuthUrls('https://accounts.example.com/login', null)
-    assert.equal(selectExternalAuthUrl(urls, 'login', true), null)
+    assert.equal(selectExternalAuthUrl(urls, 'login', { portal: true, localAuthRequired: true }), null)
+    assert.equal(selectExternalAuthUrl(urls, 'login', { portal: false }), null)
   })
 
   it('is safe without a browser location and refuses a direct loop', () => {
@@ -113,11 +117,42 @@ describe('external authentication redirects', () => {
       github: false,
       email: true,
       emailVerification: false,
-      externalLoginUrl: null,
-      externalSignupUrl: null,
     }
     assert.equal(isAuthConfigUnavailable(unconfigured), false)
     assert.equal(isAuthConfigUnavailable(undefined), true)
     assert.equal(isAuthConfigUnavailable(undefined, true), false)
+  })
+
+  it('stores portal auth per organization while preserving unrelated metadata', () => {
+    const first = mergePortalAuthMetadata({
+      branding: { primaryColor: '#112233' },
+      portalModules: { helpCenter: true },
+    }, { loginUrl: 'https://one.example.com/login', signupUrl: '' })
+    const second = mergePortalAuthMetadata({ guest: { allowVote: true } }, {
+      loginUrl: 'https://two.example.com/login',
+      signupUrl: 'https://two.example.com/signup',
+    })
+
+    assert.deepEqual(parsePortalAuthConfig(first), { loginUrl: 'https://one.example.com/login' })
+    assert.deepEqual(resolvePortalAuthConfig(first), {
+      login: 'https://one.example.com/login',
+      signup: 'https://one.example.com/login',
+    })
+    assert.deepEqual(resolvePortalAuthConfig(second), {
+      login: 'https://two.example.com/login',
+      signup: 'https://two.example.com/signup',
+    })
+    assert.deepEqual(first.branding, { primaryColor: '#112233' })
+    assert.deepEqual(first.portalModules, { helpCenter: true })
+    assert.deepEqual(second.guest, { allowVote: true })
+  })
+
+  it('removes only portal auth when both URLs are cleared', () => {
+    assert.deepEqual(mergePortalAuthMetadata({
+      portalAuth: { loginUrl: 'https://one.example.com/login' },
+      branding: { welcomeTitle: 'Keep me' },
+    }, { loginUrl: '', signupUrl: '' }), {
+      branding: { welcomeTitle: 'Keep me' },
+    })
   })
 })

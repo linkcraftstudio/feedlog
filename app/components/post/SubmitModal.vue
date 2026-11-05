@@ -249,7 +249,7 @@ watch(open, (v) => {
           {{ $t('post.submit.guestHint.before') }}<button
             type="button"
             class="text-primary font-semibold underline underline-offset-2 hover:opacity-80 transition-opacity"
-            @click="loginModal.open()"
+            @click="loginModal.openPortal()"
           >{{ $t('post.submit.guestHint.link') }}</button>{{ $t('post.submit.guestHint.after') }}
         </p>
 

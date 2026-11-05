@@ -12,7 +12,7 @@ const state = ref<ModalState>('sign-in')
 const loading = ref(false)
 
 const loginModal = useLoginModal()
-const { reason, intent } = loginModal
+const { reason, intent, portalContext } = loginModal
 const { data: authCfg, status: authConfigStatus, refresh: refreshAuthConfig } = await useAuthConfig()
 const hasOAuth = computed(() => !!(authCfg.value?.google || authCfg.value?.github))
 const localAuthRequired = computed(() => reason.value === LOCAL_AUTH_REASON)
@@ -67,6 +67,7 @@ watch(open, (val) => {
   }
   else {
     reason.value = null
+    portalContext.value = false
   }
 })
 
@@ -101,7 +102,6 @@ async function showExternalOrLocal(target: 'sign-in' | 'sign-up-email') {
 async function retryAuthConfig() {
   await refreshAuthConfig()
   if (!authCfg.value) return
-  if (await loginModal.redirectExternal(intent.value)) return
   state.value = intent.value === 'signup' ? 'sign-up-email' : initialState()
 }
 

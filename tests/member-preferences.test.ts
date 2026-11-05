@@ -110,7 +110,7 @@ test('database preferences isolate members, merge keys, follow roles, and cascad
   finally { await client.close() }
 })
 
-test('real preference handlers enforce session, current membership, SSO host binding, and strict writes', async () => {
+test('real preference handlers enforce session, current membership, portal SSO restrictions, and strict writes', async () => {
   const { client, db } = await fixture()
   const orgList = [{ orgId: 'one', role: 'owner' }, { orgId: 'two', role: 'owner' }]
   Object.assign(globalThis, {
@@ -147,9 +147,8 @@ test('real preference handlers enforce session, current membership, SSO host bin
     assert.equal(res.headers.get('cache-control'), 'private, no-store')
     assert.equal((await res.json()).notifications.staff_feedback_email_enabled, true)
     assert.equal((await request('local', 'PATCH', { notifications: { staff_feedback_email_enabled: false }, memberId: 'one-b' })).status, 400)
-    const sso = await request('sso', 'PATCH', { notifications: { staff_feedback_email_enabled: false } })
-    assert.equal(sso.status, 200)
-    assert.equal((await sso.json()).notifications.staff_feedback_email_enabled, false)
+    assert.equal((await request('sso')).status, 403)
+    assert.equal((await request('sso', 'PATCH', { notifications: { staff_feedback_email_enabled: false } })).status, 403)
     assert.equal((await request('sso', 'PATCH', { notifications: { staff_feedback_email_enabled: true } }, 'two')).status, 401)
     assert.equal((await (await request('local', 'GET', undefined, 'two')).json()).notifications.staff_feedback_email_enabled, true)
     assert.equal((await request('contributor', 'PATCH', { notifications: { staff_feedback_email_enabled: false } })).status, 200)

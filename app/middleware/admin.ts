@@ -4,12 +4,13 @@ export default defineNuxtRouteMiddleware(async () => {
   const { data } = await useAuthSession()
 
   if (!data.value?.user) {
-    return navigateTo('/')
+    return navigateTo({ path: '/', query: { dashboard_login: '1' } })
   }
 
-  // An SSO session is not bounced: the server honours its real member role, and
-  // the orgList check below still gates it — for such a session that list holds
-  // only the org that minted it.
+  if ((data.value.session as { ssoOrgId?: string | null }).ssoOrgId) {
+    return navigateTo({ path: '/', query: { dashboard_login: '1' } })
+  }
+
   const orgList = (data.value as { orgList?: { role: string }[] }).orgList
   if (!orgList || orgList.length === 0) {
     return navigateTo('/')

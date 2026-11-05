@@ -2,7 +2,7 @@ import { betterAuth, type BetterAuthOptions } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { admin, anonymous, bearer, customSession, organization } from 'better-auth/plugins'
 import { defu } from 'defu'
-import { and, eq } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { uuidv7 } from 'uuidv7'
 import { db } from '../db'
 import { member, organization as orgTable, user as userTable } from '../db/schemas'
@@ -100,10 +100,7 @@ const emailVerification = hasEmailProvider
 // Cookie cache (60s) keeps this off the DB hot path; ≤60s staleness on role
 // changes is acceptable.
 //
-// `confineToOrgId` exists for product-SSO sessions: the asserting org signs
-// whatever email it likes, so an unfiltered list would answer "which other orgs
-// does this person belong to, and as what?" for any address it cares to guess.
-async function loadOrgList(userId: string, confineToOrgId?: string | null) {
+async function loadOrgList(userId: string) {
   const rows = await db
     .select({
       orgId: orgTable.id,
@@ -114,11 +111,7 @@ async function loadOrgList(userId: string, confineToOrgId?: string | null) {
     })
     .from(member)
     .innerJoin(orgTable, eq(member.organizationId, orgTable.id))
-    .where(
-      confineToOrgId
-        ? and(eq(member.userId, userId), eq(member.organizationId, confineToOrgId))
-        : eq(member.userId, userId),
-    )
+    .where(eq(member.userId, userId))
   return rows
 }
 
@@ -254,14 +247,17 @@ export function buildAuthConfig(overrides: AuthConfigOverrides = {}): BetterAuth
       organization(orgOpts),
       customSession(async ({ user, session }) => {
         const ssoOrgId = (session as { ssoOrgId?: string | null }).ssoOrgId
-        const orgList = await loadOrgList(user.id, ssoOrgId)
+        // Portal SSO identities deliberately expose no staff memberships. The
+        // asserted email may belong to an owner, but the SSO trust only covers
+        // customer-facing portal actions.
+        const orgList = ssoOrgId ? [] : await loadOrgList(user.id)
         return { user, session, orgList }
       }),
       ...(overrides.extraPlugins ?? []),
     ],
     session: {
       additionalFields: {
-        // Product-SSO marker (see schemas/auth.ts session.ssoOrgId). Written by
+        // Portal-SSO marker (see schemas/auth.ts session.ssoOrgId). Written by
         // the /api/sso/jwt endpoint via internalAdapter.createSession override.
         // input:false — clients can't forge it through the API; returned:true —
         // surfaced in getSession so the UI can gate credential controls.

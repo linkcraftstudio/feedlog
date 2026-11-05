@@ -1,18 +1,22 @@
-# JWT SSO and external authentication
+# Portal JWT SSO
 
 FeedLog accepts an identity asserted by a trusted application at
 `GET /api/sso/jwt`. The organization SSO secret is managed in FeedLog's
 dashboard. Keep that secret on the trusted application's server; never expose it
 to browser JavaScript.
 
-## Delegate FeedLog login and signup
+## Configure portal login and signup
 
-Set one or both external authentication URLs:
+In **Dashboard → Settings → Portal**, set one or both external authentication
+URLs. The setting belongs to the current organization and is stored with its
+other portal metadata. If only one URL is configured, FeedLog uses it for both
+login and signup.
 
-```bash
-EXTERNAL_LOGIN_URL=https://app.example.com/login
-EXTERNAL_SIGNUP_URL=https://app.example.com/signup
-```
+Portal authentication is used only when a visitor signs in to submit feedback,
+comment, or vote. Dashboard sign-in, invitations, MCP authorization, Google,
+GitHub, and email/password authentication continue to use Better Auth directly.
+An identity established through portal SSO cannot access the dashboard or staff
+APIs, even if its email matches an existing organization member.
 
 An ordinary login action then navigates to a URL like:
 
@@ -20,11 +24,12 @@ An ordinary login action then navigates to a URL like:
 https://app.example.com/login?return_to=https%3A%2F%2Ffeedback.example.com%2Fp%2Froadmap%3Fb%3Dmobile
 ```
 
-FeedLog derives `return_to` from its current page; it never accepts an external
-destination from a browser query parameter. It preserves ordinary page query
-parameters, removes credential-shaped parameters and fragments, and requires a
-validated configured HTTPS endpoint (with a loopback-only HTTP exception for
-local development).
+FeedLog derives `return_to` from the current portal page; it never accepts an
+external destination from a browser query parameter. It preserves ordinary page
+query parameters, removes credential-shaped parameters and fragments, and
+requires a validated HTTPS endpoint (with a loopback-only HTTP exception for
+local development). Configured query parameters are retained, except FeedLog
+owns and replaces `return_to`.
 
 After authenticating the visitor, the external application's **server** signs a
 short-lived JWT and redirects to FeedLog's existing SSO endpoint. FeedLog
@@ -68,10 +73,10 @@ app.get('/login', requireUser, async (req, res) => {
 })
 ```
 
-The signup endpoint follows the same pattern after account creation. The external
-application owns authentication and JWT signing; the redirect feature adds no
-new authentication protocol and does not change FeedLog's JWT verification or
-session behavior.
+The signup endpoint follows the same pattern after account creation. The
+external application owns authentication and JWT signing. FeedLog reuses the
+existing organization-specific JWT verification and marks the resulting session
+as portal-only.
 
 Use a short JWT lifetime, transmit it only over HTTPS, avoid logging request
 query strings on the SSO route, and rotate the organization SSO secret if it is

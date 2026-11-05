@@ -3,7 +3,7 @@ import type { H3Event } from 'h3'
 // better-auth's own endpoints bypass the requireOrg* helpers — the organization
 // plugin reads permission off the member table, the admin plugin off user.role —
 // so the host-binding collar in getUserSession never sees them. This guards them
-// for sessions nobody verified: product-SSO and guest.
+// for sessions nobody verified: portal SSO and guest.
 //
 // Unrecognised endpoints are refused, not allowed: better-auth adds routes in
 // minor bumps, and a new one must not become reachable on its own.
@@ -18,25 +18,6 @@ const GLOBAL_IDENTITY_ENDPOINTS = new Set([
   'unlink-account',
 ])
 
-// Reachable for an SSO session, provided the org they name is the one that
-// minted it (enforced in assertTargetOrgIsSessionOrg).
-const ORG_SCOPED_ORGANIZATION_ENDPOINTS = new Set([
-  'get-full-organization',
-  'update',
-  'list-members',
-  'list-invitations',
-  'invite-member',
-  'cancel-invitation',
-  'update-member-role',
-  'remove-member',
-  'has-permission',
-  'get-active-member',
-  'get-active-member-role',
-  'check-slug',
-])
-
-const PAYLOAD_METHODS = new Set(['POST', 'PUT', 'PATCH'])
-
 function localAuthRequired(): Error {
   return createError({
     statusCode: 403,
@@ -45,46 +26,8 @@ function localAuthRequired(): Error {
   })
 }
 
-async function assertTargetOrgIsSessionOrg(
-  event: H3Event,
-  request: Request,
-  ssoOrgId: string,
-) {
-  // Most endpoints name an org by id, a few (get-full-organization) by slug.
-  const allowedSlug = event.context.orgSlug as string | undefined
-
-  const reject = (): never => {
-    throw createError({
-      statusCode: 403,
-      message: 'This session cannot act on another organization',
-      data: { code: 'LOCAL_AUTH_REQUIRED' },
-    })
-  }
-
-  const check = (id: unknown, slug: unknown) => {
-    if (typeof id === 'string' && id && id !== ssoOrgId) reject()
-    if (typeof slug === 'string' && slug && allowedSlug && slug !== allowedSlug) reject()
-  }
-
-  const query = getQuery(event)
-  check(query.organizationId, query.organizationSlug)
-
-  if (!PAYLOAD_METHODS.has(request.method)) return
-  // clone() tees the stream; reading the body off the h3 event would consume the
-  // only copy better-auth gets on the Workers adapter.
-  let body: Record<string, unknown> | null = null
-  try {
-    body = await request.clone().json() as Record<string, unknown>
-  }
-  catch {
-    return
-  }
-  if (!body || typeof body !== 'object') return
-  check(body.organizationId, body.organizationSlug)
-}
-
 // Returns true when the caller must answer as if nobody were signed in.
-export async function guardSsoAuthRequest(event: H3Event, request: Request): Promise<boolean> {
+export async function guardSsoAuthRequest(event: H3Event, _request: Request): Promise<boolean> {
   const path = event.path
   if (!path.startsWith('/api/auth/')) return false
   const rest = path.slice('/api/auth/'.length)
@@ -118,12 +61,8 @@ export async function guardSsoAuthRequest(event: H3Event, request: Request): Pro
     })
   }
 
-  // The admin plugin judges by user.role, which has no notion of the current org.
-  if (isAdmin || isGlobalIdentity || isOAuthProvider) throw localAuthRequired()
-
-  const endpoint = rest.slice('organization/'.length).split(/[?/]/)[0] ?? ''
-  if (!ORG_SCOPED_ORGANIZATION_ENDPOINTS.has(endpoint)) throw localAuthRequired()
-
-  await assertTargetOrgIsSessionOrg(event, request, ssoOrgId!)
-  return false
+  // Portal SSO establishes an end-user identity only. It cannot call any
+  // Better Auth organization, admin, OAuth-provider, or global identity route,
+  // even when the asserted email belongs to an existing staff account.
+  throw localAuthRequired()
 }

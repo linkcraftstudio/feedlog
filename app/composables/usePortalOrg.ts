@@ -4,6 +4,8 @@ import type { ResolvedGuestAccess } from '#layers/feedlog/shared/utils/guest'
 import { resolveGuestAccess } from '#layers/feedlog/shared/utils/guest'
 import type { ResolvedPortalModules } from '#layers/feedlog/shared/utils/portal-modules'
 import { resolvePortalModules } from '#layers/feedlog/shared/utils/portal-modules'
+import type { ExternalAuthUrls } from '#layers/feedlog/shared/utils/external-auth'
+import { resolvePortalAuthConfig } from '#layers/feedlog/shared/utils/external-auth'
 
 export interface PortalOrg {
   name: string // org name, or 'FeedLog' for the default org
@@ -12,6 +14,7 @@ export interface PortalOrg {
   branding: ResolvedBranding
   guest: ResolvedGuestAccess
   modules: ResolvedPortalModules
+  auth: ExternalAuthUrls
 }
 
 // Portal identity for share-card meta. Populated per-request by
@@ -24,5 +27,6 @@ export function usePortalOrg() {
     branding: resolveBranding(null),
     guest: resolveGuestAccess(null),
     modules: resolvePortalModules(null),
+    auth: resolvePortalAuthConfig(null),
   }))
 }

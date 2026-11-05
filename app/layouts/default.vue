@@ -20,16 +20,15 @@ const user = computed(() => isGuest.value ? undefined : session.value?.user)
 // next claims all over again. Claiming on load puts it in the realm that lives
 // long enough to finish, and every sign-in path ends in one.
 if (hasAccount.value) claimIfPending()
-// An SSO session carries its real member role inside its org, but may not change
-// the global user record — hence the password entry re-prompts.
+// A portal SSO session may not change the global user record — hence the
+// password entry re-prompts.
 const isSsoSession = computed(
   () => !!(session.value as { session?: { ssoOrgId?: string | null } } | null)?.session?.ssoOrgId,
 )
 const orgCtx = useOrgContext()
-// Matches the /dashboard middleware: any org member gets in, SSO included — its
-// orgList holds only the minting org, so a role here can only mean a role there.
-// Do NOT gate on `user.role === 'admin'`: legacy better-auth admin plugin field.
-const canEnterDashboard = computed(() => !!user.value && !!orgCtx.value.role)
+// Portal SSO never grants dashboard access, even if its asserted email matches
+// an existing staff member.
+const canEnterDashboard = computed(() => !!user.value && !!orgCtx.value.role && !isSsoSession.value)
 
 // User initials as avatar fallback
 const initials = computed(() => {
@@ -42,7 +41,7 @@ const avatarError = ref(false)
 const avatarUrl = computed(() => resolveAttachmentUrl(user.value?.image))
 watch(user, () => { avatarError.value = false })
 
-const { isOpen: showLoginModal, open: openLoginModal } = useLoginModal()
+const { isOpen: showLoginModal, open: openLoginModal, openPortal: openPortalLogin } = useLoginModal()
 const showChangePassword = ref(false)
 const showEditProfile = ref(false)
 
@@ -74,6 +73,19 @@ const navItems = computed(() => [
     : []),
 ])
 
+// A direct /dashboard visit must always use FeedLog's own login methods, even
+// when this organization delegates portal authentication. The dashboard
+// middleware adds this marker before returning here.
+const route = useRoute()
+const dashboardLoginRequested = computed(() => route.query.dashboard_login === '1')
+onMounted(() => {
+  if (!dashboardLoginRequested.value || canEnterDashboard.value) return
+  openLoginModal(isSsoSession.value ? LOCAL_AUTH_REASON : undefined)
+})
+watch(canEnterDashboard, (allowed) => {
+  if (allowed && dashboardLoginRequested.value) void navigateTo(localePath('/dashboard'))
+})
+
 async function handleSignOut() {
   await signOut()
   window.location.href = localePath('/')
@@ -81,7 +93,6 @@ async function handleSignOut() {
 
 // Mobile expandable nav
 const mobileNavOpen = ref(false)
-const route = useRoute()
 watch(() => route.path, () => { mobileNavOpen.value = false })
 </script>
 
@@ -185,7 +196,7 @@ watch(() => route.path, () => { mobileNavOpen.value = false })
           <button
             v-if="!user"
             class="flex items-center gap-2 font-heading font-semibold text-sm px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all"
-            @click="openLoginModal()"
+            @click="openPortalLogin()"
           >
             <Icon name="lucide:log-in" size="16" />
             <span class="hidden sm:inline">{{ $t('common.signIn') }}</span>

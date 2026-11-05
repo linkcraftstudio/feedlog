@@ -681,7 +681,14 @@
       "modulesDesc": "Each module can be shown or hidden. Hiding one removes its nav entry and makes its pages unreachable — content and publish states are untouched.",
       "moduleHelpCenter": "Help Center",
       "moduleHelpCenterOn": "Show the help center in the portal nav, and let its articles be opened and searched.",
-      "moduleHelpCenterEmpty": "Create a collection first — there is nothing to show yet."
+      "moduleHelpCenterEmpty": "Create a collection first — there is nothing to show yet.",
+      "authSection": "Portal authentication",
+      "authDesc": "Send portal visitors to your application's login or signup before they return through JWT SSO.",
+      "loginUrlLabel": "External login URL",
+      "signupUrlLabel": "External signup URL",
+      "authHint": "Optional. Configure either URL to use it for both actions. Portal SSO applies only to feedback, comments, and voting; dashboard sign-in remains unchanged.",
+      "authInvalidUrl": "Use a valid HTTPS URL without credentials or sensitive query parameters. HTTP is allowed only for local development.",
+      "authSaveFailed": "Failed to save portal authentication settings."
     },
     "members": {
       "title": "Members",

@@ -20,8 +20,8 @@ const showChangePassword = ref(false)
 const showEditProfile = ref(false)
 const { isOpen: showLoginModal, open: openLoginModal } = useLoginModal()
 
-// An SSO session belongs in the dashboard but may not touch the global user
-// record. Keep the entry visible; hiding it reads as a broken page.
+// Kept as a defensive UI check even though dashboard middleware rejects portal
+// SSO sessions before this layout renders.
 const isSsoSession = computed(
   () => !!(session.value as { session?: { ssoOrgId?: string | null } } | null)?.session?.ssoOrgId,
 )

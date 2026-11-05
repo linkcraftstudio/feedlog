@@ -5,6 +5,8 @@ import type { ResolvedGuestAccess } from '#layers/feedlog/shared/utils/guest'
 import { resolveGuestAccess } from '#layers/feedlog/shared/utils/guest'
 import type { ResolvedPortalModules } from '#layers/feedlog/shared/utils/portal-modules'
 import { resolvePortalModules } from '#layers/feedlog/shared/utils/portal-modules'
+import type { ExternalAuthUrls } from '#layers/feedlog/shared/utils/external-auth'
+import { resolvePortalAuthConfig } from '#layers/feedlog/shared/utils/external-auth'
 
 function resolveLogoUrl(logo: string | null | undefined): string | null {
   if (!logo) return null
@@ -22,6 +24,7 @@ export default defineEventHandler(async (event): Promise<{
   branding: ResolvedBranding
   guest: ResolvedGuestAccess
   modules: ResolvedPortalModules
+  auth: ExternalAuthUrls
 }> => {
   const slug = event.context.orgSlug ?? DEFAULT_ORG_SLUG
   const info = await getOrgInfo(slug)
@@ -36,5 +39,6 @@ export default defineEventHandler(async (event): Promise<{
     // mint a guest identity or open the sign-in modal.
     guest: resolveGuestAccess(info?.metadata),
     modules: resolvePortalModules(info?.metadata),
+    auth: resolvePortalAuthConfig(info?.metadata),
   }
 })

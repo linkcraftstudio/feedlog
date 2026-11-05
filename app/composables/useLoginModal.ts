@@ -10,27 +10,16 @@ export function useLoginModal() {
   const isOpen = useState('login-modal', () => false)
   const reason = useState<string | null>('login-modal-reason', () => null)
   const intent = useState<ExternalAuthIntent>('login-modal-intent', () => 'login')
-  const { data: authConfig, status, refresh } = useAuthConfig()
+  const portalContext = useState('login-modal-portal-context', () => false)
+  const portal = usePortalOrg()
 
   async function redirectExternal(requestedIntent: ExternalAuthIntent): Promise<boolean> {
-    if (!import.meta.client || reason.value === LOCAL_AUTH_REASON) return false
-    // Remember which action failed so the retry affordance can resume it.
+    if (!import.meta.client) return false
     intent.value = requestedIntent
-    if (status.value !== 'success') {
-      try {
-        await refresh()
-      }
-      catch { /* The missing config below opens the retry state. */ }
-    }
-    if (!authConfig.value) {
-      isOpen.value = true
-      return true
-    }
-
-    const externalUrl = selectExternalAuthUrl({
-      login: authConfig.value?.externalLoginUrl ?? null,
-      signup: authConfig.value?.externalSignupUrl ?? null,
-    }, requestedIntent)
+    const externalUrl = selectExternalAuthUrl(portal.value.auth, requestedIntent, {
+      portal: portalContext.value,
+      localAuthRequired: reason.value === LOCAL_AUTH_REASON,
+    })
     if (!externalUrl) return false
 
     const destination = buildExternalAuthRedirectUrl(
@@ -45,7 +34,14 @@ export function useLoginModal() {
 
   async function open(reasonKey?: string) {
     reason.value = reasonKey ?? null
-    if (reasonKey !== LOCAL_AUTH_REASON && await redirectExternal('login')) return
+    portalContext.value = false
+    isOpen.value = true
+  }
+
+  async function openPortal() {
+    reason.value = null
+    portalContext.value = true
+    if (await redirectExternal('login')) return
     isOpen.value = true
   }
 
@@ -53,7 +49,9 @@ export function useLoginModal() {
     isOpen,
     reason,
     intent,
+    portalContext,
     open,
+    openPortal,
     redirectExternal,
   }
 }

@@ -5,8 +5,6 @@ export interface PublicAuthConfig {
   email: boolean
   emailVerification: boolean
   emailProvider?: boolean
-  externalLoginUrl: string | null
-  externalSignupUrl: string | null
 }
 
 export function isAuthConfigUnavailable(
