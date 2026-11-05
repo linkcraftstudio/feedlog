@@ -1,5 +1,6 @@
 import type { Pool } from 'pg'
-import { embedHelpTexts, helpVectorsEnabled, HELP_EMBEDDING_MODEL, HELP_INDEX_VERSION } from './embedding'
+import { embeddingModel } from '../../utils/ai-models'
+import { embedHelpTexts, helpVectorsEnabled, HELP_INDEX_VERSION } from './embedding'
 
 export interface HelpVectorHit { articleId: string; shortId: string; slug: string; title: string; description: string | null; content: string; collectionId: string; collectionName: string; published: boolean; score: number }
 export async function searchHelpVectors(pool: Pick<Pool, 'query'>, orgId: string, query: string, audience: 'public' | 'agent', limit = 12, embed = embedHelpTexts): Promise<HelpVectorHit[]> {
@@ -10,7 +11,7 @@ export async function searchHelpVectors(pool: Pick<Pool, 'query'>, orgId: string
     JOIN help_article a ON a.id=k.article_id AND a.org_id=k.org_id
     JOIN help_collection c ON c.id=a.collection_id AND c.org_id=a.org_id
     WHERE k.org_id=$1 AND k.model=$2 AND k.index_version=$3 AND ${visibility}`
-  const ready = await pool.query(`SELECT 1 ${scope} LIMIT 1`, [orgId, HELP_EMBEDDING_MODEL, HELP_INDEX_VERSION])
+  const ready = await pool.query(`SELECT 1 ${scope} LIMIT 1`, [orgId, embeddingModel(), HELP_INDEX_VERSION])
   if (!ready.rows.length) return []
   const [vector] = await embed([query], 2500)
   const { rows } = await pool.query<HelpVectorHit>(`WITH candidates AS (
@@ -19,7 +20,7 @@ export async function searchHelpVectors(pool: Pick<Pool, 'query'>, orgId: string
       k.body AS content,1-(k.embedding <=> $4::vector) AS score,
       row_number() OVER(PARTITION BY a.id ORDER BY k.embedding <=> $4::vector,k.ordinal) AS rn
     ${scope}
-  ) SELECT * FROM candidates WHERE rn=1 ORDER BY score DESC,"articleId" LIMIT $5`, [orgId, HELP_EMBEDDING_MODEL, HELP_INDEX_VERSION, JSON.stringify(vector), limit])
+  ) SELECT * FROM candidates WHERE rn=1 ORDER BY score DESC,"articleId" LIMIT $5`, [orgId, embeddingModel(), HELP_INDEX_VERSION, JSON.stringify(vector), limit])
   return rows
 }
 

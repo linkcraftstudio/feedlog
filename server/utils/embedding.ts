@@ -1,7 +1,7 @@
 import { eq, and } from 'drizzle-orm'
 import { postEmbedding } from '#layers/feedlog/server/db/schemas'
+import { embeddingModel } from './ai-models'
 
-const EMBEDDING_MODEL = 'text-embedding-3-large'
 const EMBEDDING_DIMENSIONS = 768
 
 export function isEmbeddingEnabled(): boolean {
@@ -21,7 +21,7 @@ export async function generateEmbedding(text: string, timeoutMs?: number): Promi
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: EMBEDDING_MODEL,
+      model: embeddingModel(),
       input: text,
       dimensions: EMBEDDING_DIMENSIONS,
     }),
@@ -67,7 +67,7 @@ export async function generatePostEmbedding(
         .update(postEmbedding)
         .set({
           embedding,
-          model: EMBEDDING_MODEL,
+          model: embeddingModel(),
           contentHash,
           createdAt: new Date(),
         })
@@ -83,7 +83,7 @@ export async function generatePostEmbedding(
           postId,
           orgId,
           embedding,
-          model: EMBEDDING_MODEL,
+          model: embeddingModel(),
           contentHash,
         })
         .onConflictDoNothing()
