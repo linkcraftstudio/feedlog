@@ -370,9 +370,6 @@ The domain must be verified with your email provider.
   `RESEND_API_KEY`) are set via `wrangler secret put <NAME>` and are
   never committed to the repo.
 
-`HYPERDRIVE_PREPARE=true` uses prepared statements through Hyperdrive. Cloudflare
-warns that postgres.js with `prepare: false` can hang. Unset keeps `prepare: false`.
-
 ### Vercel
 
 - Inbox requires Vercel Queues for delayed tasks. The build configures the
