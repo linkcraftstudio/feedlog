@@ -4,8 +4,9 @@ definePageMeta({ layout: false })
 const { isOpen, open } = useLoginModal()
 const { data } = await useAuthSession()
 
-watch(() => data.value?.user, (user) => {
-  if (user) navigateTo('/dashboard')
+// A guest or a customer SSO session stays here and can sign in as staff.
+watch(data, (session) => {
+  if (hasStaffAccess(session)) navigateTo('/dashboard')
 }, { immediate: true })
 
 onMounted(() => open())

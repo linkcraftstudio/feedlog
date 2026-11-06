@@ -9,7 +9,7 @@ export function useLoginModal() {
     isOpen,
     reason,
     open: (reasonKey?: string) => {
-      if (dashboardLoginOnly && !router.currentRoute.value.path.includes('/dashboard')) {
+      if (dashboardLoginOnly && !signsInInPlace(router.currentRoute.value.path)) {
         return navigateTo('/dashboard/login')
       }
       reason.value = reasonKey ?? null
