@@ -4,8 +4,8 @@ export function hasStaffAccess(session: { user?: unknown, orgList?: readonly unk
   return !!session?.user && !!session.orgList?.length
 }
 
-// Dashboard and invitation pages open the sign-in form where they are, so a
-// staff sign-in and an invitation keep their page.
+// Dashboard, invitation and MCP consent pages open the sign-in form where they
+// are, so a staff sign-in, an invitation and an OAuth request keep their page.
 export function signsInInPlace(path: string): boolean {
-  return /^(?:\/(?:en|zh))?\/(?:dashboard|invite)(?:\/|$)/.test(path)
+  return /^(?:\/(?:en|zh))?\/(?:dashboard|invite|mcp)(?:\/|$)/.test(path)
 }

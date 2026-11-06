@@ -11,6 +11,6 @@ test('only a session with an organization leaves the staff sign-in page', () => 
 
 test('the sign-in form opens in place on dashboard and invitation pages only', async () => {
   const { signsInInPlace } = await import('../app/utils/staff-session')
-  for (const path of ['/dashboard/login', '/dashboard', '/invite', '/zh/invite', '/en/dashboard/posts']) assert.equal(signsInInPlace(path), true, path)
+  for (const path of ['/dashboard/login', '/dashboard', '/invite', '/zh/invite', '/en/dashboard/posts', '/mcp/consent']) assert.equal(signsInInPlace(path), true, path)
   for (const path of ['/', '/roadmap', '/p/dashboard-ideas', '/invited', '/zh']) assert.equal(signsInInPlace(path), false, path)
 })
