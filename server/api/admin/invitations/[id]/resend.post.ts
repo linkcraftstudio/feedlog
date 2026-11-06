@@ -8,7 +8,7 @@ import { buildInviteLink } from '../../../../utils/invite'
 // invitation row itself is unchanged — only the email goes out again.
 // Gated on `invitation:create` (same threshold as creating one).
 //
-// Open-source: emails fire only when RESEND_API_KEY is configured;
+// Open-source: emails fire only when an email provider is configured;
 // otherwise the manager is expected to use "Copy invitation link" in the
 // UI as a manual fallback.
 export default defineEventHandler(async (event) => {
@@ -40,7 +40,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const url = buildInviteLink({ id: row.id, organization: { slug: row.orgSlug } }, event)
-  if (!process.env.RESEND_API_KEY) {
+  if (!hasEmailTransport()) {
     // No transport configured — return the link so the caller can copy it.
     return { sent: false, url }
   }

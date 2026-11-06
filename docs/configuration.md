@@ -336,7 +336,8 @@ unset to use the console-logging fallback.
 
 `cloudflare` sends through Cloudflare Email Sending, with the Worker's
 `send_email` binding named `EMAIL`. It works on Cloudflare Workers only and
-needs `EMAIL_FROM`. See
+needs `EMAIL_FROM`. Like a Resend key, it turns on sign-up email verification
+by default (override with `AUTH_EMAIL_VERIFY`). See
 [Deploying to Cloudflare Workers](deploy/cloudflare-workers.md).
 
 ### `RESEND_API_KEY` &nbsp;⬜ optional
