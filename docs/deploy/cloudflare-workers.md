@@ -134,6 +134,11 @@ wrangler secret put OPENAI_API_KEY
 
 # Optional — transactional email
 wrangler secret put RESEND_API_KEY
+# Or send through Cloudflare Email Sending, with no secret: set
+# EMAIL_PROVIDER = "cloudflare" and EMAIL_FROM under [vars] in wrangler.toml,
+# and add the binding:
+#   [[send_email]]
+#   name = "EMAIL"
 ```
 
 ### 7. Build and deploy
