@@ -1,8 +1,9 @@
 import { runRuntimeMigration } from '#layers/feedlog/server/utils/runtime-migrate'
-import { getUserSession } from '#layers/feedlog/server/utils/auth'
+import { requireLocalSession } from '#layers/feedlog/server/utils/auth'
 import { systemAdminEmails } from '#layers/feedlog/server/utils/better-auth'
 import { probeDatabaseState, setCachedState } from '../../utils/migration-state'
 import { resolveConnectionString } from '../../utils/connection-string'
+import { isUpgradeAdmin } from '../../utils/upgrade-admin'
 
 // Permission model:
 //   - bootstrap state (tracker absent or empty): anonymous allowed — no admin
@@ -35,9 +36,10 @@ export default defineEventHandler(async (event) => {
 
   let triggerSource = 'bootstrap'
   if (!isBootstrap) {
-    const session = await getUserSession(event).catch(() => null)
-    const user = session?.user as { role?: string, email?: string } | undefined
-    if (user?.role !== 'admin' && !systemAdminEmails.includes(user?.email ?? '')) {
+    // A guest or a product SSO session is not a direct sign-in: its email was
+    // asserted by one organization, and migrations change the whole install.
+    const session = await requireLocalSession(event).catch(() => null)
+    if (!isUpgradeAdmin(session?.user, systemAdminEmails)) {
       throw createError({
         statusCode: 403,
         statusMessage: 'Forbidden',
