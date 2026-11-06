@@ -77,13 +77,15 @@ function signature(): string {
 
 // --- Templates ---
 
-export function renderVerificationEmail({ url, name }: { url: string; name: string }): string {
+export function renderVerificationEmail({ url, name, brandName }: { url: string; name: string; brandName?: string }): string {
+  const product = escapeHtml(brandName ?? 'FeedLog')
   return layout({
+    brandName,
     preheader: 'One click to activate · link expires in 1 hour.',
     content: `
 <h2 style="margin: 0 0 16px; font-size: 20px; font-weight: 600;">Confirm your email to get started</h2>
 <p style="margin: 0 0 12px;">Hi ${escapeHtml(name)},</p>
-<p style="margin: 0 0 12px;">Confirm your email to activate your FeedLog account and start:</p>
+<p style="margin: 0 0 12px;">Confirm your email to activate your ${product} account and start:</p>
 <ul style="margin: 0 0 24px; padding-left: 20px; color: #374151;">
   <li style="margin-bottom: 4px;">Voting on features you care about</li>
   <li style="margin-bottom: 4px;">Submitting feedback and ideas</li>
@@ -91,16 +93,22 @@ export function renderVerificationEmail({ url, name }: { url: string; name: stri
 </ul>
 ${actionButton(url, 'Confirm Email')}
 ${fallbackLink(url)}
-${expiryNote('This link expires in 1 hour. If you didn\'t sign up for FeedLog, you can safely ignore this email.')}
+${expiryNote(`This link expires in 1 hour. If you didn't sign up for ${product}, you can safely ignore this email.`)}
 `,
   })
 }
 
-export function renderInvitationEmail({ url, orgName }: { url: string; orgName: string }): string {
+export const invitationSubject = (orgName: string, brandName?: string) =>
+  `You're invited to join ${brandName === orgName ? orgName : `${orgName} on ${brandName ?? 'FeedLog'}`}`
+
+export function renderInvitationEmail({ url, orgName, brandName }: { url: string; orgName: string; brandName?: string }): string {
+  // A single-organization install is its own brand: say the name once.
+  const where = (org: string, brand: string) => brandName === orgName ? org : `${org} on ${brand}`
   return layout({
-    preheader: `You're invited to join ${escapeHtml(orgName)} on FeedLog.`,
+    brandName,
+    preheader: `You're invited to join ${brandName ? where(orgName, brandName) : where(escapeHtml(orgName), 'FeedLog')}.`,
     content: `
-<h2 style="margin: 0 0 16px; font-size: 20px; font-weight: 600;">Join ${escapeHtml(orgName)} on FeedLog</h2>
+<h2 style="margin: 0 0 16px; font-size: 20px; font-weight: 600;">Join ${where(escapeHtml(orgName), escapeHtml(brandName ?? 'FeedLog'))}</h2>
 <p style="margin: 0 0 12px;">You've been invited to collaborate. Click below to accept and get started:</p>
 ${actionButton(url, 'Accept invitation')}
 ${fallbackLink(url)}
@@ -109,13 +117,14 @@ ${expiryNote('This invitation link is tied to your email. If you weren\'t expect
   })
 }
 
-export function renderResetPasswordEmail({ url, name }: { url: string; name: string }): string {
+export function renderResetPasswordEmail({ url, name, brandName }: { url: string; name: string; brandName?: string }): string {
   return layout({
+    brandName,
     preheader: 'A password reset was requested for your account. If it wasn\'t you, ignore this email.',
     content: `
 <h2 style="margin: 0 0 16px; font-size: 20px; font-weight: 600;">Reset your password</h2>
 <p style="margin: 0 0 12px;">Hi ${escapeHtml(name)},</p>
-<p style="margin: 0 0 24px;">Someone requested a password reset for your FeedLog account. If this was you, click the button below to set a new password:</p>
+<p style="margin: 0 0 24px;">Someone requested a password reset for your ${escapeHtml(brandName ?? 'FeedLog')} account. If this was you, click the button below to set a new password:</p>
 ${actionButton(url, 'Reset Password')}
 ${fallbackLink(url)}
 ${expiryNote('This link expires in 1 hour and can only be used once.')}
@@ -127,15 +136,16 @@ ${expiryNote('This link expires in 1 hour and can only be used once.')}
   })
 }
 
-export function renderPasswordSetEmail({ name }: { name: string }): string {
-  const contact = `<a href="mailto:feedlog.oss@outlook.com" style="color: ${BRAND_COLOR}; text-decoration: underline;">feedlog.oss@outlook.com</a>`
+export function renderPasswordSetEmail({ name, brandName }: { name: string; brandName?: string }): string {
+  const contact = brandName ? '' : ` and contact <a href="mailto:feedlog.oss@outlook.com" style="color: ${BRAND_COLOR}; text-decoration: underline;">feedlog.oss@outlook.com</a>`
   return layout({
+    brandName,
     preheader: 'If this wasn\'t you, reset your password immediately.',
     content: `
 <h2 style="margin: 0 0 16px; font-size: 20px; font-weight: 600;">A password was added to your account</h2>
 <p style="margin: 0 0 16px;">Hi ${escapeHtml(name)},</p>
-<p style="margin: 0 0 16px;">A password was just added to your FeedLog account. You can now sign in with email and password in addition to your social login.</p>
-<p style="margin: 0 0 24px; color: #374151;">If this wasn't you, reset your password right away and contact ${contact}.</p>
+<p style="margin: 0 0 16px;">A password was just added to your ${escapeHtml(brandName ?? 'FeedLog')} account. You can now sign in with email and password in addition to your social login.</p>
+<p style="margin: 0 0 24px; color: #374151;">If this wasn't you, reset your password right away${contact}.</p>
 `,
   })
 }
@@ -154,17 +164,19 @@ export interface NotificationEmailContent {
   text: string
 }
 
-const FOOTER_REASON = 'You\'re receiving this because of your activity on this FeedLog board.'
-const ADMIN_FOOTER_REASON = 'You\'re receiving this because you manage this FeedLog board.'
+const footerReasonFor = (product: string, manages: boolean) => manages
+  ? `You're receiving this because you manage this ${product} board.`
+  : `You're receiving this because of your activity on this ${product} board.`
 
-// Gray page → centered FeedLog wordmark → white rounded card → centered footer.
-function notificationShell(cardInner: string, preheader: string, footerReason: string, preferencesUrl?: string): string {
+// Gray page → centered wordmark → white rounded card → centered footer.
+// `product` and `footerReason` arrive HTML-escaped.
+function notificationShell(cardInner: string, preheader: string, footerReason: string, product: string, preferencesUrl?: string): string {
   return `
 <div style="background: #f6f7fb; padding: 40px 16px; font-family: ${FONT_STACK};">
   <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">${escapeHtml(preheader)}</div>
   <div style="max-width: 560px; margin: 0 auto;">
     <div style="text-align: center; padding-bottom: 28px;">
-      <span style="font-size: 22px; font-weight: 800; color: {{brand}}; letter-spacing: -0.02em;">FeedLog</span>
+      <span style="font-size: 22px; font-weight: 800; color: {{brand}}; letter-spacing: -0.02em;">${product}</span>
     </div>
     <div style="background: #fff; border: 1px solid #eceef3; border-radius: 16px; padding: 40px 36px;">
 ${cardInner}
@@ -255,11 +267,13 @@ export function renderNotificationEmail(input: {
   actorName?: string
   actorImage?: string | null
   brandColor?: string
+  brandName?: string
 }): NotificationEmailContent | null {
   const title = input.postTitle || 'your post'
   let card: NotificationEmailContent | null = null
   let preheader = ''
-  let footerReason = FOOTER_REASON
+  const product = input.brandName ?? 'FeedLog'
+  let manages = false
 
   switch (input.typeKey) {
     case 'post.status_changed': {
@@ -275,12 +289,12 @@ export function renderNotificationEmail(input: {
     case 'post.created':
       card = newFeedbackCard(title, input.actorName ?? 'Someone', input.actorImage, input.snippet ?? '')
       preheader = `New feedback on your board: "${title}".`
-      footerReason = ADMIN_FOOTER_REASON
+      manages = true
       break
     case 'post.user_commented':
       card = userCommentCard(title, input.actorName ?? 'Someone', input.actorImage, input.snippet ?? '')
       preheader = `A new reply on "${title}".`
-      footerReason = ADMIN_FOOTER_REASON
+      manages = true
       break
     default:
       return null
@@ -289,9 +303,9 @@ export function renderNotificationEmail(input: {
   const brand = normalizeBrandHex(input.brandColor)
   const preferencesUrl = input.typeKey === 'post.created' || input.typeKey === 'post.user_commented'
     ? input.preferencesUrl : undefined
-  const html = notificationShell(card.html.replaceAll('{{postUrl}}', escapeHtml(input.postUrl)), preheader, footerReason, preferencesUrl)
+  const html = notificationShell(card.html.replaceAll('{{postUrl}}', escapeHtml(input.postUrl)), preheader, footerReasonFor(escapeHtml(product), manages), escapeHtml(product), preferencesUrl)
     .replaceAll('{{brand}}', brand)
     .replaceAll('{{brandFg}}', pickBrandForegroundHex(brand))
-  const text = `${card.text}\n\nView: ${input.postUrl}\n\n—\n${footerReason}${preferencesUrl ? `\nManage email notifications: ${preferencesUrl}` : ''}`
+  const text = `${card.text}\n\nView: ${input.postUrl}\n\n—\n${footerReasonFor(product, manages)}${preferencesUrl ? `\nManage email notifications: ${preferencesUrl}` : ''}`
   return { subject: card.subject, html, text }
 }

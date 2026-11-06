@@ -4,6 +4,7 @@ import { uuidv7 } from 'uuidv7'
 import { inboxTick } from './tick'
 import type { InboxEvent } from './events'
 import { sendEmail, resolveEmailProvider } from '../../utils/email'
+import { emailBrandName } from '../../utils/email-brand'
 
 export interface WakeMessage { id: string; sentAt: string }
 export interface DelayTransport {
@@ -56,7 +57,7 @@ async function notifyQuota(client: Pool | PoolClient) {
     for (const owner of rows) {
       try {
         const text = 'Automatic conversation closing, snoozed conversation reminders and unread reply emails will be delayed because the scheduling queue quota has been exhausted. Your tasks are still saved and will resume after quota is restored. Check your Vercel or Cloudflare usage dashboard.'
-        await sendEmail({ to: owner.email, subject: 'FeedLog: scheduling queue quota exhausted', text, html: `<p>${text}</p>` })
+        await sendEmail({ to: owner.email, subject: `${await emailBrandName() ?? 'FeedLog'}: scheduling queue quota exhausted`, text, html: `<p>${text}</p>` })
       } catch { console.warn('[inbox] Could not notify organization owner of queue quota', { orgId: owner.organization_id }) }
     }
   } catch { console.warn('[inbox] Queue quota notification unavailable') }
