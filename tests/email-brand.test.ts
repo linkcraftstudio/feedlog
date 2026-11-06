@@ -59,3 +59,14 @@ test('an invitation subject names the organization once, and FeedLog only withou
   assert.equal(invitationSubject('Team', 'Acme'), "You're invited to join Team on Acme")
   assert.equal(invitationSubject('Acme', 'Acme'), "You're invited to join Acme")
 })
+
+test('with no organization lookup at all, an email still sends, under no brand name', async () => {
+  delete globals.getOrgInfo
+  assert.equal(await emailBrandName(), undefined)
+  const sent: SendEmailOptions[] = []
+  process.env.EMAIL_PROVIDER = 'capture-bare'
+  registerEmailProvider({ name: 'capture-bare', send: async (options) => { sent.push(options) } })
+  await sendEmail({ to: 'a@example.com', subject: 's', html: 'h' })
+  assert.equal(sent.length, 1)
+  assert.equal(sent[0]!.fromName, undefined)
+})
