@@ -24,7 +24,7 @@ function getDb(): DB {
   if (isCF) {
     const binding = (globalThis as any).__env__?.POSTGRES || (globalThis as any).POSTGRES
     if (!binding) throw new Error('POSTGRES Hyperdrive binding not found')
-    return drizzle(postgres(binding.connectionString, { prepare: false, transform }), { schema })
+    return drizzle(postgres(binding.connectionString, { prepare: true, transform }), { schema })
   }
 
   // Node.js (Docker/Vercel): singleton — persistent process, connection pool is long-lived
