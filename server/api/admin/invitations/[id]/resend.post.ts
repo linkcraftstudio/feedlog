@@ -44,10 +44,11 @@ export default defineEventHandler(async (event) => {
     // No transport configured — return the link so the caller can copy it.
     return { sent: false, url }
   }
+  const brandName = await emailBrandName()
   await sendEmail({
     to: row.email,
-    subject: `You're invited to join ${row.orgName} on FeedLog`,
-    html: renderInvitationEmail({ url, orgName: row.orgName }),
+    subject: invitationSubject(row.orgName, brandName),
+    html: renderInvitationEmail({ url, orgName: row.orgName, brandName }),
   })
   return { sent: true }
 })

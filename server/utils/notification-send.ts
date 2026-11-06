@@ -24,7 +24,7 @@ export interface SendNotificationInput {
 
 // Returns null for a type with no email template (a config error; the caller
 // logs it rather than sending blank).
-function buildNotificationEmail(input: SendNotificationInput): SendEmailOptions | null {
+function buildNotificationEmail(input: SendNotificationInput, brandName?: string): SendEmailOptions | null {
   const postUrl = buildPostLink(input.orgSlug, `/p/${input.postSlug}`, input.requestOrigin)
   const actorImage = input.payload.actorImage
   const content = renderNotificationEmail({
@@ -40,13 +40,14 @@ function buildNotificationEmail(input: SendNotificationInput): SendEmailOptions 
     actorName: input.payload.actorName,
     actorImage: actorImage?.startsWith('/api/files/') ? new URL(actorImage, postUrl).href : actorImage,
     brandColor: input.brandColor,
+    brandName,
   })
   if (!content) return null
   return { to: input.recipientEmail, subject: content.subject, html: content.html, text: content.text }
 }
 
 export async function sendNotification(input: SendNotificationInput): Promise<void> {
-  const options = buildNotificationEmail(input)
+  const options = buildNotificationEmail(input, await emailBrandName())
   if (!options) {
     console.error(`[notifications] no template for type=${input.typeKey} org=${input.orgId}`)
     return
