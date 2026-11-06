@@ -1,15 +1,18 @@
 import { runRuntimeMigration } from '#layers/feedlog/server/utils/runtime-migrate'
-import { getUserSession } from '#layers/feedlog/server/utils/auth'
+import { requireLocalSession } from '#layers/feedlog/server/utils/auth'
+import { systemAdminEmails } from '#layers/feedlog/server/utils/better-auth'
 import { probeDatabaseState, setCachedState } from '../../utils/migration-state'
 import { resolveConnectionString } from '../../utils/connection-string'
+import { isUpgradeAdmin } from '../../utils/upgrade-admin'
 
 // Permission model:
 //   - bootstrap state (tracker absent or empty): anonymous allowed — no admin
 //     exists yet to authorize, so the first caller gets to run the initial
 //     migrations. Subsequent calls hit the admin gate below.
 //   - pending state (tracker rows < journal entries): requires a logged-in
-//     admin. Upgrade migrations should not be triggerable by anonymous
-//     traffic.
+//     admin: role admin, or an email in SYSTEM_ADMIN_EMAILS. Nothing sets the
+//     role during sign-up. Upgrade migrations should not be triggerable by
+//     anonymous traffic.
 //   - migrated state: no-op, but still gated by admin to avoid info leaks.
 
 function isCloudflare(): boolean {
@@ -33,9 +36,10 @@ export default defineEventHandler(async (event) => {
 
   let triggerSource = 'bootstrap'
   if (!isBootstrap) {
-    const session = await getUserSession(event).catch(() => null)
-    const role = (session?.user as { role?: string } | undefined)?.role
-    if (role !== 'admin') {
+    // A guest or a product SSO session is not a direct sign-in: its email was
+    // asserted by one organization, and migrations change the whole install.
+    const session = await requireLocalSession(event).catch(() => null)
+    if (!isUpgradeAdmin(session?.user, systemAdminEmails)) {
       throw createError({
         statusCode: 403,
         statusMessage: 'Forbidden',

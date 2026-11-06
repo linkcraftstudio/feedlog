@@ -175,8 +175,8 @@ pnpm install                   # refresh dependencies
 pnpm build:cf && pnpm deploy:cf
 ```
 
-If the release includes new migrations, sign in as admin on the deployed
-site and visit `/setup` — the page runs the pending upgrade and redirects
+If the release includes new migrations, sign in with an email listed in
+`SYSTEM_ADMIN_EMAILS` on the deployed site and visit `/setup` — the page runs the pending upgrade and redirects
 back. Anonymous upgrades are refused (that would let any visitor trigger
 a schema change).
 
