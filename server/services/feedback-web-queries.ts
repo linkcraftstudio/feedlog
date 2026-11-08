@@ -8,11 +8,11 @@ import { z } from 'zod'
 import { encodeWebCursor, decodeWebCursor } from './web-pagination'
 import { createError } from 'h3'
 
-export async function listPublicFeedback(context: ContentReader, input: { boardId?: string; status?: string; sort: string; order: string; cursor?: string; pageSize: number }, viewerId?: string) {
+export async function listPublicFeedback(context: ContentReader, input: { boardId?: string; status?: string[]; sort: string; order: string; cursor?: string; pageSize: number }, viewerId?: string) {
   const { db, orgId } = context
   const { boardId, status, sort, order, cursor, pageSize } = input
   // Default: exclude merged posts
-  const conditions = postFilterConditions({ orgId, boardId: boardId ? [boardId] : undefined, status: status ? [status] : undefined })
+  const conditions = postFilterConditions({ orgId, boardId: boardId ? [boardId] : undefined, status })
 
   // Cursor conditions
   if (cursor) {

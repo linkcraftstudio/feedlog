@@ -1,7 +1,9 @@
-import { eq, and, isNull, inArray, sql } from 'drizzle-orm'
+import { eq, and, inArray, sql } from 'drizzle-orm'
 import { post, postSearch, user, vote } from '#layers/feedlog/server/db/schemas'
+import { parseStatusParam } from '#layers/feedlog/shared/types/post'
+import { postFilterConditions } from '#layers/feedlog/server/utils/postFilterConditions'
 
-// GET /api/posts/search?q=&limit= — Public semantic search over an org's feedback.
+// GET /api/posts/search?q=&status= — Public semantic search over an org's feedback.
 //
 // Fully consistent with the similar-posts search: embed the query and return the nearest N by
 // pgvector cosine distance with NO threshold — always shows the closest posts (no
@@ -16,6 +18,7 @@ export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
   const query = getQuery(event)
   const orgId = event.context.orgId!
+  const filter = { orgId, status: parseStatusParam(query.status), merged: 'canonical_only' as const }
 
   const q = ((query.q as string | undefined) ?? '').trim()
   if (!q) return { data: [] as PostListItem[] }
@@ -29,7 +32,7 @@ export default defineEventHandler(async (event) => {
   let rows
   if (embedding) {
     rows = await searchPostsBySemantic(embedding, {
-      filter: { orgId, merged: 'canonical_only' },
+      filter,
       limit: PUBLIC_SEARCH_LIMIT,
     })
   }
@@ -57,7 +60,7 @@ export default defineEventHandler(async (event) => {
       .from(post)
       .innerJoin(postSearch, eq(post.id, postSearch.postId))
       .leftJoin(user, eq(post.authorId, user.id))
-      .where(and(eq(post.orgId, orgId), isNull(post.mergedTo)))
+      .where(and(...postFilterConditions(filter)))
       .orderBy(sql`${postSearch.searchText} <-> ${q}`)
       .limit(PUBLIC_SEARCH_LIMIT)
   }

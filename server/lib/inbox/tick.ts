@@ -1,14 +1,15 @@
 import { transaction } from '../agent/runtime'
 import { eventItem, recoverLocked, type ConversationRow, type InboxRuntime } from './service'
 import { deliverReplyTask } from './email'
+import { deliverHandoffEmail } from './handoff-email'
 
 export async function inboxTick(runtime: InboxRuntime) {
   const result = { closed: 0, resumed: 0, recoveredRuns: 0, emails: 0, failed: 0, hasMore: false }
   const started = Date.now()
-  const { rows } = await runtime.pool.query(`SELECT id FROM scheduled_task WHERE
+  const { rows } = await runtime.pool.query(`SELECT id FROM scheduled_task WHERE kind<>'help_index' AND (
     (status='pending' AND schedule_at<=clock_timestamp()) OR
     (status='processing' AND updated_at<clock_timestamp()-interval '10 minutes') OR
-    (status NOT IN ('pending','processing','done','cancelled') AND schedule_at<=clock_timestamp())
+    (status NOT IN ('pending','processing','done','cancelled') AND schedule_at<=clock_timestamp()))
     ORDER BY schedule_at,id LIMIT 101`)
   result.hasMore = rows.length > 100
   for (const candidate of rows.slice(0, 100)) {
@@ -20,6 +21,11 @@ export async function inboxTick(runtime: InboxRuntime) {
       (status NOT IN ('pending','processing','done','cancelled') AND schedule_at<=clock_timestamp())) RETURNING *`, [candidate.id])
     if (!task) continue
     try {
+      if (task.kind === 'inbox_handoff_email') {
+        await deliverHandoffEmail(runtime, task)
+        result.emails++
+        continue
+      }
       if (task.kind === 'inbox_email') {
         await deliverReplyTask(runtime, task)
         result.emails++

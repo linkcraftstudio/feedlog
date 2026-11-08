@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import { agentError, transaction } from '../agent/runtime'
 import type { listInput, pageInput } from '../../../shared/inbox/schemas'
-import { conversationResult, type InboxRuntime, type ConversationRow } from './service'
+import { conversationResult, takeoverPendingSql, type InboxRuntime, type ConversationRow } from './service'
 
 export async function listConversations(runtime: InboxRuntime, orgId: string, input: z.infer<typeof listInput>) {
   const signature = createHash('sha256')
@@ -39,7 +39,7 @@ export async function listConversations(runtime: InboxRuntime, orgId: string, in
   const { rows } = await runtime.pool.query<
     ConversationRow & { cursor_time: string; customer_name: string | null; customer_image: string | null; customer_is_anonymous: boolean | null }
   >(
-    `SELECT c.*,to_char(c.last_message_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time,u.name AS customer_name,u.image AS customer_image,u.is_anonymous AS customer_is_anonymous FROM conversation c LEFT JOIN "user" u ON u.id=c.user_id WHERE ${conditions.join(' AND ')} ORDER BY c.last_message_at ${desc ? 'DESC' : 'ASC'},c.id ${desc ? 'DESC' : 'ASC'} LIMIT ${bind(input.limit + 1)}`,
+    `SELECT c.*,${takeoverPendingSql} AS takeover_pending,to_char(c.last_message_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time,u.name AS customer_name,u.image AS customer_image,u.is_anonymous AS customer_is_anonymous FROM conversation c LEFT JOIN "user" u ON u.id=c.user_id WHERE ${conditions.join(' AND ')} ORDER BY c.last_message_at ${desc ? 'DESC' : 'ASC'},c.id ${desc ? 'DESC' : 'ASC'} LIMIT ${bind(input.limit + 1)}`,
     values,
   )
   const items = rows.slice(0, input.limit)
@@ -61,7 +61,7 @@ export async function readInbox(runtime: InboxRuntime, orgId: string, id: string
     async (client) => {
       const {
         rows: [row],
-      } = await client.query<ConversationRow>('SELECT * FROM conversation WHERE id=$1 AND org_id=$2 AND last_seq>0', [
+      } = await client.query<ConversationRow>(`SELECT c.*,${takeoverPendingSql} AS takeover_pending FROM conversation c WHERE c.id=$1 AND c.org_id=$2 AND c.last_seq>0`, [
         id,
         orgId,
       ])

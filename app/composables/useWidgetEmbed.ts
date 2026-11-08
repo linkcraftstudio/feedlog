@@ -4,8 +4,15 @@
 // a guest token this frame minted for itself on an earlier visit.
 
 import type { InjectionKey } from 'vue'
+
+import { CHAT_IMAGE_MAX_BYTES } from '#layers/feedlog/shared/agent/images'
 import { GUEST_TOKEN_STORAGE_KEY } from '#layers/feedlog/shared/utils/guest'
 
+declare module '#app' {
+  interface RuntimeNuxtHooks {
+    'widget:request': (request: { path: string; headers: Headers }) => void | Promise<void>
+  }
+}
 export interface WidgetEmbedUser {
   id: string
   email: string
@@ -62,12 +69,14 @@ function clearGuestToken(): void {
 }
 
 export function useWidgetEmbed() {
+  const nuxtApp = useNuxtApp()
   const token = ref<string | null>(null)
   const user = ref<WidgetEmbedUser | null>(null)
   const status = ref<WidgetEmbedStatus>('loading')
   // Set from /api/widget/config once it lands. Starts false so a config that
   // never arrives is read as "no guests", the safe direction.
   const allowGuest = ref(false)
+  const imageMaxBytes = ref(CHAT_IMAGE_MAX_BYTES)
   let mintInFlight: Promise<boolean> | null = null
 
   // The ONLY way this page talks to the API. `credentials: 'omit'` is the whole
@@ -76,17 +85,11 @@ export function useWidgetEmbed() {
   // logged into this browser instead of the identity in the token. It also masks
   // revoked sessions, which silently kills the expired-session path.
   async function widgetRequest(path: string, init: RequestInit = {}): Promise<Response> {
-    const res = await fetch(path, {
-      ...init,
-      credentials: 'omit',
-      headers: {
-        // FormData must set its own Content-Type so the multipart boundary
-        // survives; only JSON bodies get the header spelled out here.
-        ...(init.body && !(init.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
-        ...init.headers,
-        ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}),
-      },
-    })
+    const headers = new Headers(init.headers)
+    if (init.body && !(init.body instanceof FormData)) headers.set('Content-Type', 'application/json')
+    await nuxtApp.callHook('widget:request', { path, headers })
+    if (token.value) headers.set('Authorization', `Bearer ${token.value}`)
+    const res = await fetch(path, { ...init, credentials: 'omit', headers })
     if (!res.ok) {
       const body = await res.json().catch(() => null) as { message?: string; data?: { code?: string } } | null
       // A plain Error with the status attached: createError() is server-flavoured
@@ -190,7 +193,7 @@ export function useWidgetEmbed() {
     return mintInFlight ?? (mintInFlight = mint().finally(() => { mintInFlight = null }))
   }
 
-  return { token, user, status, allowGuest, widgetFetch, widgetRequest, loadSession, ensureIdentity }
+  return { token, user, status, allowGuest, imageMaxBytes, widgetFetch, widgetRequest, loadSession, ensureIdentity }
 }
 
 // Refs are per call: a child calling the composable gets an unauthenticated one.

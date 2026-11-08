@@ -1,7 +1,9 @@
-// Shared onUploadImg handler for md-editor-v3
-export function useUploadImg() {
+// Shared image upload handler for the Markdown editor.
+export function useUploadImg(beforeUpload?: () => boolean | Promise<boolean>) {
   async function onUploadImg(files: File[], callback: (urls: string[]) => void) {
+    if (!files.length || (beforeUpload && !await beforeUpload())) return
     const urls: string[] = []
+    let failed = false
 
     for (const file of files) {
       const formData = new FormData()
@@ -12,13 +14,15 @@ export function useUploadImg() {
           method: 'POST',
           body: formData,
         })
+        if (typeof result.key !== 'string' || !result.key.trim()) throw new Error('Missing uploaded image key')
         urls.push(`attachment:${result.key}`)
       } catch {
-        // skip failed uploads silently — editor will show empty image
+        failed = true
       }
     }
 
-    callback(urls)
+    if (urls.length) callback(urls)
+    if (failed) throw new Error(urls.length ? 'partialUpload' : 'uploadFailed')
   }
 
   return { onUploadImg }

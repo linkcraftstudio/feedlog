@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { resolveAttachmentUrls } from '~/utils/attachment'
 
 const localePath = useLocalePath()
 
@@ -9,7 +8,6 @@ const props = defineProps<{
   editable?: boolean
 }>()
 
-const resolvedDescription = computed(() => resolveAttachmentUrls(props.description))
 const hasContent = computed(() => props.title.trim().length > 0 || props.description.trim().length > 0)
 </script>
 
@@ -37,7 +35,7 @@ const hasContent = computed(() => props.title.trim().length > 0 || props.descrip
       </h1>
       <ThemedMdPreview
         v-if="description"
-        :model-value="resolvedDescription"
+        :model-value="description"
         language="en-US"
         class="mt-2"
       />

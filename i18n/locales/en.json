@@ -61,12 +61,17 @@
     "recentRequests": "Recent Requests",
     "sortTop": "Top",
     "sortRecent": "Recent",
+    "statusFilter": "Filter by status",
+    "statusActive": "Active",
+    "statusAll": "All statuses",
     "search": "Search",
     "searchPlaceholder": "Search feedback…",
     "clearSearch": "Clear search",
     "closeSearch": "Close search",
     "newRequest": "New Request",
     "noFeedback": "No feedback yet",
+    "noFeedbackFiltered": "Nothing matches this status",
+    "showAllStatuses": "Show all statuses",
     "noMatches": "No matches for “{query}”",
     "noMatchesHint": "Nobody’s raised this yet — be the first.",
     "comments": "{n} comments",
@@ -610,7 +615,9 @@
       "guideMatchedByPre": "Users are matched by ",
       "guideMatchedByEmail": "email",
       "guideMatchedByPost": ". A first-time email creates an end-user account (no extra login screen); changing a user's email creates a new account and does not migrate history."
-    }
+    },
+    "accessDenied": "You do not have access to this page",
+    "requestAccess": "Ask a workspace owner or administrator to update your permissions."
   },
   "settings": {
     "loading": "Loading…",
@@ -744,7 +751,7 @@
       "saveFailed": "Failed to save.",
       "saved": "Saved",
       "installSection": "Installation",
-      "installDesc": "Install the SDK in your product, then initialise it with your workspace URL.",
+      "installDesc": "Let your coding agent add the widget, or install it yourself.",
       "baseUrlLabel": "Workspace URL",
       "baseUrlHint": "Pass this as baseUrl when initialising the SDK.",
       "serverLabel": "On your server",
@@ -753,7 +760,7 @@
       "copy": "Copy",
       "copied": "Copied",
       "enabledLabel": "Enable widget",
-      "enabledHint": "The enable switch saves immediately. When off, the SDK renders nothing on your site.",
+      "enabledHint": "The widget is off, so it stays hidden on your site even after it's installed.",
       "placementSection": "Feedback button",
       "placementDesc": "The floating button visitors use to open feedback.",
       "alignLabel": "Screen side",
@@ -801,7 +808,11 @@
       "cancel": "Cancel",
       "ownerOnly": "Only workspace owners and managers can change widget settings.",
       "copyFailed": "Could not copy. Select the text and copy it manually.",
-      "installInstructions": "Installation instructions",
+      "installInstructions": "Install manually",
+      "agentTitle": "Install with your agent",
+      "agentBody": "Paste it into Codex, Claude Code or Cursor. It walks the agent through the install end to end, so it can wire the widget into your codebase.",
+      "agentCopy": "Copy installation as prompt",
+      "manualDesc": "Add the package and the snippet yourself.",
       "installGuide": "View full installation guide",
       "packageLabel": "Install the package",
       "clientLabel": "In your application",
@@ -888,6 +899,7 @@
     "loadFailed": "Could not load your feedback.",
     "attachImage": "Attach image",
     "uploadFailed": "Could not upload that image. Please try again.",
+    "imageUploadFailed": "Image {number} ({name}): {message}",
     "uploadTooLarge": "Images must be smaller than {size}MB.",
     "messages": "Messages",
     "agentTitle": "{product} Assistant",
@@ -908,9 +920,11 @@
     "openArticle": "Open article in a new tab",
     "articleUnavailable": "This article is no longer available.",
     "earlierMessages": "Earlier messages",
+    "replyTimeout": "The response timed out. Please retry.",
+    "replyInterrupted": "The response was interrupted. Please retry.",
     "retryReply": "Retry reply",
     "refreshStatus": "Refresh status",
-    "tooManyParts": "Attach fewer images. A message can contain up to 10 parts.",
+    "tooManyParts": "You can attach up to 10 images per message. Remove extra images and try again.",
     "actions": {
       "feedback_created": "Feedback created",
       "feedback_updated": "Feedback edited",
@@ -919,12 +933,24 @@
       "feedback_comment_updated": "Comment edited"
     },
     "conversationNotices": {
-      "handoff": "Your question has been passed to our support team. You can send more details or screenshots here."
+      "handoff": "Your question has been passed to our support team. You can send more details or screenshots here.",
+      "handoffBilling": "This issue requires our support team to review your account or billing. It has been passed to them. You can add more details here.",
+      "handoffAccount": "This issue requires our support team to review your account. It has been passed to them. You can add more details here.",
+      "handoffPrivacy": "This request requires our support team to handle it. It has been passed to them. You can add more details about your request here.",
+      "handoffRule": "This issue requires further assistance from our support team. It has been passed to them. You can add more details here."
     },
     "messageYou": "You",
     "messageAI": "FeedLog AI",
     "messageStaffNamed": "{name}",
-    "messageStaff": "Support"
+    "messageStaff": "Support",
+    "supportUnavailable": "Support is currently unavailable. Your message is saved; please try again later.",
+    "imageErrors": {
+      "image_unsupported": "This image could not be converted. Try exporting it as JPEG or PNG.",
+      "image_invalid": "This image cannot be read. Please choose another file.",
+      "image_too_large": "This image is too large to process. Choose an image under 32 MB or export a smaller JPEG/PNG.",
+      "image_total_too_large": "These images are too large together. Remove some attachments and try again.",
+      "image_unavailable": "This attachment is no longer available. Remove it and upload it again."
+    }
   },
   "help": {
     "admin": {
@@ -983,6 +1009,14 @@
         "notSaved": "Not saved yet",
         "lastSaved": "Last saved {at}",
         "preview": "Preview",
+        "saving": "Saving…",
+        "saveChanges": "Save changes",
+        "publishBody": "Readers can access this article after publishing it in a visible collection.",
+        "unpublishTitle": "Unpublish this article?",
+        "unpublishBody": "Only the saved article will be unpublished. Unsaved edits remain in the editor. AI access is unchanged.",
+        "linkNotPublic": "This article is not publicly available at this URL yet.",
+        "loadFailed": "The article could not be loaded or is not accessible. Please retry.",
+        "retryLoad": "Reload",
         "saveDraft": "Save draft",
         "title": "Title",
         "titlePlaceholder": "Untitled article",
@@ -997,7 +1031,6 @@
         "articleUrl": "Article URL",
         "urlPending": "Assigned when you first save.",
         "copied": "Link copied",
-        "hiddenWarning": "This article is published, but {name} is hidden from readers — they cannot see it yet. Turn the collection visible to publish it.",
         "previewHeader": "Preview · exactly how readers will see it (portal article layout)",
         "leaveTitle": "Leave without saving?",
         "leaveBody": "This article has changes that have not been saved. If you leave now they are discarded.",
@@ -1011,7 +1044,26 @@
         "deleteTitle": "Delete \"{title}\"?",
         "deleteDescription": "This article and its URL are permanently removed. This cannot be undone.",
         "deleted": "Article deleted",
-        "deleteFailed": "Could not delete the article"
+        "deleteFailed": "Could not delete the article",
+        "indexStatus": {
+          "pending": "Preparing search",
+          "processing": "Preparing search",
+          "retry": "Search preparation delayed; retrying",
+          "failed": "Index failed",
+          "ready": "Indexed",
+          "not_indexed": "Not indexed",
+          "indexing": "Indexing"
+        },
+        "indexRetry": "Retry",
+        "indexRetryFailed": "Could not retry. Please try again.",
+        "indexFailureHint": "The article is saved, but some advanced search features are not ready yet. Open the article and click Save to retry.",
+        "indexFailureHintEditor": "The article is saved, but some advanced search features are not ready yet. Click Save to retry.",
+        "indexHints": {
+          "not_indexed": "This article has not been indexed. Click Save to build an index for advanced search.",
+          "indexing": "Building or updating the index. Your latest saved content will be available for advanced search when indexing is complete.",
+          "ready": "Your latest saved content has been indexed and is available for advanced search.",
+          "failed": "Indexing failed for your latest saved content. Click Save to retry and enable advanced search."
+        }
       },
       "publishTitle": "Publish this article?",
       "bulkPublishTitle": "Publish {n} selected article? | Publish {n} selected articles?",
@@ -1029,6 +1081,14 @@
       "searchPlaceholder": "Search articles...",
       "results": "{n} result | {n} results",
       "more": "{n} more — keep typing to narrow it down",
+      "translateSearch": "Search English articles with translation",
+      "translatingSearch": "No direct match. Translating your search—please wait…",
+      "translatedSearch": "Searched for: {query}",
+      "translationOfferHint": "No direct match. Try English keywords or translate your search.",
+      "translationRetryHint": "Try English keywords or search again later.",
+      "crossLanguageUnavailable": "Cross-language search is temporarily unavailable. Try English keywords.",
+      "searchFailed": "Search is unavailable",
+      "searchFailedHint": "Please try again shortly.",
       "noMatch": "No articles matched",
       "noMatchHint": "Try a different keyword, or browse the collections below",
       "emptyTitle": "No articles yet",
@@ -1082,7 +1142,11 @@
     "emailFailed": "Email failed to send. Please retry.",
     "retryEmail": "Resend once",
     "replyPlaceholder": "Write a reply…",
-    "aiReplyUnavailable": "AI is handling this conversation. Staff replies are currently unavailable.",
+    "aiReplyUnavailable": "AI is handling this conversation. Take over to reply personally.",
+    "takeover": "Take over and reply",
+    "takeoverWaiting": "Waiting for AI to finish replying",
+    "noticeTakeover": "{name} took over this conversation.",
+    "noticeTakeoverSelf": "You took over this conversation.",
     "confirmClose": "Close this conversation? A new customer message will start a new AI round.",
     "cancel": "Cancel",
     "forbidden": "You do not have permission to access Inbox.",
@@ -1238,6 +1302,121 @@
       "codex": "With Codex installed, run these commands to add FeedLog and sign in through your browser. If adding the server already completes sign-in, skip the login command.",
       "cursor": "Click Add to Cursor and confirm the installation in Cursor. When it requests authorization, sign in to FeedLog in your browser and choose your organizations.",
       "other": "For clients using the mcpServers format, merge this entry into your MCP configuration. Your client must support remote HTTP MCP and browser-based OAuth. Connect FeedLog, then sign in and choose your organizations."
+    }
+  },
+  "markdownEditor": {
+    "loading": "Loading editor…",
+    "codeLanguage": "Code language",
+    "plainText": "Plain text",
+    "moreTools": "More formatting tools",
+    "editingMode": "Editing mode",
+    "structuredMode": "Visual",
+    "sourceMode": "Source",
+    "unsupportedStructured": "This content contains formatting that cannot yet be edited visually. Your Markdown is preserved in source mode.",
+    "characterCount": "Character Count",
+    "tooLong": "Content is too long.",
+    "invalidUrl": "Enter a valid URL.",
+    "partialUpload": "Some images could not be uploaded. Please try again.",
+    "uploadFailed": "Image upload failed. Please try again.",
+    "formatting": "Formatting",
+    "paragraph": "Paragraph",
+    "url": "URL",
+    "text": "Text",
+    "confirm": "OK",
+    "upload": "Upload",
+    "cancel": "Cancel",
+    "uploading": "Uploading…",
+    "bold": "Bold",
+    "italic": "Italic",
+    "strikeThrough": "Strikethrough",
+    "title": "Heading",
+    "unorderedList": "Bullet list",
+    "orderedList": "Numbered list",
+    "link": "Link",
+    "image": "Image",
+    "code": "Code block",
+    "collapseCode": "Collapse or expand code",
+    "staleInsertion": "The document changed while this action was open. Please retry at the intended position.",
+    "uploadUnavailable": "Image upload is not configured for this editor.",
+    "copyCode": "Copy",
+    "copiedCode": "Copied",
+    "copyCodeFailed": "Copy failed",
+    "codeRow": "Inline code",
+    "previewOnly": "Preview",
+    "quote": "Quote",
+    "revoke": "Undo",
+    "next": "Redo",
+    "rowActions": "Row actions",
+    "columnActions": "Column actions",
+    "tableActions": "Table actions",
+    "addRowBefore": "Insert row above",
+    "addRowAfter": "Insert row below",
+    "addColumnBefore": "Insert column left",
+    "addColumnAfter": "Insert column right",
+    "deleteRow": "Delete row",
+    "deleteColumn": "Delete column",
+    "deleteTable": "Delete table",
+    "table": "Table",
+    "task": "Task list",
+    "enterCode": "Type code",
+    "insertRowAt": "Insert above row {index}",
+    "insertColumnAt": "Insert left of column {index}"
+  },
+  "onboarding": {
+    "guide": {
+      "srTitle": "Getting started with FeedLog",
+      "srDescription": "A short tour of FeedLog",
+      "slideLabel": "Slide {n}",
+      "pauseMedia": "Pause animation",
+      "playMedia": "Play animation",
+      "back": "Back",
+      "next": "Next",
+      "tryDemo": "Try the FeedLog demo",
+      "install": "View integration guide",
+      "readyToIntegrate": "Ready to integrate?",
+      "slides": {
+        "widget": {
+          "title": "Bring AI Support to Your Website in Minutes",
+          "body": "Embed FeedLog Widget for 24/7 AI support, knowledge-based answers, source citations, and conversation memory.",
+          "image": "A customer asks a question in the widget and the AI answers"
+        },
+        "inbox": {
+          "title": "Seamless Human & AI Co-pilot",
+          "body": "Take over conversations anytime in Inbox. Human replies become learning material for AI, helping it deliver more accurate answers over time.",
+          "image": "A teammate takes over a conversation in the Inbox"
+        },
+        "feedback": {
+          "title": "Turn Customer Conversations into Product Insights",
+          "body": "Automatically extract customer feedback and link it to original conversations, helping your team turn real user needs into actionable Roadmap priorities.",
+          "image": "Feedback created by the AI, opened from its conversation"
+        },
+        "start": {
+          "title": "Ready to Transform Your Customer Support?",
+          "body": "Explore the interactive demo to see FeedLog in action, or follow the integration guide to bring AI support into your product.",
+          "image": "Start Your AI Support Journey"
+        }
+      }
+    },
+    "entry": {
+      "label": "Getting started",
+      "hint": "You can reopen the guide and the Demo Widget here anytime."
+    },
+    "demo": {
+      "badge": "Demo",
+      "caption": "Your customers' view",
+      "install": "Install on my site",
+      "landedTitle": "This chat is now in your Inbox.",
+      "landedBody": "Reply as your team.",
+      "end": "End demo",
+      "open": "Open demo widget",
+      "close": "Close demo widget",
+      "frameTitle": "Demo widget"
+    },
+    "installCard": {
+      "title": "Add the widget to {name}",
+      "body": "Copy the install prompt below into your AI coding agent and it adds the widget for you. Your customers get the same widget as the demo, answering from your Help Center.",
+      "tryDemo": "Try the Demo Widget",
+      "dismiss": "Dismiss"
     }
   }
 }

@@ -11,7 +11,7 @@ export default defineEventHandler(async (event): Promise<PagePaginatedList<PostL
   const pageSize = Math.min(Number(query.pageSize) || 10, 100)
 
   if (query.sourceConversationId !== undefined) {
-    await requireOrgPermission(event, { feedlog: ['moderate'] })
+    await requireOrgPermission(event, { feedlog: ['inbox'] })
     if (!z.uuid().safeParse(query.sourceConversationId).success) throw createError({ statusCode: 422, message: 'Invalid source conversation' })
   }
   return listManagementFeedback({ db: useDB(), orgId }, { filter: parsePostFilter(query, orgId), sort, order, page, pageSize, sourceConversationId: query.sourceConversationId as string | undefined })

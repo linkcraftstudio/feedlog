@@ -30,6 +30,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Markdown editor compatibility tests
+        run: pnpm editor:test
+
+      - name: Test widget framing policy
+        run: node --import tsx --test tests/widget-framing.test.ts
+
       - name: Build (Node server)
         run: pnpm build
 

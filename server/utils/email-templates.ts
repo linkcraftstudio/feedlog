@@ -13,6 +13,26 @@ export function renderInboxReplyEmail({ reply, productName, topic, url }: { repl
   return { text, html: layout({ brandName: productName, preheader: intro, content: `<p>${escapeHtml(intro)}</p><p style="white-space:pre-wrap">${escapeHtml(reply)}</p>${url ? actionButton(escapeHtml(url), 'Continue conversation') : ''}<p>${escapeHtml(hint)}</p>` }) }
 }
 
+export interface HandoffEmailContext {
+  customerName: string; customerEmail?: string; reason: string; summary?: string; lastMessage: string; imageCount: number
+}
+export function renderInboxHandoffEmail({ productName, url, customerName, customerEmail, reason, summary, lastMessage, imageCount }: HandoffEmailContext & { productName: string; url: string }) {
+  const subject = `${productName}: ${customerName} needs human support`.replace(/[\r\n]/g, ' ').slice(0, 200)
+  const intro = `${customerName} needs your help`
+  const attachment = imageCount ? `${imageCount} image${imageCount === 1 ? '' : 's'} attached · View in the conversation` : ''
+  const content = `<p style="color:#737985;font-size:13px;margin-bottom:6px">${escapeHtml(reason)}</p>
+    <h1 style="font-size:23px;line-height:1.35;margin:0 0 20px">${escapeHtml(intro)}</h1>
+    <p style="border-bottom:1px solid #e5e7eb;padding-bottom:20px"><strong>${escapeHtml(customerName)}</strong>${customerEmail ? ` <span style="color:#737985">${escapeHtml(customerEmail)}</span>` : ''}</p>
+    ${summary ? `<p style="color:#737985;font-size:12px;font-weight:600;margin-bottom:6px">ISSUE SUMMARY · AI</p><p style="white-space:pre-wrap">${escapeHtml(summary)}</p>` : ''}
+    <p style="color:#737985;font-size:12px;font-weight:600;margin-bottom:6px">LATEST CUSTOMER MESSAGE</p>
+    ${lastMessage ? `<p style="white-space:pre-wrap;background:#f7f7f6;border-left:3px solid #dbd7d1;padding:14px 18px">${escapeHtml(lastMessage)}</p>` : ''}
+    ${attachment ? `<p style="color:#737985;font-size:12px">${attachment}</p>` : ''}
+    ${actionButton(escapeHtml(url), 'View conversation →')}
+    <p style="color:#737985;font-size:12px">Open this conversation in Inbox to review and reply.</p>`
+  return { subject, text: [intro, customerEmail, reason, summary ? `Issue summary (AI): ${summary}` : '', lastMessage ? `Latest customer message:\n${lastMessage}` : '', attachment, `View conversation: ${url}`].filter(Boolean).join('\n\n'),
+    html: layout({ brandName: productName, preheader: summary || lastMessage || attachment, content }) }
+}
+
 function layout({ preheader, content, brandName }: { preheader: string; content: string; brandName?: string }): string {
   return `
 <div style="font-family: ${FONT_STACK}; max-width: 600px; margin: 0 auto; padding: 32px 24px; color: #111827; line-height: 1.55;">

@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { NormalToolbar } from 'md-editor-v3'
 import '~/assets/css/md-editor-preview.css'
-import { sanitizeAttachmentHtml, resolveAttachmentUrl } from '~/utils/attachment'
+import { resolveAttachmentUrl } from '~/utils/attachment'
 import { toast } from 'vue-sonner'
 
 const props = defineProps<{
@@ -466,20 +465,18 @@ function handleAiApply(result: ChangelogAiResult) {
                 :preview="false"
                 :max-length="20000"
                 :footers="['markdownTotal']"
-                :toolbars="['bold', 'italic', 'strikeThrough', '-', 'title', 'unorderedList', 'orderedList', '-', 'link', 'image', 'code', 'codeRow', '-', 'previewOnly', '=', 0]"
-                :sanitize="sanitizeAttachmentHtml"
+                :toolbars="['bold', 'italic', 'strikeThrough', '-', 'title', 'unorderedList', 'orderedList', '-', 'link', 'image', 'code', 'codeRow', 'table', '-', 'previewOnly', '=', 0]"
+
                 style="height: 100%"
                 @on-upload-img="onUploadImg"
               >
                 <template #defToolbars>
-                  <NormalToolbar :title="$t('changelog.editor.aiWrite')" @on-click="showAiModal = true">
-                    <template #trigger>
-                      <div class="inline-flex h-7 items-center gap-1.5 rounded-md border border-purple-200 bg-purple-50 px-2.5 text-xs font-bold text-purple-600 transition-colors hover:bg-purple-100 dark:border-purple-500/30 dark:bg-purple-500/20 dark:text-purple-400">
-                        <Icon name="lucide:wand-2" size="14" />
-                        {{ $t('changelog.editor.aiWrite') }}
-                      </div>
-                    </template>
-                  </NormalToolbar>
+                  <button type="button" :title="$t('changelog.editor.aiWrite')" @click="showAiModal = true">
+                    <div class="inline-flex h-7 items-center gap-1.5 rounded-md border border-purple-200 bg-purple-50 px-2.5 text-xs font-bold text-purple-600 transition-colors hover:bg-purple-100 dark:border-purple-500/30 dark:bg-purple-500/20 dark:text-purple-400">
+                      <Icon name="lucide:wand-2" size="14" />
+                      {{ $t('changelog.editor.aiWrite') }}
+                    </div>
+                  </button>
                 </template>
               </ThemedMdEditor>
             </div>

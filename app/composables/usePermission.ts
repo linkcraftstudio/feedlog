@@ -25,6 +25,10 @@ export function usePermission(authorId: Ref<string | undefined> | ComputedRef<st
     }) === true
   })
 
+  const canAccessInbox = computed(() => !!role.value && authClient.organization.checkRolePermission({
+    role: role.value, permissions: { feedlog: ['inbox'] } as Record<string, string[]>,
+  }) === true)
+
   // Kept as an alias for callers that still read `isOrgManager`. Semantically
   // identical to `canModerate` — both ask "can this role moderate FeedLog
   // content?". The role-string check (owner|manager) was a stale proxy.
@@ -47,5 +51,5 @@ export function usePermission(authorId: Ref<string | undefined> | ComputedRef<st
 
   const showMenu = computed(() => canEdit.value || canDelete.value)
 
-  return { isOrgManager, isOrgOwner, isOwner, canModerate, canEdit, canDelete, showMenu }
+  return { isOrgManager, isOrgOwner, isOwner, canModerate, canAccessInbox, canEdit, canDelete, showMenu }
 }

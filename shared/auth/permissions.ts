@@ -2,7 +2,7 @@
 //   - server: organization plugin (auth.api.hasPermission)
 //   - client: organizationClient (checkRolePermission, sync)
 //
-// Single custom token `feedlog:moderate`. Tier map:
+// Content moderation and Inbox handling are separate capabilities. Tier map:
 //   - anyone in the org (any role)  → `requireOrgMember(event)`
 //   - moderators (manager + owner)  → `requireOrgPermission({ feedlog: ['moderate'] })`
 //   - org-owner-only actions        → covered by better-auth's built-in
@@ -22,7 +22,7 @@ import {
 } from 'better-auth/plugins/organization/access'
 
 export const baseFeedlogStatement = {
-  feedlog: ['moderate'],
+  feedlog: ['moderate', 'inbox'],
 } as const
 
 // Merge with better-auth organization plugin's built-in statement so
@@ -35,7 +35,7 @@ export const baseStatement = {
 export const ac = createAccessControl(baseStatement)
 
 const moderatorPerms = {
-  feedlog: ['moderate'],
+  feedlog: ['moderate', 'inbox'],
 } as const
 
 export const baseRolePermissions = {
@@ -49,6 +49,7 @@ export const baseRolePermissions = {
   },
   contributor: {
     ...memberAc.statements,
+    feedlog: ['inbox'],
   },
 } as const
 

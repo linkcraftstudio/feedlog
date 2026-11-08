@@ -302,3 +302,44 @@ test('feedback creation commits before indexing and remains searchable on retry'
     await pool.query('DELETE FROM organization WHERE id=$1', [orgId])
   }
 })
+
+
+test('history keeps text and replaces every legacy image with an explicit reinspection reference', () => {
+  const processor = historyProcessor('run', new Set(['old', 'new']), new Set())
+  const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aN2kAAAAASUVORK5CYII='
+  const messages = [
+    { id: 'old', role: 'user', content: { format: 2, metadata: { feedlogItemId: 'old' }, parts: [
+      { type: 'text', text: 'Earlier question' }, { type: 'file', mimeType: 'image/svg+xml', data: 'data:image/svg+xml;base64,PHN2Zy8+' },
+    ] } },
+    { id: 'new', role: 'user', content: { format: 2, metadata: { feedlogItemId: 'new' }, parts: [
+      { type: 'file', mimeType: 'image/png', data: `data:image/png;base64,${png}` },
+    ] } },
+  ]
+  const output = processor.processInput({ messages } as any)
+  assert.equal(output[0]!.content.parts[0]!.type, 'text')
+  assert.equal(output[0]!.content.parts[1]!.type, 'text')
+  assert.equal(output[1]!.content.parts[0]!.type, 'text')
+  assert.equal(messages[0]!.content.parts[1]!.type, 'file', 'saved history is not mutated')
+})
+
+test('database memory projection excludes legacy pixels before returning a bounded context', async () => {
+  const { BoundedMemoryPG } = await import('../server/lib/agent/memory-store')
+  const store = new BoundedMemoryPG(pool)
+  const thread = uuidv7(), message = uuidv7(), resource = `memory-test:${thread}`
+  await runtime.memory.createThread({ threadId: thread, resourceId: resource, title: 'Memory budget test' })
+  try {
+    await pool.query(`INSERT INTO mastra_messages(id,thread_id,"resourceId",role,type,"createdAt",content)
+      VALUES($1,$2,$3,'user','v2',now(),jsonb_build_object('format',2,'metadata',jsonb_build_object('feedlogItemId','legacy'),
+      'parts',jsonb_build_array(jsonb_build_object('type','text','text','Original question'),
+      jsonb_build_object('type','file','mimeType','image/png','data','data:image/png;base64,'||repeat('A',24*1024*1024))))::text)`, [message, thread, resource])
+    const result = await store.listMessages({ threadId: thread, resourceId: resource, perPage: false })
+    assert.equal(result.messages.length, 1)
+    assert.ok(JSON.stringify(result).length < 2000)
+    assert.match(JSON.stringify(result), /Original question/)
+    assert.match(JSON.stringify(result), /read_conversation_images/)
+    assert.equal((await store.listMessages({ threadId: thread, resourceId: 'another-tenant' })).messages.length, 0)
+    assert.ok(JSON.stringify(await store.listMessagesById({ messageIds: [message] })).length < 2000)
+    const { rows: [original] } = await pool.query('SELECT octet_length(content) AS bytes FROM mastra_messages WHERE id=$1', [message])
+    assert.ok(original.bytes > 24 * 1024 * 1024, 'projection does not destructively rewrite the archive')
+  } finally { await runtime.memory.deleteThread(thread) }
+})

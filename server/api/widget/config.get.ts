@@ -1,3 +1,4 @@
+import { CHAT_IMAGE_UPLOAD_BYTES } from '#layers/feedlog/shared/agent/images'
 import { eq } from 'drizzle-orm'
 import { organizationWidget } from '#layers/feedlog/server/db/schemas'
 import { pickBrandForegroundHex, resolveBranding } from '#layers/feedlog/shared/utils/branding'
@@ -9,6 +10,7 @@ import {
 
 // GET /api/widget/config — anonymous bootstrap for the widget SDK.
 export default defineEventHandler(async (event): Promise<{
+  imageMaxBytes: number
   enabled: boolean
   allowGuest: boolean
   org: { name: string; logo: string | null }
@@ -53,6 +55,7 @@ export default defineEventHandler(async (event): Promise<{
   // Both colors are final values — the SDK does no color math, so a light brand
   // must arrive with a dark foreground already picked.
   return {
+    imageMaxBytes: CHAT_IMAGE_UPLOAD_BYTES,
     enabled,
     // Everything a visitor can do in the widget ends in a post, so guest posting
     // decides whether the frame shows the composer or a sign-in wall.

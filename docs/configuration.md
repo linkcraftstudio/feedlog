@@ -245,8 +245,69 @@ Base URL of the OpenAI-compatible endpoint. Examples:
 
 Model used for Widget Agent conversations and AI changelog drafting.
 The Widget Agent requires an explicit model name and API key; without either,
-sending a message returns HTTP 503. Choose an OpenAI-compatible chat model
+messages are saved for human support when the organization has support staff. The Widget transfers silently, without an AI reply or status notice. If no staff can receive the conversation, the message stays saved and the Widget remains silent, without claiming a transfer. Choose an OpenAI-compatible chat model
 with tool calling and, for image attachments, image input support.
+
+Each customer message accepts up to ten images; text does not count toward this limit.
+The Widget rejects selections exceeding the limit before uploading, and the message API
+enforces the same image count.
+
+Images are processed before upload and Send stays disabled until uploads finish. Native
+browser WebP encoding starts at quality 0.85, targeting 1 MiB with a 2 MiB hard limit.
+Compatible small images remain unchanged. Ordinary images retain their full frame and
+fit a 2048-pixel longest edge. Images with aspect ratio above 3 retain up to 4096 pixels
+and do not undergo further dimension reduction; this does not guarantee tiny text is readable.
+SVG rasterization and lazy HEIC conversion remain supported. Original inputs may be up to
+32 MiB. New messages accept ten images totaling at most 10 MiB, validated server-side from
+stored metadata. Historical attachments retain the former 16 MiB / 4096-pixel compatibility.
+
+A batch now defaults to ten images / 16 MiB of compressed file bytes (approximately
+21.4 MiB as base64). Thus ten compressed images within the new message budget are analyzed
+in one request. Larger historical sets or a stricter provider configuration may split into
+batches, with two batch workers per conversation. Set `AGENT_IMAGE_BATCH_MAX_IMAGES`
+(1–10, default 10) and `AGENT_IMAGE_BATCH_MAX_MIB` (4–16, default 16) to match the provider.
+There is no whole-run concurrency semaphore. Uploads and image reads use the existing
+Blob storage API, and image analysis uses the model SDK with a bounded input batch.
+The image dependency timeout remains 60 seconds and the fixed first-answer deadline remains
+120 seconds. Background activity cannot renew it. After visible text begins, inactivity
+controls cancellation. Failed image analysis produces a retryable error, not a handoff.
+Every image must return a numbered observation before the final answer is generated.
+
+These are application limits, not automatically discovered model limits; text, response
+and visual-token limits still depend on the selected model. Batch observations preserve
+image numbers, visible text and uncertainty for comparison but are not lossless substitutes
+for the original pixels. Their usage is included in the run's token statistics.
+Historical images share the same request budget, with newer images preferred. The server checks actual JPEG/PNG/WebP bytes and dimensions.
+Metadata preflight has a shared 15-second budget per message. Image bytes are read
+lazily from filesystem, S3, R2 or Vercel storage and incrementally base64-encoded with
+backpressure; the server never assembles a complete image/data URL for analysis.
+Storage opens and stalled reads have 15-second limits, excluding time spent waiting
+for the model transport to accept a chunk. Cancellation closes the underlying reader.
+Unknown custom storage drivers fail rather than silently buffering whole objects.
+Multipart uploads keep their separate single-allocation permit. Invalid images
+can be replaced without transferring the conversation to a person. Legacy images
+that cannot be read are excluded from model history without removing their saved attachments.
+
+Inbox access is granted to owners, managers and contributors through the separate
+`feedlog:inbox` permission. It does not grant content moderation or organization
+administration. Dashboard entry selects an accessible page; restricted navigation
+is blocked with the existing permission toast.
+
+Missing AI configuration transfers silently when human support is available; the
+internal handoff event and owner notification are retained. AI execution failures
+and timeouts instead show the existing error and retry controls, without automatically
+transferring. An unavailable handoff is silent, including after history reload,
+and does not show a success notice or retry control.
+
+Successful requested handoffs keep the standard confirmation. Enabled support rules
+use billing, account-access, privacy, or generic custom-rule confirmation text.
+The same localized notice is used during streaming and when reading history.
+
+Each successful handoff queues a durable administrator email after the transaction
+commits. Only the organization's owners receive it, with an Inbox link
+and no customer message content. Delivery tracks successful recipients and retries
+failures up to three attempts. Configure a real email provider for delivery;
+`console` does not send notifications. Subsequent human messages retain their existing behavior.
 
 Articles with AI Usage enabled are available to the agent independently of
 publication and collection visibility. Customer-facing article references require
@@ -327,3 +388,65 @@ The domain must be verified with your email provider.
   read at runtime — no rebuild needed when rotating credentials.
 - The bundled `compose.yml` mounts an `app-data` named volume on
   `/app/.data` so the local-filesystem fallback survives restarts.
+
+### `AGENT_MAX_STEPS` &nbsp;⬜ optional, default `12`
+
+Accepts a positive safe integer written in decimal digits (surrounding whitespace is ignored).
+Unset or invalid values silently fall back to `12`.
+
+The most model steps in one Widget Agent run. A lower value limits cost and time, but a run that
+reaches it may end before it answers, so test it on your own help content.
+
+### Agent inactivity timeout
+
+The first visible answer has a fixed 120-second budget. Image batches, reasoning,
+tools and heartbeats cannot renew it. Once nonempty answer text arrives, each text
+delta renews a 120-second inactivity window. Database recovery follows the same
+deadline; continuous answers may exceed 120 seconds in total. The Widget also
+starts this two-phase timer at Send, covering preflight/network waiting.
+Image analysis requests retain their 60-second limit and share the first-answer
+budget. Agent knowledge/feedback reads have a 5-second wait limit; feedback query
+embedding has a 5-second transport timeout and help query embedding retains its
+stricter 2.5-second timeout. Dependency timeout fails the run rather than silently
+handing off. Late read results are ignored; SQL retains its existing statement
+limit. Hosting providers and reverse proxies must permit long streams.
+
+Image conversion, compression and upload start on selection, before Send is enabled.
+The Widget blocks Send while processing or
+while an attachment error remains unresolved. The message endpoint validates stored
+attachments before creating a run, then reuses that input instead of rereading the
+current attachments during agent preparation. Interrupted text is cleared; the existing error area and Retry reply button are
+used. Customer messages and uploaded attachments remain available for retry.
+Incremental conversation polling includes the latest run state even when no new message
+was appended, so a timeout can unlock retry after the stream has disconnected.
+
+
+Owner handoff notifications include the customer's name (or Visitor), non-anonymous email,
+handoff reason, latest customer message and attachment count. When AI is available, the
+notification task may add a 2–3 sentence English summary with a five-second limit.
+The email copy and summary use English; the latest customer message retains its original language. AI-unavailable
+handoffs skip this call; summary failures fall back to the latest message. The task saves
+its notification context before delivery so retries retain the same handoff-time content.
+
+
+### Malformed handoff output
+
+If a model returns handoff protocol as answer text, the run stops that stream and
+rechecks the actual customer messages against enabled support rules using a separate
+structured decision. This recovery has a 15-second dependency limit and shares the
+original run deadline. Only a validated decision invokes the regular handoff
+transaction, which creates the system event and Owner notification task. A declined
+or failed decision follows the existing error/retry flow; it does not transfer the
+conversation. The Widget clears transient text without adding a new UI element.
+Contaminated assistant history and subsequent assistant claims are excluded from
+model input, while customer messages and persisted diagnostic evidence are retained.
+
+### Agent phase diagnostics
+
+Set `AGENT_TIMING=true` to log image-analysis start/end, first visible answer, and
+run completion/failure. Records include run IDs, image counts/bytes and durations;
+they exclude message bodies, images, prompts and credentials. No per-step tracing
+context or additional tracing service is installed.
+
+Active runs share one batched status query per second per database pool, avoiding
+per-conversation polling amplification. This does not serialize model execution.

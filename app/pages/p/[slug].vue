@@ -9,7 +9,12 @@ const boardStore = useBoardStore()
 await callOnce(() => boardStore.fetchBoards())
 
 // SSR: fetch via useFetch (payload auto-transferred), then hydrate store on both sides
-const { data: postData } = await useFetch<PostDetail>(`/api/posts/${slug}`)
+const { data: postData, error: postError } = await useFetch<PostDetail>(`/api/posts/${slug}`)
+// A missing post is a 404, not an empty page with 200 (a "soft 404" that search
+// engines index and link checkers cannot see).
+if (postError.value?.statusCode === 404) {
+  throw createError({ statusCode: 404, statusMessage: 'Not Found', fatal: true })
+}
 if (postData.value) {
   store.setPost(slug, postData.value)
 }

@@ -1,5 +1,6 @@
 import type { InjectionKey } from 'vue'
 import { pageContext, type PageContext } from '#layers/feedlog/shared/agent/content'
+import type { WidgetLanguage } from '#layers/feedlog/shared/utils/widget-locale'
 
 const PROTOCOL_VERSION = 1
 
@@ -11,6 +12,7 @@ export function useWidgetProtocol() {
   const supportsPageContext = ref(false)
   const hostOrigin = ref<string | null>(null)
   const theme = ref<'light' | 'dark' | 'auto' | undefined>()
+  const locale = ref<WidgetLanguage | undefined>()
   let captureState: (() => unknown) | undefined
   let restoreState: ((state: unknown) => void) | undefined
 
@@ -53,6 +55,9 @@ export function useWidgetProtocol() {
     else if (type === 'set-theme' && ['light', 'dark', 'auto'].includes(payload?.theme)) {
       theme.value = payload.theme
     }
+    else if (type === 'set-locale' && ['en', 'zh'].includes(payload?.locale)) {
+      locale.value = payload.locale
+    }
   }
 
   function init() {
@@ -91,11 +96,12 @@ export function useWidgetProtocol() {
   return {
     embedded,
     theme,
+    locale,
     parentOrigin,
     init,
     send,
     requestPageContext,
-    ready: () => send('ready', { capabilities: { resumeState: !!captureState, theme: true } }),
+    ready: () => send('ready', { capabilities: { resumeState: !!captureState, theme: true, locale: true } }),
     onResume: (capture: () => unknown, restore: (state: unknown) => void) => {
       captureState = capture
       restoreState = restore

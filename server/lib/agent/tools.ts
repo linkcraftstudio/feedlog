@@ -1,5 +1,8 @@
+import { AgentDependencyTimeout, withDependencyTimeout } from './dependency-timeout'
+import { HelpEmbeddingError } from '../help-search/embedding'
 import { handoff } from '../inbox/service'
 import { handoffReason } from '../../../shared/inbox/state'
+import { handoffCustomerNoticeInput } from './handoff-notice'
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 import { uuidv7 } from 'uuidv7'
@@ -21,7 +24,7 @@ interface FeedbackRow {
   has_voted: boolean; subscribed: boolean; edit_window_open: boolean; community_activity: boolean
 }
 type Effect = { id: string; kind: string; triggerId: string; feedbackId?: string }
-export function feedlogTools(event: H3Event, actor: Actor, conversationId: string, runId: string, triggerId: string, signal: AbortSignal, emit: (event: StreamEvent) => void, promptContext: AgentPromptContext, onHandoff?: () => void) {
+export function feedlogTools(event: H3Event, actor: Actor, conversationId: string, runId: string, triggerId: string, signal: AbortSignal, emit: (event: StreamEvent) => void, promptContext: AgentPromptContext, onHandoff?: (unavailable?: boolean) => void, onFailure?: () => void) {
   const runtime = agentRuntime(event)
   const { pool, memory } = runtime
   const cards: Part[] = []
@@ -88,10 +91,13 @@ export function feedlogTools(event: H3Event, actor: Actor, conversationId: strin
       const startedAt = Date.now()
       emit({ type: 'tool', runId, callId, name, phase: 'start', data: input })
       try {
-        const result = await execute(input as z.infer<T>)
+        const result = await (['search_help_articles', 'read_help_article', 'search_feedback'].includes(name)
+          ? withDependencyTimeout(() => execute(input as z.infer<T>), signal)
+          : execute(input as z.infer<T>))
         emit({ type: 'tool', runId, callId, name, phase: 'finish', data: result, durationMs: Date.now() - startedAt })
         return result
       } catch (error) {
+        if (error instanceof AgentDependencyTimeout || error instanceof HelpEmbeddingError) { onFailure?.(); throw error }
         if (signal.aborted) throw error
         const result = { error: error instanceof Error ? error.message : 'Tool failed' }
         emit({ type: 'tool', runId, callId, name, phase: 'finish', data: result, durationMs: Date.now() - startedAt })
@@ -117,20 +123,26 @@ export function feedlogTools(event: H3Event, actor: Actor, conversationId: strin
     return `${content}\n\n${[...new Set(images)].map(key => `![](attachment:${key})`).join('\n')}`
   }
   const imageInput = z.array(z.string().min(1).max(1000)).max(10).optional().describe('Storage keys of images supplied by this customer in this conversation, relevant to the feedback.')
+  async function transfer({ reason, rule_id, customer_notice }: { reason: import('../../../shared/inbox/state').HandoffReason; rule_id?: string; customer_notice: string }) {
+    const rule = reason === 'support_rule' ? promptContext.supportRules.find(rule => rule.id === rule_id) : undefined
+    if (reason === 'support_rule' && !rule) return { error: 'Choose a matching configured support rule ID, or use the appropriate other handoff reason.' }
+    if (reason !== 'support_rule' && rule_id) return { error: 'rule_id is only valid for support_rule.' }
+    try {
+      const saved = await handoff(runtime, conversationId, actor.orgId, runId, reason, true, rule, await feedbackResults(), getRequestURL(event).origin, customer_notice)
+      if (!saved) throw new Error('Handoff was not completed')
+    } catch (error) {
+      onHandoff?.(true)
+      throw error
+    }
+    onHandoff?.()
+    return { handoff: true, status: 'open', stop: true }
+  }
   const idInput = z.object({ feedback_id: z.uuid() })
   const tools = {
     handoff_to_human: createTool({
       id: 'handoff_to_human', description: 'Transfer this conversation to human support and end AI handling only after an explicit request for a person, acceptance of an offer to involve one, or a matching mandatory support rule. A knowledge miss, frustration, a how-to question, or a failed tool alone is not consent. Feature suggestions, bug reports and requests to leave feedback use feedback tools; do not replace them with handoff. For a mixed request, finish the appropriate feedback action before calling this tool. Never call it in parallel with another tool.',
-      inputSchema: z.object({ reason: handoffReason, rule_id: z.string().min(1).optional().describe('Required for support_rule: the matching enabled rule ID from the configured support rules. Omit for other reasons.') }).strict(),
-      execute: async ({ reason, rule_id }) => {
-        const rule = reason === 'support_rule' ? promptContext.supportRules.find(rule => rule.id === rule_id) : undefined
-        if (reason === 'support_rule' && !rule) return { error: 'Choose a matching configured support rule ID, or use the appropriate other handoff reason.' }
-        if (reason !== 'support_rule' && rule_id) return { error: 'rule_id is only valid for support_rule.' }
-        const saved = await handoff(runtime, conversationId, actor.orgId, runId, reason, true, rule, await feedbackResults())
-        if (!saved) throw new Error('Run is no longer active')
-        onHandoff?.()
-        return { handoff: true, status: 'open', stop: true }
-      },
+      inputSchema: z.object({ reason: handoffReason, rule_id: z.string().min(1).optional().describe('Required for support_rule: the matching enabled rule ID from the configured support rules. Omit for other reasons.'), customer_notice: handoffCustomerNoticeInput }).strict(),
+      execute: transfer,
     }),
     search_help_articles: tool('search_help_articles', helpArticleSearchDescription, helpArticleSearchInput, input => searchHelpArticles(pool, actor.orgId, input, getRequestURL(event).origin)),
     read_help_article: tool('read_help_article', 'Read an AI-enabled article by article_id or the shortId-slug segment of an internal article link. Follow relevant links to establish facts. customer_visible determines whether it can be cited publicly; internal articles can inform answers.', z.object({ article_id: z.uuid().optional(), slug: z.string().min(1).max(200).optional() }).refine(input => !!input.article_id !== !!input.slug, 'Provide either article_id or slug'), async ({ article_id, slug }) => {
@@ -143,7 +155,7 @@ export function feedlogTools(event: H3Event, actor: Actor, conversationId: strin
       articles.set(article.article_id, reference)
       return { ...reference, content: article.content, url: customer_visible ? new URL(`/help/${route}`, getRequestURL(event).origin).href : null }
     }),
-    cite_help_articles: tool('cite_help_articles', 'Attach the articles actually used in the final answer as customer-visible references. Only IDs already read are accepted. The application automatically renders the returned part as article cards; write the answer in natural language.', z.object({ article_ids: z.array(z.uuid()).min(1).max(8) }), async ({ article_ids }) => {
+    cite_help_articles: tool('cite_help_articles', 'Attach only articles that directly support the central answer to the customer’s question. Do not include articles read only for background, a generic dashboard link, or an optional navigation detail. Only IDs already read are accepted. The application verifies citation support and renders accepted references as article cards; write the answer in natural language.', z.object({ article_ids: z.array(z.uuid()).min(1).max(8) }), async ({ article_ids }) => {
       const references = [...new Set<string>(article_ids)].map(id => {
         const article = articles.get(id)
         if (!article?.customer_visible) throw new Error('Only a read, customer-visible article can be cited')
@@ -156,7 +168,7 @@ export function feedlogTools(event: H3Event, actor: Actor, conversationId: strin
     }),
     list_feedback_boards: tool('list_feedback_boards', 'List valid feedback boards. Select a relevant board before creating feedback.', z.object({}), async () => (await pool.query('SELECT id,name,description FROM board WHERE org_id=$1 ORDER BY position,id', [actor.orgId])).rows),
     search_feedback: tool('search_feedback', 'Find similar public feedback using the same semantic search as the feedback portal, with text similarity as a fallback. Results are ranked candidates; compare their details with the customer\'s actual need before treating them as duplicates or voting. editable indicates whether this Agent can edit the feedback for the current customer in this conversation, not the customer\'s general editing permissions.', z.object({ query: z.string().trim().min(1).max(300).describe('A concise description of the customer\'s problem or requested improvement, including conditions that distinguish it. Use natural language in the customer\'s language or another appropriate language.') }), async ({ query }) => {
-      const matches = await searchSimilarByText(query, { orgId: actor.orgId, userId: actor.customerId, limit: 8 })
+      const matches = await searchSimilarByText(query, { orgId: actor.orgId, userId: actor.customerId, limit: 8, embeddingTimeoutMs: 5000 })
       if (!matches.length) return []
       const ids = await createdIds('feedback')
       return Promise.all(matches.map(async match => {
@@ -292,5 +304,5 @@ export function feedlogTools(event: H3Event, actor: Actor, conversationId: strin
     catch { console.warn('[agent] Preserving confirmed feedback receipts without refresh', { conversationId, runId }) }
     return parts.filter((part): part is FeedbackPart => 'feedback_id' in part)
   }
-  return { tools: enabledTools, resultParts, feedbackResults }
+  return { tools: enabledTools, resultParts, feedbackResults, transfer }
 }

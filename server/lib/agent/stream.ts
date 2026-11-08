@@ -4,17 +4,17 @@ import { readUIMessageStream, type UIMessage, type UIMessageChunk } from 'ai'
 export async function collectConversationReply(
   stream: ReadableStream<UIMessageChunk>,
   messageId: string,
-  write: (chunk: UIMessageChunk) => void,
+  write: (chunk: UIMessageChunk) => void | Promise<void>,
 ) {
   let message: UIMessage | undefined
   let finish: Extract<UIMessageChunk, { type: 'finish' }> | undefined
   let failure: unknown
   const observed = stream.pipeThrough(new TransformStream<UIMessageChunk, UIMessageChunk>({
-    transform(chunk, controller) {
+    async transform(chunk, controller) {
       const next = chunk.type === 'start' ? { ...chunk, messageId } : chunk
       if (next.type === 'finish') finish = next
       else if (next.type === 'abort' || next.type === 'error') failure = new Error('Response did not complete.')
-      else write(next)
+      else await write(next)
       controller.enqueue(next)
     },
   }))

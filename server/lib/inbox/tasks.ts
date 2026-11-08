@@ -14,11 +14,11 @@ export async function syncConversationTask(client: PoolClient, id: string) {
     SET schedule_at=excluded.schedule_at,status=excluded.status,updated_at=clock_timestamp()`, [id, uuidv7()])
 }
 
-export async function syncRunTask(client: PoolClient, id: string) {
-  await client.query(`INSERT INTO scheduled_task(id,kind,ref_id,schedule_at,status)
-    SELECT $2,'agent_deadline',id,deadline_at,CASE WHEN status='running' THEN 'pending' ELSE 'cancelled' END
+export async function syncRunTask(client: PoolClient, id: string, requestOrigin?: string) {
+  await client.query(`INSERT INTO scheduled_task(id,kind,ref_id,schedule_at,status,result)
+    SELECT $2,'agent_deadline',id,deadline_at,CASE WHEN status='running' THEN 'pending' ELSE 'cancelled' END,$3
     FROM agent_run WHERE id=$1 ON CONFLICT (kind,ref_id) WHERE item_id IS NULL DO UPDATE
-    SET schedule_at=excluded.schedule_at,status=excluded.status,updated_at=clock_timestamp()`, [id, uuidv7()])
+    SET schedule_at=excluded.schedule_at,status=excluded.status,result=coalesce(excluded.result,scheduled_task.result),updated_at=clock_timestamp()`, [id, uuidv7(), requestOrigin ? JSON.stringify({ requestOrigin }) : null])
 }
 
 export async function scheduleReplyEmail(client: PoolClient, conversationId: string, itemId: string, immediate = false) {

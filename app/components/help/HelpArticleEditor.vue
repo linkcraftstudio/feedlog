@@ -3,6 +3,7 @@ import { onClickOutside, onKeyStroke } from '@vueuse/core'
 import { toast } from 'vue-sonner'
 import type { HelpArticleStatus, HelpCollectionIcon } from '#layers/feedlog/shared/constants/help'
 import '~/assets/css/help-article.css'
+import type { HelpIndexStatus } from '#layers/feedlog/shared/types/help-index'
 
 interface ArticleDetail {
   id: string
@@ -12,6 +13,7 @@ interface ArticleDetail {
   description: string | null
   content: string
   aiEnabled: boolean
+  indexStatus: HelpIndexStatus | null
   status: HelpArticleStatus
   publishedAt: string | null
   createdAt: string
@@ -28,31 +30,47 @@ interface CollectionOption {
 
 const props = defineProps<{ articleId?: string; collectionId?: string }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { confirm } = useConfirmDialog()
+const { onUploadImg } = useUploadImg()
 const router = useRouter()
 const localePath = useLocalePath()
 
 const id = computed(() => props.articleId ?? '')
 const isNew = computed(() => !props.articleId)
 
-const { data: article, refresh } = await useFetch<ArticleDetail>(() => `/api/admin/help/articles/${id.value}`, {
+const { data: article, refresh, error: loadError, status: loadStatus } = await useFetch<ArticleDetail>(() => `/api/admin/help/articles/${id.value}`, {
   immediate: !isNew.value,
 })
 
 watch(isNew, (value) => { if (!value) refresh() })
+const { data: indexState, refresh: refreshIndex } = await useFetch<{ status: HelpIndexStatus; enabled: boolean; errorCode: string | null }>(() => `/api/admin/help/articles/${id.value}/index-status`, { immediate: !isNew.value })
+let indexPoll: ReturnType<typeof setInterval> | undefined
+onMounted(() => {
+  indexPoll = setInterval(() => {
+    if (id.value && indexState.value?.enabled && indexState.value.status === 'indexing') refreshIndex()
+  }, 5000)
+})
+onBeforeUnmount(() => clearInterval(indexPoll))
+watch(() => article.value?.updatedAt, () => { if (id.value) refreshIndex() })
 const { data: collectionsData } = await useFetch<{ data: CollectionOption[] }>('/api/admin/help/collections', {
   query: { flat: 1 },
 })
 const collections = computed(() => collectionsData.value?.data ?? [])
 
+const TITLE_MAX_LENGTH = 200
 const form = reactive({ title: '', description: '', content: '', aiEnabled: true })
 const draftCollectionId = ref(props.collectionId ?? '')
 const saving = ref(false)
+const titleInput = ref<HTMLInputElement | null>(null)
+const bodyField = ref<HTMLElement | null>(null)
+const errors = reactive({ title: false, content: false })
+watch(() => form.title, () => { errors.title = false })
+watch(() => form.content, () => { errors.content = false })
 const pickerOpen = ref(false)
 const pickerRef = ref<HTMLElement | null>(null)
 onClickOutside(pickerRef, () => { pickerOpen.value = false })
-onKeyStroke('Escape', () => { pickerOpen.value = false })
+onKeyStroke('Escape', () => { pickerOpen.value = false; previewOpen.value = false })
 const previewOpen = ref(false)
 const leavingAfterWrite = ref(false)
 
@@ -71,10 +89,11 @@ const dirty = computed(() =>
   || form.content !== (article.value?.content ?? '')
   || form.aiEnabled !== (article.value?.aiEnabled ?? true))
 
+const canSave = computed(() => isNew.value || dirty.value || (article.value?.status === 'published' && indexState.value?.enabled && ['not_indexed', 'failed'].includes(indexState.value.status)))
+
 const collection = computed(() => isNew.value
   ? collections.value.find(c => c.id === draftCollectionId.value)
   : article.value?.collection)
-const hiddenWarning = computed(() => article.value?.status === 'published' && collection.value && !collection.value.visible)
 const articleUrl = computed(() => article.value ? `/help/${article.value.shortId}-${article.value.slug}` : '')
 
 watch(collections, (list) => {
@@ -83,14 +102,26 @@ watch(collections, (list) => {
 
 function formatStamp(iso: string | null | undefined) {
   if (!iso) return '—'
-  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
+  return new Intl.DateTimeFormat(locale.value, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
 }
 
 async function patch(body: Record<string, unknown>) {
+  if (saving.value) return false
+  const submitted = { ...form }
   saving.value = true
   try {
-    await $fetch(`/api/admin/help/articles/${id.value}`, { method: 'PATCH', body })
-    await refresh()
+    const saved = await $fetch<ArticleDetail>(`/api/admin/help/articles/${id.value}`, { method: 'PATCH', body })
+    article.value = saved
+    // The save response already describes the queued generation; show it immediately.
+    if (indexState.value) indexState.value = { ...indexState.value, enabled: saved.indexStatus !== null, status: saved.indexStatus ?? 'not_indexed' }
+    // Apply server normalization only to submitted fields not edited in flight.
+    // Moving collections must not discard unrelated unsaved content.
+    if (article.value) {
+      for (const key of ['title', 'description', 'content'] as const) {
+        if (key in body && form[key] === submitted[key]) form[key] = article.value[key] ?? ''
+      }
+      if ('aiEnabled' in body && form.aiEnabled === submitted.aiEnabled) form.aiEnabled = article.value.aiEnabled
+    }
     return true
   }
   catch (e) {
@@ -110,6 +141,7 @@ const contentBody = () => ({
 })
 
 async function create(publish: boolean) {
+  if (saving.value) return
   if (!draftCollectionId.value) {
     toast.error(t('help.admin.newArticleDisabledHint'))
     return
@@ -133,42 +165,50 @@ async function create(publish: boolean) {
   }
 }
 
+function validateContent() {
+  errors.title = !form.title.trim()
+  errors.content = !form.content.trim()
+  if (errors.title) titleInput.value?.focus()
+  else if (errors.content) bodyField.value?.querySelector<HTMLElement>('[contenteditable="true"]')?.focus()
+  return !errors.title && !errors.content
+}
+
 async function saveDraft() {
-  if (!form.title.trim()) {
-    toast.error(t('help.admin.editor.titleRequired'))
-    return
-  }
-  if (!form.content.trim()) {
-    toast.error(t('help.admin.editor.contentRequired'))
-    return
-  }
+  if (saving.value || !canSave.value || !validateContent()) return
   if (isNew.value) return create(false)
   if (await patch(contentBody())) toast.success(t('help.admin.editor.saved'))
 }
 
 async function togglePublish() {
-  if (!form.title.trim()) {
-    toast.error(t('help.admin.editor.titleRequired'))
+  if (saving.value) return
+  if (article.value?.status === 'published') {
+    const ok = await confirm({
+      title: t('help.admin.editor.unpublishTitle'),
+      description: t('help.admin.editor.unpublishBody'),
+      confirmText: t('help.admin.unpublish'), cancelText: t('common.cancel'),
+    })
+    if (ok && await patch({ status: 'archived' })) toast.success(t('help.admin.editor.saved'))
     return
   }
-  if (article.value?.status !== 'published') {
-    if (!form.content.trim()) {
-      toast.error(t('help.admin.editor.contentRequired'))
-      return
-    }
-    const ok = await confirm({
-      title: t('help.admin.publishTitle'),
-      confirmText: t('help.admin.publish'),
-      cancelText: t('common.cancel'),
-    })
-    if (!ok) return
-  }
+  if (!validateContent()) return
+  const ok = await confirm({
+    title: t('help.admin.publishTitle'),
+    description: t('help.admin.editor.publishBody'),
+    confirmText: t('help.admin.publish'), cancelText: t('common.cancel'),
+  })
+  if (!ok) return
   if (isNew.value) return create(true)
-  const next = article.value?.status === 'published' ? 'archived' : 'published'
-  if (await patch({ ...contentBody(), status: next })) toast.success(t('help.admin.editor.saved'))
+  if (await patch({ ...contentBody(), status: 'published' })) toast.success(t('help.admin.editor.saved'))
 }
 
+onKeyStroke('s', (event) => {
+  if (!(event.ctrlKey || event.metaKey)) return
+  event.preventDefault()
+  if (!saving.value) void saveDraft()
+})
+
 async function pickCollection(collectionId: string) {
+  if (saving.value) return
   pickerOpen.value = false
   if (isNew.value) {
     draftCollectionId.value = collectionId
@@ -180,7 +220,7 @@ async function pickCollection(collectionId: string) {
 }
 
 async function removeArticle() {
-  if (!article.value) return
+  if (saving.value || !article.value) return
 
   const ok = await confirm({
     title: t('help.admin.editor.deleteTitle', { title: article.value.title }),
@@ -223,6 +263,14 @@ onBeforeRouteLeave(async () => {
   })
 })
 
+function warnBeforeUnload(event: BeforeUnloadEvent) {
+  if (!dirty.value || leavingAfterWrite.value) return
+  event.preventDefault()
+  event.returnValue = ''
+}
+onMounted(() => window.addEventListener('beforeunload', warnBeforeUnload))
+onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnload))
+
 function goBack() {
   router.push(localePath('/dashboard/help'))
 }
@@ -230,14 +278,15 @@ function goBack() {
 
 <template>
   <div v-if="article || isNew" class="flex h-full min-h-0 flex-col">
-    <header class="flex h-16 shrink-0 items-center justify-between border-b border-border bg-card px-6">
-      <div class="flex items-center gap-4">
+    <header class="flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-3 py-3 border-b border-border bg-card px-6">
+      <div class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
         <button type="button" data-testid="help-editor-back" class="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground" @click="goBack">
           <Icon name="lucide:arrow-left" size="16" />
           {{ $t('help.admin.editor.back') }}
         </button>
         <div class="h-4 w-px bg-border" />
         <HelpStatusBadge v-if="article" :status="article.status" />
+        <HelpIndexStatusBadge v-if="article?.status === 'published' && indexState?.enabled && indexState.status !== 'ready'" :status="indexState.status" />
         <span class="text-xs" :class="dirty ? 'font-bold text-[var(--accent)]' : 'font-medium text-muted-foreground'">
           {{ !article
             ? $t('help.admin.editor.notSaved')
@@ -245,7 +294,7 @@ function goBack() {
         </span>
       </div>
 
-      <div class="flex items-center gap-2">
+      <div class="flex flex-wrap items-center gap-2">
         <button
           v-if="article"
           type="button"
@@ -261,9 +310,9 @@ function goBack() {
           <Icon name="lucide:eye" size="16" />
           {{ $t('help.admin.editor.preview') }}
         </button>
-        <button type="button" class="inline-flex h-9 items-center gap-2 rounded-2xl border border-border bg-background px-3 text-xs font-bold text-muted-foreground hover:text-foreground disabled:opacity-50" :disabled="saving" @click="saveDraft">
+        <button type="button" class="inline-flex h-9 items-center gap-2 rounded-2xl border border-border bg-background px-3 text-xs font-bold text-muted-foreground hover:text-foreground disabled:opacity-50" :disabled="saving || !canSave" @click="saveDraft">
           <Icon name="lucide:save" size="16" />
-          {{ $t('help.admin.editor.saveDraft') }}
+          {{ saving ? $t('help.admin.editor.saving') : article?.status === 'published' ? $t('help.admin.editor.saveChanges') : $t('help.admin.editor.saveDraft') }}
         </button>
         <button type="button" class="inline-flex h-9 items-center rounded-2xl border border-primary bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50" :disabled="saving" @click="togglePublish">
           {{ article?.status === 'published' ? $t('help.admin.unpublish') : $t('help.admin.publish') }}
@@ -271,47 +320,64 @@ function goBack() {
       </div>
     </header>
 
-    <div class="flex min-h-0 flex-1 overflow-hidden">
-      <div class="min-w-0 flex-1 overflow-auto px-10 py-8">
-        <div class="mx-auto max-w-[720px]">
-          <div v-if="hiddenWarning && article" class="mb-[18px] flex gap-2 rounded-lg border border-[rgba(230,121,99,.25)] bg-[rgba(230,121,99,.08)] px-3 py-2.5">
-            <span class="flex shrink-0 text-accent"><Icon name="lucide:circle-question-mark" size="15" /></span>
-            <span class="text-xs leading-[17px]">{{ $t('help.admin.editor.hiddenWarning', { name: collection?.name }) }}</span>
-          </div>
-
-          <p class="mb-1.5 text-[11px] font-bold uppercase leading-[17px] tracking-[.05em] text-muted-foreground">{{ $t('help.admin.editor.title') }}</p>
+    <div class="flex min-h-0 flex-1 flex-col overflow-auto lg:flex-row lg:overflow-hidden">
+      <div class="help-editor-workspace min-w-0 flex-1 px-5 py-5 lg:overflow-auto lg:px-8 lg:py-6">
+        <div class="help-editor-form mx-auto w-full max-w-[1280px]">
+          <p v-if="isNew && !collections.length" class="mb-4 text-sm text-destructive">{{ $t('help.admin.newArticleDisabledHint') }}</p>
+          <p class="mb-1.5 text-[11px] font-bold uppercase leading-[17px] tracking-[.05em] text-muted-foreground">
+            {{ $t('help.admin.editor.title') }}<span aria-hidden="true" class="ml-0.5 text-destructive">*</span>
+          </p>
           <input
+            ref="titleInput"
             v-model="form.title"
+            :aria-label="$t('help.admin.editor.title')"
+            :aria-invalid="errors.title"
+            aria-describedby="help-title-error"
+            :disabled="isNew && saving"
             type="text"
-            maxlength="200"
+            required
+            :maxlength="TITLE_MAX_LENGTH"
             class="w-full border-0 border-b border-border bg-transparent pb-3 text-[26px] font-bold leading-[34px]! tracking-[-.01em] outline-none"
             :placeholder="$t('help.admin.editor.titlePlaceholder')"
           >
 
-          <p class="mb-1.5 mt-[22px] text-[11px] font-bold uppercase leading-[17px] tracking-[.05em] text-muted-foreground">{{ $t('help.admin.editor.description') }}</p>
+          <p v-if="errors.title" id="help-title-error" role="alert" class="mt-2 text-xs text-destructive">{{ $t('help.admin.editor.titleRequired') }}</p>
+          <p class="mt-1 text-right text-xs text-muted-foreground">{{ form.title.length }} / {{ TITLE_MAX_LENGTH }}</p>
+
+          <p class="mb-1.5 mt-3 text-[11px] font-bold uppercase leading-[17px] tracking-[.05em] text-muted-foreground">{{ $t('help.admin.editor.description') }}</p>
           <textarea
             v-model="form.description"
+            :aria-label="$t('help.admin.editor.description')"
+            :disabled="isNew && saving"
+            maxlength="300"
             class="min-h-[44px] w-full resize-none border-0 border-b border-border bg-transparent pb-3 text-sm leading-[22px] outline-none"
             :placeholder="$t('help.admin.editor.descriptionPlaceholder')"
           />
 
-          <p class="mb-2.5 mt-[22px] text-[11px] font-bold uppercase leading-[17px] tracking-[.05em] text-muted-foreground">{{ $t('help.admin.editor.body') }}</p>
-          <ClientOnly>
-            <ThemedMdEditor
-              v-model="form.content"
-              language="en-US"
-              :placeholder="$t('help.admin.editor.bodyPlaceholder')"
-              :preview="false"
-              :max-length="50000"
-              :footers="['markdownTotal']"
-              :toolbars="['bold', 'italic', 'strikeThrough', '-', 'title', 'unorderedList', 'orderedList', '-', 'link', 'image', 'code', 'codeRow', '=', 0]"
-              style="height: 520px"
-            />
-          </ClientOnly>
+          <p class="mt-1 text-right text-xs text-muted-foreground">{{ form.description.length }} / 300</p>
+          <p class="mb-2.5 mt-3 text-[11px] font-bold uppercase leading-[17px] tracking-[.05em] text-muted-foreground">
+            {{ $t('help.admin.editor.body') }}<span aria-hidden="true" class="ml-0.5 text-destructive">*</span>
+          </p>
+          <div ref="bodyField" class="help-editor-body help-article-styled">
+            <ClientOnly>
+              <ThemedMdEditor
+                v-model="form.content"
+                :read-only="isNew && saving"
+                :language="locale === 'zh' ? 'zh-CN' : 'en-US'"
+                :placeholder="$t('help.admin.editor.bodyPlaceholder')"
+                :preview="false"
+                :footers="['markdownTotal']"
+                :toolbars="['bold', 'italic', 'strikeThrough', '-', 'title', 'unorderedList', 'orderedList', '-', 'link', 'image', 'code', 'codeRow', 'table', '=', 0]"
+                class="help-editor-input"
+                @on-upload-img="onUploadImg"
+              />
+            </ClientOnly>
+            <p v-if="errors.content" role="alert" class="mt-2 text-xs text-destructive">{{ $t('help.admin.editor.contentRequired') }}</p>
+          </div>
         </div>
       </div>
 
-      <aside class="flex w-[300px] shrink-0 grow-0 basis-[300px] flex-col gap-[22px] overflow-auto border-l border-border bg-card px-5 py-6">
+      <aside class="flex w-full shrink-0 flex-col gap-[22px] border-t border-border bg-card px-5 py-6 lg:w-[300px] lg:basis-[300px] lg:overflow-auto lg:border-l lg:border-t-0">
         <div>
           <p class="mb-1.5 text-[11px] font-bold uppercase leading-[17px] tracking-[.05em] text-muted-foreground">{{ $t('help.admin.editor.collection') }}</p>
           <div ref="pickerRef" class="relative">
@@ -342,7 +408,7 @@ function goBack() {
             <label for="allow-ai" class="text-[13px] font-bold leading-[18px]">{{ $t('help.admin.aiUsage') }}</label>
             <p class="mt-0.5 text-xs leading-[17px] text-muted-foreground">{{ $t('help.admin.aiUsageHint') }}</p>
           </div>
-          <Switch id="allow-ai" v-model="form.aiEnabled" />
+          <Switch id="allow-ai" v-model="form.aiEnabled" :disabled="isNew && saving" />
         </div>
 
         <div>
@@ -359,7 +425,8 @@ function goBack() {
             <span class="text-muted-foreground">{{ $t('help.admin.editor.articleUrl') }}</span>
           </div>
           <p v-if="isNew" class="mt-1.5 text-[11px] leading-4 text-muted-foreground">{{ $t('help.admin.editor.urlPending') }}</p>
-          <div v-else class="mt-1.5 flex items-center gap-1.5 rounded-lg border border-border bg-background px-2 py-1.5">
+          <p v-else-if="article?.status !== 'published'" class="mt-1.5 text-xs text-muted-foreground">{{ $t('help.admin.editor.linkNotPublic') }}</p>
+          <div v-if="!isNew" class="mt-1.5 flex items-center gap-1.5 rounded-lg border border-border bg-background px-2 py-1.5">
             <code class="min-w-0 flex-1 truncate text-[11px]">{{ articleUrl }}</code>
             <button type="button" class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-secondary hover:text-foreground" @click="copyUrl">
               <Icon name="lucide:link" size="13" />
@@ -395,4 +462,46 @@ function goBack() {
       </div>
     </div>
   </div>
+  <div v-else class="flex h-full flex-col items-center justify-center gap-3 p-6" role="status">
+    <Icon v-if="loadStatus === 'pending'" name="lucide:loader-2" class="animate-spin" />
+    <template v-else-if="loadError">
+      <p>{{ $t('help.admin.editor.loadFailed') }}</p>
+      <Button variant="outline" @click="refresh()">{{ $t('help.admin.editor.retryLoad') }}</Button>
+    </template>
+  </div>
 </template>
+
+<style scoped>
+/* Size against the actual dashboard space, including wrapped headers and zoom.
+   Keep the writing surface bounded even on ultrawide/tall displays. */
+.help-editor-body {
+  display: flex;
+  flex-direction: column;
+  height: clamp(280px, 55dvh, 520px);
+}
+
+.help-editor-input {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+}
+
+@media (min-width: 1024px) {
+  .help-editor-form {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .help-editor-form > * {
+    flex-shrink: 0;
+  }
+
+  .help-editor-body {
+    flex: 1 0 280px;
+    height: auto;
+    min-height: 280px;
+    max-height: 1200px;
+  }
+}
+</style>

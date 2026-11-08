@@ -44,7 +44,7 @@ export function splitHelpQuery(q: string): HelpQueryToken[] {
 export function buildHelpTsQuery(tokens: HelpQueryToken[]): SQL | null {
   const parts = tokens.map((token) => {
     if (token.kind === 'latin') return sql`plainto_tsquery('english', ${token.text})`
-    if (token.text.length >= 2) return sql`to_tsquery('simple', ${cjkBigrams(token.text).split(' ').join(' | ')})`
+    if (token.text.length >= 2) return sql`to_tsquery('simple', ${Array.from({ length: token.text.length - 1 }, (_, i) => token.text.slice(i, i + 2)).join(' | ')})`
     return sql`to_tsquery('simple', ${`${token.text}:*`})`
   })
 
@@ -103,7 +103,32 @@ function truncateToWidth(text: string, maxWidth: number): string {
   return text
 }
 
-export function buildHelpExcerpt(body: string, description: string | null, tokens: HelpQueryToken[]): {
+function bestExcerptAnchor(body: string, tokens: HelpQueryToken[]): number | null {
+  const distinct = [...new Map(tokens.map(token => [`${token.kind}:${token.text.toLowerCase()}`, token])).values()]
+  const points = distinct.flatMap((token, term) => helpHighlightRanges(body, [token]).map(([from, to]) => ({ from, to, term })))
+    .sort((a, b) => a.from - b.from || a.to - b.to)
+  if (!points.length) return null
+
+  const counts = new Array<number>(distinct.length).fill(0)
+  let left = 0, covered = 0, bestCovered = 0, bestSpan = Infinity, anchor = points[0]!.from
+  for (let right = 0; right < points.length; right++) {
+    const point = points[right]!
+    if (counts[point.term]!++ === 0) covered++
+    while (point.to - points[left]!.from > 180) {
+      if (--counts[points[left]!.term] === 0) covered--
+      left++
+    }
+    const span = point.to - points[left]!.from
+    if (covered > bestCovered || (covered === bestCovered && span < bestSpan)) {
+      bestCovered = covered
+      bestSpan = span
+      anchor = Math.floor((points[left]!.from + point.to) / 2)
+    }
+  }
+  return anchor
+}
+
+export function buildHelpExcerpt(body: string, description: string | null, tokens: HelpQueryToken[], options: { bestMatch?: boolean } = {}): {
   excerpt: string
   ranges: [number, number][]
 } {
@@ -114,7 +139,10 @@ export function buildHelpExcerpt(body: string, description: string | null, token
     return { excerpt: fallback, ranges: helpHighlightRanges(fallback, tokens) }
   }
 
-  const [hitStart, hitEnd] = hits[0]!
+  const [firstStart, firstEnd] = hits[0]!
+  const anchor = options.bestMatch ? bestExcerptAnchor(body, tokens) : null
+  const hitStart = anchor ?? firstStart
+  const hitEnd = anchor ?? firstEnd
 
   let start = hitStart
   for (let width = 0; start > 0;) {

@@ -19,7 +19,7 @@ export function inboxRoute<T>(
 ) {
   return defineEventHandler((event) =>
     withAgentRuntime(event, async () => {
-      const { orgId, session } = await requireOrgPermission(event, { feedlog: ['moderate'] })
+      const { orgId, session } = await requireOrgPermission(event, { feedlog: ['inbox'] })
       const parameter = getRouterParam(event, 'id')
       const id = parameter ? parseInbox(z.uuid(), parameter) : ''
       setResponseHeader(event, 'Cache-Control', 'no-store')

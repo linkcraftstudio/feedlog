@@ -3,6 +3,7 @@ import { post, postEmbedding, postSearch, vote } from '../db/schemas'
 import { user } from '../db/schemas/auth'
 
 interface SimilarSearchOptions {
+  embeddingTimeoutMs?: number
   orgId: string
   excludePostId?: string
   limit?: number
@@ -25,7 +26,7 @@ export async function searchSimilarByText(text: string, options: SimilarSearchOp
   const plainText = stripMarkdown(text)
   if (isEmbeddingEnabled()) {
     try {
-      const embedding = await generateEmbedding(plainText)
+      const embedding = await generateEmbedding(plainText, options.embeddingTimeoutMs)
       const matches = await searchSimilarByEmbedding(embedding, options)
       // Feedback can exist before its derived vector index has been populated.
       if (matches.length) return matches

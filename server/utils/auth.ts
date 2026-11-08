@@ -102,7 +102,7 @@ export async function requireOrgPermission(
     body: { organizationId: orgId, permissions },
   })
   if (!result?.success) {
-    throw createError({ statusCode: 403, message: 'Forbidden' })
+    throw createError({ statusCode: 403, message: 'You do not have permission to perform this action', data: { code: 'PERMISSION_DENIED' } })
   }
   return { session, orgId }
 }

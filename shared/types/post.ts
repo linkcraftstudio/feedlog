@@ -2,6 +2,34 @@
 export const POST_STATUSES = ['open', 'planned', 'in_progress', 'done'] as const
 export type PostStatus = typeof POST_STATUSES[number]
 
+// The board's default view: work that is still live. 'done' is the only status
+// a visitor has to ask for explicitly, because a finished card answers nothing
+// they came to the board for.
+export const ACTIVE_STATUSES = ['open', 'planned', 'in_progress'] as const
+
+/** What the board's status control can be set to. */
+export type BoardStatusFilter = 'active' | 'all' | PostStatus
+
+/** Statuses a filter selection admits, or null for "no status condition". */
+export function statusFilterToStatuses(filter: BoardStatusFilter): PostStatus[] | null {
+  if (filter === 'all') return null
+  if (filter === 'active') return [...ACTIVE_STATUSES]
+  return [filter]
+}
+
+/**
+ * Parse a `status` query value: one status name, or a comma-separated list of
+ * them. Unknown names are dropped rather than rejected — a hand-written link
+ * with a typo should still return a board, not a 400.
+ */
+export function parseStatusParam(raw: unknown): PostStatus[] {
+  if (typeof raw !== 'string') return []
+  return raw
+    .split(',')
+    .map(s => s.trim())
+    .filter((s): s is PostStatus => (POST_STATUSES as readonly string[]).includes(s))
+}
+
 // Roadmap only shows these three statuses (excludes 'open')
 export const ROADMAP_STATUSES = ['planned', 'in_progress', 'done'] as const
 export type RoadmapStatus = typeof ROADMAP_STATUSES[number]

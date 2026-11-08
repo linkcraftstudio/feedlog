@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
+import { widgetAgentPrompt } from '#layers/feedlog/app/utils/widget-agent-prompt'
+import AgentCodexMark from '#layers/feedlog/app/components/settings/AgentCodexMark.vue'
 
 const props = defineProps<{ baseUrl: string; enabled: boolean; saving: boolean }>()
 const emit = defineEmits<{ toggle: [] }>()
@@ -69,6 +71,20 @@ createWidget({
 
 document.querySelector('#help-entry')?.addEventListener('click', openWidget)`)
 
+// The recommended path: the user's own coding agent does the integration in
+// their repository, so the page hands over one prompt carrying this workspace's URL.
+const portalOrg = usePortalOrg()
+// Codex has its own component: the icon set only carries its mark in black.
+const AGENTS = [
+  { name: 'Codex', icon: null },
+  { name: 'Claude Code', icon: 'logos:claude-icon' },
+  { name: 'Cursor', icon: 'logos:cursor-icon' },
+]
+const agentPrompt = computed(() => widgetAgentPrompt(props.baseUrl, {
+  widgetOn: props.enabled,
+  guestFeedbackOn: portalOrg.value.guest.allowPost,
+}))
+
 const steps = computed(() => [
   { key: 'package', title: t('settings.widget.packageLabel'), code: 'pnpm add @feedlog/widget' },
   { key: 'basic', title: t('settings.widget.snippetLabel'), code: basicSnippet.value },
@@ -89,8 +105,25 @@ const authSteps = computed(() => [
         <h3 class="font-heading font-bold text-sm">
           {{ $t('settings.widget.installSection') }}
         </h3>
-        <p class="text-xs text-muted-foreground mt-0.5">
+        <!-- What the switch does only matters once it is off: then the widget stays
+             hidden even on a site where it is installed. -->
+        <p
+          v-if="enabled"
+          class="text-xs text-muted-foreground mt-0.5"
+        >
           {{ $t('settings.widget.installDesc') }}
+        </p>
+        <p
+          v-else
+          class="text-xs font-medium text-amber-700 dark:text-amber-400 mt-0.5 flex items-center gap-1.5"
+          data-widget-disabled-hint
+        >
+          <Icon
+            name="lucide:eye-off"
+            size="13"
+            aria-hidden="true"
+          />
+          {{ $t('settings.widget.enabledHint') }}
         </p>
       </div>
       <div class="flex items-center gap-2.5">
@@ -107,33 +140,94 @@ const authSteps = computed(() => [
       </div>
     </div>
     <div class="px-6 py-6 space-y-5 min-w-0">
-      <div>
-        <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-          {{ $t('settings.widget.baseUrlLabel') }}
-        </p>
-        <div class="mt-2 flex items-center gap-2">
-          <code class="flex-1 min-w-0 break-all text-xs font-mono px-2.5 py-2 rounded-md bg-muted border border-border">{{ baseUrl }}</code>
-          <button
-            type="button"
-            class="size-9 rounded-md hover:bg-secondary flex items-center justify-center shrink-0 text-muted-foreground"
-            :aria-label="$t('settings.widget.copy')"
-            @click="copy('url', baseUrl)"
-          >
-            <Icon
-              :name="copiedKey === 'url' ? 'lucide:check' : 'lucide:copy'"
-              size="14"
-            />
-          </button>
+      <!-- Two paths, agent first: most teams now hand integration work to a coding
+           agent, and the prompt carries everything the manual steps below show. -->
+      <div data-widget-agent-install>
+        <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+          <h4 class="font-heading text-sm font-bold">
+            {{ $t('settings.widget.agentTitle') }}
+          </h4>
+          <!-- The agents the copy names, in colour so the section reads at a glance
+               as the agent path; the names stay in the text below for anyone who
+               doesn't know the marks. Nudged down a pixel to sit on the heading's
+               optical centre rather than its line box. -->
+          <ul class="flex items-center gap-1.5 translate-y-px">
+            <!-- flex: an Icon renders as an inline box, which would give its row the
+                 text line height and lift the mark above the Codex SVG. -->
+            <li
+              v-for="agent in AGENTS"
+              :key="agent.name"
+              class="flex"
+              :title="agent.name"
+            >
+              <AgentCodexMark
+                v-if="!agent.icon"
+                class="block size-4"
+                role="img"
+                :aria-label="agent.name"
+              />
+              <Icon
+                v-else
+                :name="agent.icon"
+                size="16"
+                class="block"
+                :aria-label="agent.name"
+              />
+            </li>
+          </ul>
         </div>
-        <p class="text-[11px] text-muted-foreground mt-1.5">
-          {{ $t('settings.widget.enabledHint') }}
+        <button
+          type="button"
+          class="mt-3 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-bold hover:opacity-90 transition-opacity inline-flex items-center gap-1.5"
+          data-fdl-action="widget_agent_prompt_copy"
+          data-widget-agent-copy
+          @click="copy('agent', agentPrompt)"
+        >
+          <Icon
+            :name="copiedKey === 'agent' ? 'lucide:check' : 'lucide:sparkles'"
+            size="15"
+          />
+          {{ copiedKey === 'agent' ? $t('settings.widget.copied') : $t('settings.widget.agentCopy') }}
+        </button>
+        <p class="mt-2.5 text-xs leading-relaxed text-muted-foreground">
+          {{ $t('settings.widget.agentBody') }}
         </p>
       </div>
-      <details class="group/install">
-        <summary class="cursor-pointer text-xs font-semibold text-primary">
-          {{ $t('settings.widget.installInstructions') }}
+      <!-- Collapsed by default so the agent prompt stays the obvious first step. -->
+      <details class="group/manual border-t border-border pt-5">
+        <summary class="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+          <div class="flex items-center gap-1.5">
+            <h4 class="font-heading text-sm font-bold">
+              {{ $t('settings.widget.installInstructions') }}
+            </h4>
+            <Icon
+              name="lucide:chevron-right"
+              size="15"
+              class="text-muted-foreground transition-transform group-open/manual:rotate-90"
+              aria-hidden="true"
+            />
+          </div>
+          <p class="mt-1 text-xs text-muted-foreground">
+            {{ $t('settings.widget.manualDesc') }}
+          </p>
         </summary>
         <div class="pt-5 space-y-5">
+          <!-- The snippets below already carry it; shown for setups that keep it in config. -->
+          <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+            <span class="text-muted-foreground">{{ $t('settings.widget.baseUrlLabel') }}</span>
+            <code class="font-mono px-1.5 py-0.5 rounded bg-muted border border-border break-all">{{ baseUrl }}</code>
+            <button
+              type="button"
+              class="size-6 rounded hover:bg-secondary grid place-items-center text-muted-foreground"
+              :aria-label="$t('settings.widget.copy')"
+              @click="copy('url', baseUrl)"
+            >
+              <Icon
+                :name="copiedKey === 'url' ? 'lucide:check' : 'lucide:copy'"
+                size="13"
+              />
+            </button>
+          </div>
           <div
             v-for="step in steps"
             :key="step.key"
@@ -145,6 +239,7 @@ const authSteps = computed(() => [
               <button
                 type="button"
                 class="h-7 px-2.5 rounded-md border border-border text-[11px] font-semibold hover:bg-secondary"
+                data-fdl-action="widget_snippet_copy"
                 @click="copy(step.key, step.code)"
               >
                 {{ copiedKey === step.key ? $t('settings.widget.copied') : $t('settings.widget.copy') }}
@@ -174,6 +269,7 @@ const authSteps = computed(() => [
                   <button
                     type="button"
                     class="h-7 px-2.5 rounded-md border border-border text-[11px] font-semibold hover:bg-secondary"
+                    data-fdl-action="widget_snippet_copy"
                     @click="copy(step.key, step.code)"
                   >
                     {{ copiedKey === step.key ? $t('settings.widget.copied') : $t('settings.widget.copy') }}
@@ -194,6 +290,7 @@ const authSteps = computed(() => [
               <button
                 type="button"
                 class="h-7 px-2.5 rounded-md border border-border text-[11px] font-semibold hover:bg-secondary"
+                data-fdl-action="widget_snippet_copy"
                 @click="copy('custom-entry', customEntrySnippet)"
               >
                 {{ copiedKey === 'custom-entry' ? $t('settings.widget.copied') : $t('settings.widget.copy') }}

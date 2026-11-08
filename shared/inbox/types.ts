@@ -5,6 +5,7 @@ export interface InboxConversation {
   title: string | null
   previewText: string | null
   status: InboxStatus
+  takeoverPending?: boolean
   priority: 'normal' | 'high'
   stateDueAt: string | null
   lastMessageAt: string

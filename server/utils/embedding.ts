@@ -8,13 +8,14 @@ export function isEmbeddingEnabled(): boolean {
   return !!process.env.OPENAI_API_KEY
 }
 
-export async function generateEmbedding(text: string): Promise<number[]> {
+export async function generateEmbedding(text: string, timeoutMs?: number): Promise<number[]> {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) throw new Error('OPENAI_API_KEY is not configured')
 
   const baseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '')
   const response = await fetch(`${baseUrl}/embeddings`, {
     method: 'POST',
+    signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined,
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
@@ -32,7 +33,9 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   }
 
   const data = await response.json() as { data: { embedding: number[] }[] }
-  return data.data[0].embedding
+  const embedding = data.data[0]?.embedding
+  if (!embedding?.length) throw new Error('Empty embedding response')
+  return embedding
 }
 
 // Generate and store embedding for a post with optimistic lock on content_hash

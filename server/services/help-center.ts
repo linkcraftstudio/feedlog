@@ -1,3 +1,7 @@
+import { helpIndexError, helpIndexStatus } from '../lib/help-search/management'
+import { helpVectorsEnabled } from '../lib/help-search/embedding'
+import { kickHelpIndex } from '../lib/help-search/runtime'
+import { queueHelpIndex, ensureHelpIndex, pauseHelpIndex, deleteHelpIndex } from '../lib/help-search/jobs'
 import { cursorPage, literalSubstring, type CursorPageInput } from './query-pagination'
 import { and, eq, ilike, or, sql } from 'drizzle-orm'
 import type { z } from 'zod'
@@ -32,7 +36,7 @@ export async function updateCollection(context: ContentContext, id: string, body
   if (!Object.values(input).some(value => value !== undefined)) throw contentError(400, 'No fields to update')
   const [record] = await context.db.update(helpCollection).set(input).where(and(eq(helpCollection.id, id), eq(helpCollection.orgId, context.orgId))).returning()
   if (!record) throw contentError(404, 'Collection not found')
-  const articles = await context.db.select({ id: helpArticle.id, title: helpArticle.title, status: helpArticle.status, shortId: helpArticle.shortId, slug: helpArticle.slug, position: helpArticle.position, aiEnabled: helpArticle.aiEnabled, updatedAt: helpArticle.updatedAt }).from(helpArticle).where(and(eq(helpArticle.collectionId, id), eq(helpArticle.orgId, context.orgId))).orderBy(helpArticle.position, helpArticle.id)
+  const articles = await context.db.select({ id: helpArticle.id, title: helpArticle.title, status: helpArticle.status, shortId: helpArticle.shortId, slug: helpArticle.slug, position: helpArticle.position, aiEnabled: helpArticle.aiEnabled, indexError: helpIndexError(), indexStatus: helpIndexStatus(), updatedAt: helpArticle.updatedAt }).from(helpArticle).where(and(eq(helpArticle.collectionId, id), eq(helpArticle.orgId, context.orgId))).orderBy(helpArticle.position, helpArticle.id)
   return { ...record, articleCount: articles.length, articles }
 }
 
@@ -41,10 +45,11 @@ export async function deleteCollection(context: ContentContext, id: string) {
   await lockHelpContent(context)
   const [deleted] = await context.db.delete(helpCollection).where(and(eq(helpCollection.id, id), eq(helpCollection.orgId, context.orgId))).returning()
   if (!deleted) throw contentError(404, 'Collection not found')
-  await context.db.delete(helpArticle).where(and(eq(helpArticle.collectionId, id), eq(helpArticle.orgId, context.orgId)))
+  const articles = await context.db.delete(helpArticle).where(and(eq(helpArticle.collectionId, id), eq(helpArticle.orgId, context.orgId))).returning({ id: helpArticle.id })
+  for (const article of articles) await deleteHelpIndex(context.db, article.id)
 }
 export async function articleRecord(context: ContentReader, id: string, view: 'management' | 'public' = 'management', lock = false, by: 'id' | 'shortId' = 'id') {
-  const query = context.db.select({ ...articleSummaryFields, content: helpArticle.content }).from(helpArticle).where(and(eq(by === 'id' ? helpArticle.id : helpArticle.shortId, id), eq(helpArticle.orgId, context.orgId)))
+  const query = context.db.select({ ...articleSummaryFields, content: helpArticle.content, ...(view === 'management' ? { indexError: helpIndexError(), indexStatus: helpIndexStatus() } : {}) }).from(helpArticle).where(and(eq(by === 'id' ? helpArticle.id : helpArticle.shortId, id), eq(helpArticle.orgId, context.orgId)))
   const [record] = await (lock ? query.for('update') : query)
   if (!record) throw contentError(404, 'Article not found')
   const collection = await helpCollectionRecord(context, record.collectionId)
@@ -65,13 +70,15 @@ export async function createArticle(context: ContentContext, body: z.infer<typeo
   const position = await articlePosition(context, input.collectionId)
   const record = await withHelpShortId(shortId => context.db.transaction(async savepoint => {
     const [created] = await savepoint.insert(helpArticle).values({
-    orgId: context.orgId, collectionId: input.collectionId, shortId, slug: generateHelpSlug(input.title),
-    status: input.publish ? 'published' : 'draft', title: input.title, description: input.description ?? null, content: input.content,
-    aiEnabled: input.aiEnabled, tsv: buildHelpTsv(input.title, input.description ?? null, input.content),
-    position, publishedAt: input.publish ? new Date() : null,
-  }).returning()
+      orgId: context.orgId, collectionId: input.collectionId, shortId, slug: generateHelpSlug(input.title),
+      status: input.publish ? 'published' : 'draft', title: input.title, description: input.description ?? null, content: input.content,
+      aiEnabled: input.aiEnabled, tsv: buildHelpTsv(input.title, input.description ?? null, input.content),
+      position, publishedAt: input.publish ? new Date() : null,
+    }).returning()
+    if (input.publish) await queueHelpIndex(savepoint, created!.id)
     return created!
   }))
+  if (input.publish) context.afterCommit.push(() => kickHelpIndex(context.event, record.id))
   return articleRecord(context, record.id)
 }
 export async function updateArticle(context: ContentContext, id: string, body: z.infer<typeof updateHelpArticleSchema>) {
@@ -101,6 +108,25 @@ export async function updateArticle(context: ContentContext, id: string, body: z
   if (status === 'archived' && existing.status !== 'published') throw contentError(409, 'Only a published article can be unpublished')
   if (status) updates.status = status
   await context.db.update(helpArticle).set(updates).where(and(eq(helpArticle.id, id), eq(helpArticle.orgId, context.orgId)))
+  const nextStatus = status ?? existing.status
+  let queued = false
+  if (nextStatus !== 'published') {
+    // Retain the last completed snapshot, but fence any unfinished worker.
+    await pauseHelpIndex(context.db, id)
+  }
+  else if (existing.status !== 'published') {
+    await queueHelpIndex(context.db, id)
+    queued = true
+  }
+  else if (changed) {
+    await queueHelpIndex(context.db, id)
+    queued = true
+  }
+  else if (helpVectorsEnabled() && [input.title, input.description, input.content].some(value => value !== undefined)) {
+    // An unchanged published save starts missing jobs or retries failures.
+    queued = await ensureHelpIndex(context.db, id)
+  }
+  if (queued) context.afterCommit.push(() => kickHelpIndex(context.event, id))
   return articleRecord(context, id)
 }
 export async function deleteArticle(context: ContentContext, id: string) {
@@ -108,6 +134,7 @@ export async function deleteArticle(context: ContentContext, id: string) {
   await lockHelpContent(context)
   const [record] = await context.db.delete(helpArticle).where(and(eq(helpArticle.id, id), eq(helpArticle.orgId, context.orgId))).returning({ id: helpArticle.id })
   if (!record) throw contentError(404, 'Article not found')
+  await deleteHelpIndex(context.db, id)
   return { id, deleted: true }
 }
 

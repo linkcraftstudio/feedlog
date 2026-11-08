@@ -23,6 +23,10 @@ else — OAuth, AI, file uploads, email — is optional.
 - [`.env.example`](../.env.example) — the same list as an annotated `.env` template you can copy and edit.
 - **[Widget configuration](./widget.md)** — launcher defaults, closing behavior, configuration APIs and host-dialog integration.
 
+## Development
+
+- **[Markdown editor architecture](./markdown-editor.md)** — visual editing, historical content preservation, unchanged entry behavior and deployment verification.
+
 ## Community
 
 - [README](../README.md)

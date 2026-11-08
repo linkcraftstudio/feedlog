@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import '~/assets/css/md-editor-preview.css'
-import { preventShadcnDialogClose } from '~/lib/md-editor-helper';
-import { sanitizeAttachmentHtml } from '~/utils/attachment';
 
 const props = defineProps<{
   defaultBoardId?: string
@@ -12,6 +10,20 @@ const open = defineModel<boolean>('open', { default: false })
 const emit = defineEmits<{ created: [slug: string] }>()
 
 const { t, locale } = useI18n()
+
+// Warm the split editor bundle before the dialog's first open.
+let cancelEditorWarmup: (() => void) | undefined
+onMounted(() => {
+  const warm = () => { void import('../TiptapMarkdownEditor.client.vue').catch(() => {}) }
+  if ('requestIdleCallback' in window) {
+    const handle = window.requestIdleCallback(warm, { timeout: 1500 })
+    cancelEditorWarmup = () => window.cancelIdleCallback(handle)
+  } else {
+    const handle = setTimeout(warm, 500)
+    cancelEditorWarmup = () => clearTimeout(handle)
+  }
+})
+onBeforeUnmount(() => cancelEditorWarmup?.())
 
 const boardStore = useBoardStore()
 const { boards } = storeToRefs(boardStore)
@@ -33,7 +45,7 @@ const content = ref('')
 const submitting = ref(false)
 const error = ref('')
 
-const { onUploadImg } = useUploadImg()
+const { onUploadImg } = useUploadImg(() => ensureIdentity('allowPost'))
 
 // Similar posts search
 const similarPosts = ref<any[]>([])
@@ -113,8 +125,8 @@ async function handleSubmit() {
     return
   }
 
-  // Where a guest identity is minted, if the org allows one — deliberately here
-  // and not on open, so a visitor who changes their mind leaves nothing behind.
+  // Ensure a guest identity before submitting. An earlier image upload may
+  // already have established it; opening the form alone never creates one.
   // When guest posting is off this opens the sign-in modal instead and the draft
   // waits; that path is reachable from a pre-filled link, where the reporter
   // arrives already holding text worth not throwing away.
@@ -172,12 +184,9 @@ watch(open, (v) => {
 </script>
 
 <template>
-  <!-- Keep non-modal so md-editor overlays teleported to body stay interactive -->
   <Dialog v-model:open="open" :modal="true">
     <DialogContent
       :show-close-button="false"
-      @pointer-down-outside="preventShadcnDialogClose"
-      @escape-key-down="preventShadcnDialogClose"
       class="!max-w-[800px] !max-h-[calc(100vh-1.5rem)] !p-0 !gap-0 !flex !flex-col overflow-hidden border-none bg-card !rounded-[24px] shadow-warm"
     >
       <!-- Close button -->
@@ -224,8 +233,8 @@ watch(open, (v) => {
                 :placeholder="$t('post.submit.bodyPlaceholder')"
                 :preview="false"
                 :max-length="10000"
-                :toolbars="['bold', 'italic', 'strikeThrough', '-', 'title', 'unorderedList', 'orderedList', '-', 'link', 'image', 'code', 'codeRow', '-', 'previewOnly']"
-                :sanitize="sanitizeAttachmentHtml"
+                :toolbars="['bold', 'italic', 'strikeThrough', '-', 'title', 'unorderedList', 'orderedList', '-', 'link', 'image', 'code', 'codeRow', 'table', '-', 'previewOnly']"
+
                 style="height: 100%"
                 @on-upload-img="onUploadImg"
               />
@@ -279,4 +288,3 @@ watch(open, (v) => {
     @update:open="showDetailSlug = null"
   />
 </template>
-

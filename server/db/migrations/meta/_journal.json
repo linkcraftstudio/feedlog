@@ -141,6 +141,13 @@
       "when": 1791609211053,
       "tag": "0019_mcp_authorizations",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791949264399,
+      "tag": "0020_help_vector_index",
+      "breakpoints": true
     }
   ]
 }

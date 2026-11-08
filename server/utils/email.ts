@@ -37,7 +37,15 @@ export function resolveEmailProvider(): EmailProvider {
   throw new Error('No email provider registered')
 }
 
+// `.invalid` is reserved by RFC 2606 and can never resolve. Guest rows and
+// seeded sample customers carry such addresses, so every send path treats them
+// as having no email instead of handing them to a provider.
+export function isUndeliverableEmail(email: string | null | undefined): boolean {
+  return !!email && /\.invalid$/i.test(email.trim())
+}
+
 export async function sendEmail(options: SendEmailOptions): Promise<void> {
+  if (isUndeliverableEmail(options.to)) return
   // Defense-in-depth: a subject is a single header line, so collapse any CR/LF —
   // a subject carrying user data (post title, org name) can't inject extra headers.
   const subject = options.subject.replace(/[\r\n]+/g, ' ')

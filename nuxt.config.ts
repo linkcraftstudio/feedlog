@@ -3,6 +3,7 @@ import { createResolver } from '@nuxt/kit'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'
+import { HELP_COLLECTION_ICONS } from './shared/constants/help'
 
 const resolver = createResolver(import.meta.url)
 const require = createRequire(import.meta.url)
@@ -143,6 +144,17 @@ export default defineNuxtConfig({
   // it is worth caching — but briefly: a deploy rotates the asset hashes the
   // shell points at, and a stale one asks for chunks the new image never built.
   routeRules: {
+    // Functional pages are excluded from discovery and carry a noindex response.
+    // Nuxt SEO applies these rules to configured locale prefixes as well.
+    '/dashboard/**': { sitemap: false, robots: false },
+    '/auth/**': { sitemap: false, robots: false },
+    '/invite': { sitemap: false, robots: false },
+    '/reset-password': { sitemap: false, robots: false },
+    '/verified': { sitemap: false, robots: false },
+    '/mcp/**': { sitemap: false, robots: false },
+    '/sso/**': { sitemap: false, robots: false },
+    '/setup': { sitemap: false, robots: false },
+    '/widget/**': { sitemap: false, robots: false },
     '/widget/embed': {
       ssr: false,
       headers: { 'cache-control': 'public, max-age=300, stale-while-revalidate=600' },
@@ -154,26 +166,34 @@ export default defineNuxtConfig({
   },
 
   icon: {
-    // Everything the widget frame draws. Bundled because the frame otherwise
-    // fetches two icon collections over HTTP while the visitor waits.
     clientBundle: {
-      icons: [
-        'lucide:alert-circle',
-        'lucide:arrow-left',
-        'lucide:arrow-up-right',
-        'lucide:chevron-up',
-        'lucide:globe',
-        'lucide:image',
-        'lucide:inbox',
-        'lucide:loader-2',
-        'lucide:message-circle',
-        'lucide:x',
-      ],
+      scan: {
+        // Resolve layer paths here; relative globs scan the extending app.
+        // Include TypeScript for navigation and status icon maps.
+        globInclude: [
+          'app/**/*.{vue,ts,js,tsx,jsx}',
+          'shared/**/*.{ts,js}',
+          'modules/**/*.{vue,ts,js,tsx,jsx}',
+          resolver.resolve('./app/**/*.{vue,ts,js,tsx,jsx}'),
+          resolver.resolve('./shared/**/*.{ts,js}'),
+          resolver.resolve('./modules/**/*.{vue,ts,js,tsx,jsx}'),
+        ],
+      },
+      // Collection icons come from stored values and are assembled at runtime.
+      icons: HELP_COLLECTION_ICONS.map(icon => `lucide:${icon}`),
     },
   },
 
   build: {
     transpile: ['reka-ui'],
+  },
+
+  vite: {
+    ssr: {
+      // PostCSS uses nanoid's CommonJS entry through sanitize-html. Bundle it
+      // before Nitro can resolve the flattened import to the ESM-only version.
+      noExternal: ['nanoid'],
+    },
   },
 
   nitro: {
@@ -195,6 +215,7 @@ export default defineNuxtConfig({
     alias: process.env.NITRO_PRESET?.startsWith('cloudflare')
       ? {
           'pg-native': resolver.resolve('./server/lib/agent/pg-native-unavailable.cjs'),
+          'debug': resolver.resolve('./server/lib/debug-unavailable.cjs'),
           '@vercel/queue': resolver.resolve('./server/lib/inbox/vercel-queue-unavailable.ts'),
         }
       : {},
@@ -204,13 +225,6 @@ export default defineNuxtConfig({
     // the state classifier never leaves `bootstrap`.
     unenv: {
       external: ['node:fs', 'node:fs/promises', 'node:path', 'node:process'],
-    },
-  },
-
-  vite: {
-    ssr: {
-      // Exclude md-editor-v3 from SSR bundle — it's browser-only and very large (~2MB)
-      external: ['md-editor-v3'],
     },
   },
 

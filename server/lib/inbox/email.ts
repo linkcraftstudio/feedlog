@@ -1,4 +1,4 @@
-import { sendEmail, resolveEmailProvider } from '../../utils/email'
+import { sendEmail, resolveEmailProvider, isUndeliverableEmail } from '../../utils/email'
 import { renderInboxReplyEmail } from '../../utils/email-templates'
 import { agentError } from '../agent/runtime'
 import type { Content } from '../../../shared/agent/content'
@@ -21,7 +21,7 @@ export async function sendInboxEmail(
   )
   if (!row) agentError(404, 'item_not_found', 'Staff reply not found')
   try {
-    if (!row.email || row.is_anonymous || resolveEmailProvider().name === 'console')
+    if (!row.email || row.is_anonymous || isUndeliverableEmail(row.email) || resolveEmailProvider().name === 'console')
       return { status: 'unavailable' as const }
   } catch {
     return { status: 'unavailable' as const }

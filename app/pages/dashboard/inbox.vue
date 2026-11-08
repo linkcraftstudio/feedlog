@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
-import type { SystemEventPart } from '#layers/feedlog/shared/inbox/state'
+import { handoffNotice as customerNoticeKind, type SystemEventPart } from '#layers/feedlog/shared/inbox/state'
 import type { Content } from '#layers/feedlog/shared/agent/content'
 import InboxStatusBadge from '#layers/feedlog/app/components/inbox/StatusBadge.vue'
 import InboxCustomerDetails from '#layers/feedlog/app/components/inbox/CustomerDetails.vue'
+import { INBOX_STATUS_FILTERS, inboxStatusFilter, useInboxStatusCookie, type InboxStatusFilter } from '#layers/feedlog/app/composables/useInboxStatus'
 import type {
   InboxConversation,
   InboxCustomer,
@@ -27,11 +28,13 @@ const uploadCounts = reactive<Record<string, number>>({})
 const images = computed(() => selected.value ? draftImages[selected.value] || [] : [])
 const uploading = computed(() => !!selected.value && !!uploadCounts[selected.value])
 const sendable = computed(() => !!draft.value.trim() || images.value.length > 0)
-const statusOptions = ['all', 'open', 'pending', 'snoozed', 'closed', 'ai_handling'] as const
+const statusOptions = INBOX_STATUS_FILTERS
 const snoozeChoices = ['hour', 'threeHours', 'tomorrow', 'monday', 'week', 'month']
 const emailSending = reactive<Record<string, boolean>>({})
 const route = useRoute()
-const { canModerate } = usePermission(
+const router = useRouter()
+const localePath = useLocalePath()
+const { canAccessInbox } = usePermission(
   computed(() => undefined),
   'post',
 )
@@ -42,21 +45,44 @@ function openFeedback(slug: string) {
   feedbackSlug.value = slug
   feedbackOpen.value = true
 }
+// Cited articles open on the public Help Center, outside the dashboard.
+function openArticle(slug: string) {
+  window.open(localePath(`/help/${encodeURIComponent(slug)}`), '_blank', 'noopener,noreferrer')
+}
 const rows = ref<(InboxConversation & { customer: InboxCustomer })[]>([])
 const nextCursor = ref<string | null>(null)
-const filters = reactive({ q: '', status: 'open', priority: 'all', sort: 'newest' })
+// A link's `?status=` decides this visit only and is not remembered; otherwise
+// the status the user last picked (preset to "all" during onboarding), then "open".
+const rememberedStatus = useInboxStatusCookie()
+const queryStatus = () => inboxStatusFilter(route.query.status)
+const filters = reactive({ q: '', status: queryStatus() ?? inboxStatusFilter(rememberedStatus.value) ?? 'open', priority: 'all', sort: 'newest' })
+// The user's own pick is remembered, and a `?status=` still in the address is
+// dropped so a reload does not bring the link's view back.
+function pickStatus(status: InboxStatusFilter) {
+  filters.status = status
+  rememberedStatus.value = status
+  if (route.query.status !== undefined) {
+    const { status: _status, ...query } = route.query
+    void router.replace({ query })
+  }
+}
 const hasFilters = computed(() => !!filters.q.trim() || filters.status !== 'all' || filters.priority !== 'all')
 const selected = ref<string | null>(null)
 const detail = ref<InboxDetail | null>(null)
 function showSystemNotice(part: Content['parts'][number]) {
-  return part.type === 'system_event' && (part.kind === 'handoff'
-    || (part.reason === 'manual' && (part.kind === 'snoozed' || part.kind === 'closed')))
+  return part.type === 'system_event' && ((part.kind === 'handoff' && part.reason !== 'ai_error')
+    || (part.reason === 'manual' && ['takeover', 'snoozed', 'closed'].includes(part.kind)))
 }
 function handoffNotice(part: SystemEventPart) {
   const builtin = part.rule?.id
   const key = part.reason === 'support_rule' && builtin && ['builtin-billing', 'builtin-account-access', 'builtin-privacy-legal'].includes(builtin)
     ? builtin : part.reason
   return t(`inbox.handoffNotices.${key}`)
+}
+function customerConfirmation(content: Content) {
+  const part = content.parts.find(part => part.type === 'system_event' && part.kind === 'handoff')
+  if (part?.type !== 'system_event') return ''
+  return part.customerNotice ?? t(`widget.conversationNotices.${customerNoticeKind(part.reason, part.rule?.id)}`)
 }
 const visibleItems = computed(() => (detail.value?.items ?? []).filter(item =>
   item.authorType !== 'system' || item.content.parts.some(showSystemNotice),
@@ -95,6 +121,35 @@ let pollingBusy = false
 const date = (value: string | null) => (value ? new Date(value).toLocaleString(locale.value) : '')
 const canReply = computed(() => !!detail.value && ['open', 'pending'].includes(detail.value.conversation.status))
 const isAiHandling = computed(() => detail.value?.conversation.status === 'ai_handling')
+// While the AI handles the chat the reply box cannot take text; clicking it points
+// at the button that hands the chat to the user instead of a "not allowed" cursor.
+const takeoverButton = ref<{ $el: HTMLElement } | null>(null)
+const takeoverPulse = ref(false)
+function pointToTakeover() {
+  takeoverButton.value?.$el.focus()
+  // Restart the animation even if a previous pulse is still running.
+  takeoverPulse.value = false
+  requestAnimationFrame(() => { takeoverPulse.value = true })
+}
+// Arriving from the Demo Widget: point once at what that chat needs next, the
+// takeover button while the AI handles it, or the reply box once a person has it.
+const { state: onboarding } = useOnboarding()
+// Also watched on the request itself: the chat may already be the one on screen.
+watch([() => detail.value?.conversation, () => onboarding.value.highlightReply], async ([conversation]) => {
+  if (!conversation || conversation.id !== onboarding.value.highlightReply) return
+  onboarding.value.highlightReply = null
+  await nextTick()
+  if (isAiHandling.value) pointToTakeover()
+  else if (canReply.value) replyInput.value?.focus()
+})
+const takeoverPending = computed(() => isAiHandling.value && !!detail.value?.conversation.takeoverPending)
+const takeoverFocusId = ref<string | null>(null)
+watch(canReply, async (available) => {
+  if (!available || takeoverFocusId.value !== selected.value) return
+  takeoverFocusId.value = null
+  await nextTick()
+  replyInput.value?.focus()
+})
 const canClose = computed(() => !!detail.value && detail.value.conversation.status !== 'closed')
 const statusHint = computed(() => {
   const conversation = detail.value?.conversation
@@ -176,12 +231,20 @@ async function loadFeedback(more = false) {
   feedbackTotal.value = data.pagination.total
 }
 function clearSelection() {
+  takeoverFocusId.value = null
   selected.value = null
   detail.value = null
   detailVersion++
 }
 
+// Picking from the list also puts the conversation in the address, so a reload
+// or a shared link opens it, and a later link to it is a real route change.
+function select(id: string) {
+  void open(id)
+  if (route.query.conversationId !== id) void router.replace({ query: { ...route.query, conversationId: id } })
+}
 async function open(id: string) {
+  if (id !== selected.value) takeoverFocusId.value = null
   detailVersion++
   selected.value = id
   detail.value = null
@@ -243,6 +306,10 @@ async function executeCommand(action: string, extra: Record<string, unknown> = {
     const row = rows.value.find((row) => row.id === id)
     if (row) Object.assign(row, result.conversation)
     if (id === selected.value && detail.value) detail.value.conversation = result.conversation
+    if (action === 'takeover' && id === selected.value && version === detailVersion) {
+      if (result.conversation.takeoverPending) takeoverFocusId.value = id
+      else { await nextTick(); replyInput.value?.focus() }
+    }
     if (action === 'reply') {
       drafts[id] = ''
       draftImages[id] = []
@@ -324,7 +391,7 @@ async function closeConversation() {
 }
 function resetFilters() {
   filters.q = ''
-  filters.status = 'all'
+  pickStatus('all')
   filters.priority = 'all'
   filters.sort = 'newest'
   void refreshList()
@@ -362,9 +429,20 @@ watch(
   () => void refreshList(),
 )
 watch(
+  () => route.query.status,
+  () => {
+    const status = queryStatus()
+    if (status) filters.status = status
+  },
+)
+watch(
   () => route.query.conversationId,
   (id) => {
-    if (typeof id === 'string' && id !== selected.value) void open(id)
+    if (typeof id !== 'string') return
+    // The list does not poll, so an in-page link can point at a conversation that
+    // started after it was loaded.
+    if (!rows.value.some(row => row.id === id)) void refreshList()
+    if (id !== selected.value) void open(id)
   },
 )
 const updateWidth = () => {
@@ -376,7 +454,7 @@ onMounted(() => {
   updateWidth()
   media.addEventListener('change', updateWidth)
   document.addEventListener('visibilitychange', reportRead)
-  if (!canModerate.value) return
+  if (!canAccessInbox.value) return
   void refreshBadge()
   if (typeof route.query.conversationId === 'string') void open(route.query.conversationId)
   polling = setInterval(async () => {
@@ -401,7 +479,7 @@ onBeforeUnmount(() => {
 
 const { data: initialList, error: initialListError } = await useFetch<{ items: typeof rows.value; nextCursor: string | null }>('/api/admin/inbox/conversations', {
   query: { ...filters },
-  immediate: canModerate.value,
+  immediate: canAccessInbox.value,
 })
 if (initialList.value) {
   rows.value = initialList.value.items
@@ -412,7 +490,7 @@ loading.value = false
 </script>
 
 <template>
-  <div v-if="!canModerate" class="p-8">{{ t('inbox.forbidden') }}</div>
+  <div v-if="!canAccessInbox" class="p-8">{{ t('inbox.forbidden') }}</div>
   <div v-else class="flex h-full min-h-0 flex-col bg-background" data-inbox>
     <div v-if="error" role="alert" class="border-b bg-destructive/10 px-4 py-2 text-xs text-destructive">{{ error }}</div>
     <div class="flex min-h-0 flex-1">
@@ -435,7 +513,7 @@ loading.value = false
                 <button type="button" class="flex h-7 min-w-0 flex-1 cursor-pointer items-center justify-between gap-1 rounded-full border border-border bg-card px-2.5 text-xs font-bold text-primary transition-colors hover:bg-background/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" :aria-label="t('inbox.status')"><span class="truncate">{{ filters.status === 'all' ? t('inbox.all') : t(`inbox.statuses.${filters.status}`) }}</span><Icon name="lucide:chevron-down" size="12" /></button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                <FilterOptionItem v-for="status in statusOptions" :key="status" :selected="filters.status === status" @select="filters.status = status">{{ status === 'all' ? t('inbox.all') : t(`inbox.statuses.${status}`) }}</FilterOptionItem>
+                <FilterOptionItem v-for="status in statusOptions" :key="status" :selected="filters.status === status" @select="pickStatus(status)">{{ status === 'all' ? t('inbox.all') : t(`inbox.statuses.${status}`) }}</FilterOptionItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <DropdownMenu>
@@ -462,7 +540,7 @@ loading.value = false
             <p v-if="hasFilters" class="mt-1 text-sm">{{ t(filters.q.trim() ? 'dashboard.feedback.searchNoMatchHint' : 'dashboard.feedback.noResultsHint') }}</p>
             <button v-if="hasFilters" type="button" class="mt-4 h-8 rounded-lg border border-border px-3 text-xs font-bold transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" @click="resetFilters">{{ t('inbox.clearFilters') }}</button>
           </div>
-          <button v-for="row in rows" :key="row.id" class="flex w-full items-center gap-3 border-b border-l-2 px-4 py-3.5 text-left transition-colors hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring" :class="selected === row.id ? 'border-l-primary bg-primary/5' : 'border-l-transparent'" :aria-current="selected === row.id ? 'true' : undefined" :aria-label="`${authorName(row.customer)}: ${row.previewText || row.title || t('inbox.title')}`" :title="row.previewText || row.title || undefined" data-inbox-conversation @click="open(row.id)">
+          <button v-for="row in rows" :key="row.id" class="flex w-full items-center gap-3 border-b border-l-2 px-4 py-3.5 text-left transition-colors hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring" :class="selected === row.id ? 'border-l-primary bg-primary/5' : 'border-l-transparent'" :aria-current="selected === row.id ? 'true' : undefined" :aria-label="`${authorName(row.customer)}: ${row.previewText || row.title || t('inbox.title')}`" :title="row.previewText || row.title || undefined" data-inbox-conversation @click="select(row.id)">
             <UserAvatar :author="row.customer" :size="9" />
             <div class="min-w-0 flex-1">
               <div class="flex min-w-0 items-center gap-2">
@@ -513,7 +591,7 @@ loading.value = false
               <div v-if="item.content.parts.some(part => part.type === 'system_event' && part.kind === 'handoff')" class="flex items-start gap-2.5">
                 <div class="grid size-7 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><Icon name="lucide:bot" size="14" /></div>
                 <div class="min-w-0 max-w-[85%]">
-                  <div class="w-fit max-w-full rounded-xl rounded-tl-sm border border-border bg-secondary/50 px-3.5 py-2.5 text-[13px] font-normal leading-relaxed" data-handoff-message>{{ t('widget.conversationNotices.handoff') }}</div>
+                  <div class="w-fit max-w-full rounded-xl rounded-tl-sm border border-border bg-secondary/50 px-3.5 py-2.5 text-[13px] font-normal leading-relaxed" dir="auto" data-handoff-message>{{ customerConfirmation(item.content) }}</div>
                   <div class="mt-1.5 flex items-center gap-1 px-0.5 text-[10px] text-muted-foreground">
                     <span class="font-semibold text-foreground dark:text-white">{{ t('widget.messageAI') }}</span><span aria-hidden="true">·</span><time :datetime="item.createdAt">{{ time(item.createdAt) }}</time>
                   </div>
@@ -526,6 +604,7 @@ loading.value = false
                     <p class="mt-2 max-w-prose whitespace-normal break-words text-left">{{ locale === 'zh' && part.rule.scenarioZh ? part.rule.scenarioZh : part.rule.scenario }}</p>
                   </details>
                   <span v-else-if="part.kind === 'handoff'">{{ handoffNotice(part) }}</span>
+                  <span v-else-if="part.kind === 'takeover'">{{ t(item.author?.id && item.author.id === session?.user.id ? 'inbox.noticeTakeoverSelf' : 'inbox.noticeTakeover', { name: item.author?.name || t('widget.messageStaff') }) }}</span>
                   <span v-else>{{ t(part.kind === 'snoozed' ? 'inbox.noticeSnoozed' : 'inbox.noticeClosed', { name: item.author?.name || t('widget.messageStaff'), time: date(part.dueAt ?? null) }) }}</span>
                   <time :datetime="item.createdAt" class="text-[10px] opacity-75">{{ time(item.createdAt) }}</time>
                 </div>
@@ -536,7 +615,7 @@ loading.value = false
               <UserAvatar v-else :author="item.author || (item.authorType === 'customer' ? detail.customer : null)" :size="6" />
               <div class="min-w-0 max-w-[85%]">
                 <div class="w-fit max-w-full rounded-xl border border-border px-3.5 py-2.5 text-[13px] leading-relaxed" :class="item.authorType === 'staff' ? 'ml-auto rounded-tr-sm bg-primary/5' : item.authorType === 'agent' ? 'rounded-tl-sm bg-secondary/50' : 'rounded-tl-sm bg-card'">
-                  <WidgetEmbedParts :content="item.content" :plain-text="item.authorType !== 'agent'" @feedback="openFeedback($event)" />
+                  <WidgetEmbedParts :content="item.content" :plain-text="item.authorType !== 'agent'" @feedback="openFeedback($event)" @article="openArticle" />
                 </div>
                 <div class="mt-1.5 flex items-center gap-1 px-0.5 text-[10px] text-muted-foreground" :class="item.authorType === 'staff' ? 'justify-end' : ''">
                   <span class="truncate font-semibold text-foreground dark:text-white">{{ item.authorType === 'agent' ? t('inbox.ai') : item.authorType === 'staff' ? (item.author?.name ? t('widget.messageStaffNamed', { name: item.author.name }) : t('widget.messageStaff')) : authorName(item.author || detail.customer) }}</span><span aria-hidden="true">·</span><time class="shrink-0" :datetime="item.createdAt">{{ time(item.createdAt) }}</time>
@@ -551,10 +630,14 @@ loading.value = false
           </article>
         </div>
         <form v-if="canReply || isAiHandling" class="shrink-0 border-t border-border bg-card p-3 sm:p-4" @submit.prevent="canReply && sendable && !uploading && command('reply')">
-          <div class="overflow-hidden rounded-lg border border-border bg-card transition-shadow focus-within:border-primary focus-within:ring-[3px] focus-within:ring-primary/15">
+          <div class="overflow-hidden rounded-lg border border-border bg-card transition-shadow has-[textarea:focus]:border-primary has-[textarea:focus]:ring-[3px] has-[textarea:focus]:ring-primary/15">
             <div class="flex items-center gap-1.5 px-3 pt-2.5 text-[11px] font-semibold text-foreground"><Icon name="lucide:message-square" size="13" />{{ t('inbox.replyToCustomer') }}</div>
             <p v-if="isAiHandling" id="inbox-reply-unavailable" class="px-3 pt-1.5 text-xs text-muted-foreground">{{ t('inbox.aiReplyUnavailable') }}</p>
-            <textarea ref="replyInput" v-model="draft" :disabled="!canReply || sending" :placeholder="t('inbox.replyPlaceholder')" :aria-label="t('inbox.replyPlaceholder')" :aria-describedby="isAiHandling ? 'inbox-reply-unavailable' : undefined" maxlength="4000" rows="3" class="block max-h-32 min-h-16 w-full resize-none bg-transparent px-3 py-2 text-sm leading-relaxed outline-none disabled:cursor-not-allowed disabled:opacity-50" @keydown.enter.exact="sendKey" @paste="pasteImages" />
+            <div class="relative">
+              <textarea ref="replyInput" v-model="draft" :disabled="!canReply || sending" :placeholder="t('inbox.replyPlaceholder')" :aria-label="t('inbox.replyPlaceholder')" :aria-describedby="isAiHandling ? 'inbox-reply-unavailable' : undefined" maxlength="4000" rows="3" class="block max-h-32 min-h-16 w-full resize-none bg-transparent px-3 py-2 text-sm leading-relaxed outline-none disabled:cursor-not-allowed disabled:opacity-50" @keydown.enter.exact="sendKey" @paste="pasteImages" />
+              <!-- Mouse only: keyboard users reach the takeover button next in order. -->
+              <div v-if="isAiHandling" class="absolute inset-0 cursor-default" aria-hidden="true" data-inbox-reply-locked @click="pointToTakeover" />
+            </div>
             <div v-if="images.length || uploading" class="flex gap-2 overflow-x-auto px-3 pb-2">
               <div v-for="(image, index) in images" :key="image.key" class="relative size-14 shrink-0 overflow-hidden rounded-md border border-border [&_img]:size-14 [&_img]:object-cover"><WidgetEmbedImage :storage-key="image.key" /><Button type="button" variant="secondary" size="icon" class="absolute right-0 top-0 size-5" :disabled="!canReply || sending" :title="t('inbox.removeImage')" :aria-label="t('inbox.removeImage')" @click="draftImages[selected!]!.splice(index, 1)"><Icon name="lucide:x" size="12" /></Button></div>
               <div v-if="uploading" class="grid size-14 shrink-0 place-items-center rounded-md border border-border"><Icon name="lucide:loader-2" size="16" class="animate-spin text-muted-foreground" /></div>
@@ -563,10 +646,11 @@ loading.value = false
               <input ref="fileInput" type="file" accept="image/*" multiple class="hidden" :disabled="!canReply || sending || uploading" @change="pickFiles">
               <Button type="button" variant="ghost" size="icon" class="hover:bg-secondary/50 hover:text-foreground dark:hover:bg-secondary/50 size-8 text-muted-foreground" :disabled="!canReply || sending || uploading" :title="t('widget.attachImage')" :aria-label="t('widget.attachImage')" @click="fileInput?.click()"><Icon name="lucide:image" size="16" /></Button>
               <div class="flex items-center gap-2">
-                <span class="hidden whitespace-nowrap text-[10px] text-muted-foreground lg:inline">Enter</span>
-                <div class="inline-flex w-56 shrink-0 items-stretch rounded-md" :class="!canReply || sending || uploading || !sendable ? 'opacity-50' : ''" data-inbox-send>
-                  <Button type="submit" variant="default" size="sm" class="h-9 min-w-0 flex-1 gap-1.5 rounded-r-none text-xs disabled:opacity-100" :disabled="!canReply || sending || uploading || !sendable"><Icon :name="sending ? 'lucide:loader-2' : 'lucide:send'" size="14" :class="sending ? 'animate-spin' : ''" />{{ t(deliveryMode === 'immediate' ? 'inbox.deliveryImmediate' : 'inbox.deliveryAuto') }}</Button>
-                  <DropdownMenu>
+                <span v-if="canReply" class="hidden whitespace-nowrap text-[10px] text-muted-foreground lg:inline">Enter</span>
+                <div class="inline-flex w-56 shrink-0 items-stretch rounded-md" :class="[canReply && (sending || uploading || !sendable) ? 'opacity-50' : '', takeoverPulse && 'inbox-takeover-pulse']" data-inbox-send @animationend="takeoverPulse = false">
+                  <Button v-if="isAiHandling" ref="takeoverButton" type="button" variant="default" size="sm" class="h-9 min-w-0 flex-1 gap-1.5 text-xs" :disabled="busy || takeoverPending" :aria-busy="activeAction === 'takeover' || takeoverPending" @click="command('takeover')"><Icon :name="activeAction === 'takeover' || takeoverPending ? 'lucide:loader-2' : 'lucide:message-square-reply'" size="14" :class="activeAction === 'takeover' || takeoverPending ? 'animate-spin' : ''" />{{ t(takeoverPending ? 'inbox.takeoverWaiting' : 'inbox.takeover') }}</Button>
+                  <Button v-else type="submit" variant="default" size="sm" class="h-9 min-w-0 flex-1 gap-1.5 rounded-r-none text-xs disabled:opacity-100" :disabled="!canReply || sending || uploading || !sendable"><Icon :name="sending ? 'lucide:loader-2' : 'lucide:send'" size="14" :class="sending ? 'animate-spin' : ''" />{{ t(deliveryMode === 'immediate' ? 'inbox.deliveryImmediate' : 'inbox.deliveryAuto') }}</Button>
+                  <DropdownMenu v-if="canReply">
                     <DropdownMenuTrigger as-child>
                       <Button type="button" variant="default" size="sm" class="h-9 w-8 rounded-l-none border-l border-primary-foreground/25 px-0 disabled:opacity-100" :disabled="!canReply || sending || uploading" :title="t('inbox.deliveryMode')" :aria-label="t('inbox.deliveryMode')"><Icon name="lucide:chevron-down" size="14" /></Button>
                     </DropdownMenuTrigger>
@@ -593,3 +677,16 @@ loading.value = false
     <Sheet v-model:open="drawer"><SheetContent side="right" class="overflow-y-auto p-0"><SheetTitle class="sr-only">{{ t('inbox.customerDetails') }}</SheetTitle><SheetDescription class="sr-only">{{ t('inbox.customer') }}</SheetDescription><InboxCustomerDetails v-if="detail" :customer="detail.customer" :conversation="detail.conversation" :feedbacks="feedbacks" :busy="activeAction === 'set_priority'" :has-more="feedbacks.length < feedbackTotal" @priority="command('set_priority', { priority: $event })" @feedback="openFeedback($event); drawer = false" @more="loadFeedback(true)" /></SheetContent></Sheet>
   </div>
 </template>
+
+<style scoped>
+/* One emphasis pulse on the takeover button, then back to none. The gap in card
+   colour keeps the ring apart from the primary-coloured button. */
+.inbox-takeover-pulse { animation: inbox-takeover-pulse 1.2s ease-in-out; }
+@keyframes inbox-takeover-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--card), 0 0 0 0 color-mix(in oklab, var(--primary) 0%, transparent); }
+  20%, 45% { box-shadow: 0 0 0 2px var(--card), 0 0 0 5px color-mix(in oklab, var(--primary) 55%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .inbox-takeover-pulse { animation-duration: 0.01s; }
+}
+</style>

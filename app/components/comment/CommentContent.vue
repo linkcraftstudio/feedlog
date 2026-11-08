@@ -1,22 +1,18 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { resolveAttachmentUrls } from '~/utils/attachment'
 
-const props = defineProps<{
+defineProps<{
   content: string
 }>()
-
-const resolvedContent = computed(() => resolveAttachmentUrls(props.content))
 </script>
 
 <template>
   <div class="comment-content">
-    <ThemedMdPreview :model-value="resolvedContent" language="en-US" />
+    <ThemedMdPreview :model-value="content" language="en-US" />
   </div>
 </template>
 
 <style scoped>
-/* Remove MdPreview default container styling */
+/* Keep preview surfaces flush with the surrounding content. */
 .comment-content :deep(.md-editor) {
   border: none;
   background: transparent;

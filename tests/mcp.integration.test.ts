@@ -79,9 +79,9 @@ test('MCP: OAuth, multi-organization access and all business tools', { skip: !ta
     clientIds.push(client.client_id)
     return client as { client_id: string }
   }
-  async function begin(clientId: string, loginCookie = cookie) {
+  async function begin(clientId: string, loginCookie = cookie, scope = 'mcp:access offline_access') {
     const verifier = randomBytes(32).toString('base64url')
-    const params = new URLSearchParams({ client_id: clientId, response_type: 'code', redirect_uri: redirectUri, resource, scope: 'mcp:access offline_access',
+    const params = new URLSearchParams({ client_id: clientId, response_type: 'code', redirect_uri: redirectUri, resource, scope,
       state: randomBytes(16).toString('hex'), code_challenge_method: 'S256', code_challenge: createHash('sha256').update(verifier).digest('base64url') })
     const response = await ok(await request('/api/auth/oauth2/authorize?' + params, undefined, { cookie: loginCookie }))
     const page = new URL(response.url, origin)
@@ -139,11 +139,12 @@ test('MCP: OAuth, multi-organization access and all business tools', { skip: !ta
       const metadata = await ok(await request('/.well-known/oauth-protected-resource/api/mcp'))
       assert.equal(metadata.resource, resource)
       assert.deepEqual(metadata.authorization_servers, [origin + '/api/auth'])
-      assert.ok(metadata.scopes_supported.includes('mcp:access'))
+      assert.deepEqual(metadata.scopes_supported, ['mcp:access'])
       for (const headers of [{ cookie }, { authorization: 'Bearer ' + owner.token }, { authorization: 'Bearer invalid' }]) {
         const response = await request('/api/mcp', {}, headers)
         assert.equal(response.status, 401, await response.text())
         assert.match(response.headers.get('www-authenticate')!, /resource_metadata=/)
+        assert.match(response.headers.get('www-authenticate')!, /scope="mcp:access offline_access"/)
       }
       assert.equal((await request('/api/mcp', {}, { origin: 'https://untrusted.invalid' })).status, 403)
       assert.equal((await request('/api/mcp')).status, 405)
@@ -321,6 +322,17 @@ test('MCP: OAuth, multi-organization access and all business tools', { skip: !ta
       assert.ok((await call('list_help_collections')).items.some((x: { id: string }) => x.id === collection.id))
       const article = await call('create_help_article', { collection_id: collection.id, title: 'Integration guide', content: '# Setup\nOriginal body', ai_enabled: false })
       contentIds.articles.push(article.id)
+      if (process.env.MCP_TEST_HELP_INDEX === 'true') {
+        // MCP and Web must share the same committed indexing wake, not only the DB trigger.
+        let attempts = 0
+        for (let i = 0; i < 25 && attempts === 0; i++) {
+          const { rows: [job] } = await pool.query("SELECT t.attempts FROM scheduled_task t JOIN help_article a ON a.id=t.ref_id WHERE t.kind='help_index' AND a.id=$1 AND a.org_id=$2", [article.id, org])
+          assert.ok(job, 'MCP article creates its durable index job in the same transaction')
+          attempts = job.attempts
+          if (!attempts) await new Promise(resolve => setTimeout(resolve, 200))
+        }
+        assert.ok(attempts > 0, 'MCP afterCommit starts indexing without a periodic scan')
+      }
       assert.equal(article.status, 'draft'); assert.equal(article.ai_enabled, false)
       const webCollections = await ok(await request('/api/admin/help/collections', undefined, { cookie }))
       assert.equal(webCollections.data.find((item: { id: string }) => item.id === collection.id).articleCount, 1)
@@ -560,6 +572,52 @@ test('MCP: OAuth, multi-organization access and all business tools', { skip: !ta
       assert.equal((await request('/api/mcp', {}, { authorization: 'Bearer ' + renewed.access_token })).status, 401, 'Rejoining must not restore old access')
       const expiredConnection = decodeJwt(renewed.access_token).mcp_consent_id as string
       assert.equal((await request('/api/mcp/connections/' + expiredConnection + '/organizations', { addOrganizationIds: [org] }, { cookie, origin }, 'PATCH')).status, 404, 'Adding organizations cannot revive a connection with no valid memberships')
+    })
+    await t.test('401 scopes guide refresh authorization without making offline access a tool permission', async () => {
+      const challenge = await request('/api/mcp', {})
+      assert.equal(challenge.status, 401)
+      const scope = /\bscope="([^"]+)"/.exec(challenge.headers.get('www-authenticate')!)?.[1]
+      assert.ok(scope)
+      assert.equal(scope, 'mcp:access offline_access')
+
+      const accessOnlyClient = await register()
+      const accessOnlyGrant = await consent(await begin(accessOnlyClient.client_id, cookie, 'mcp:access'), [org])
+      const accessOnly = await ok(await exchange(accessOnlyClient.client_id, accessOnlyGrant))
+      assert.equal(accessOnly.refresh_token, undefined)
+      const accessOnlySdk = await connect(accessOnly.access_token)
+      try {
+        const result = await accessOnlySdk.callTool({ name: 'list_organizations', arguments: {} })
+        assert.equal(result.isError, undefined)
+        assert.deepEqual((result.structuredContent as ToolData).organizations.map(item => item.id), [org])
+      } finally { await accessOnlySdk.close() }
+
+      const refreshClient = await register()
+      const refreshGrant = await consent(await begin(refreshClient.client_id, cookie, scope), [org])
+      const policy = (await pool.query('SELECT access_token_ttl FROM oauth_resource WHERE identifier=$1', [resource])).rows[0]
+      assert.ok(policy)
+      let expiring: { access_token: string; refresh_token: string }
+      try {
+        await pool.query('UPDATE oauth_resource SET access_token_ttl=1 WHERE identifier=$1', [resource])
+        expiring = await ok(await exchange(refreshClient.client_id, refreshGrant))
+      } finally {
+        await pool.query('UPDATE oauth_resource SET access_token_ttl=$1 WHERE identifier=$2', [policy.access_token_ttl, resource])
+      }
+      assert.ok(expiring.refresh_token)
+      const claims = decodeJwt(expiring.access_token)
+      assert.equal(claims.exp! - claims.iat!, 1)
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      const expired = await request('/api/mcp', {}, { authorization: 'Bearer ' + expiring.access_token })
+      assert.equal(expired.status, 401)
+      assert.match(expired.headers.get('www-authenticate')!, /scope="mcp:access offline_access"/)
+      const renewed = await ok(await token({ grant_type: 'refresh_token', client_id: refreshClient.client_id, refresh_token: expiring.refresh_token, resource }))
+      assert.ok(renewed.refresh_token)
+      assert.notEqual(renewed.refresh_token, expiring.refresh_token)
+      const refreshedSdk = await connect(renewed.access_token)
+      try {
+        const result = await refreshedSdk.callTool({ name: 'list_organizations', arguments: {} })
+        assert.equal(result.isError, undefined)
+        assert.deepEqual((result.structuredContent as ToolData).organizations.map(item => item.id), [org])
+      } finally { await refreshedSdk.close() }
     })
     await t.test('SSO and anonymous users cannot authorize MCP', async () => {
       const secret = randomBytes(32).toString('hex')

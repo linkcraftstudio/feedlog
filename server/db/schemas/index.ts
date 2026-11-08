@@ -286,3 +286,4 @@ export const changelogReactionRelations = relations(changelogReaction, ({ one })
 export * from './scheduler'
 
 export * from './oauth'
+export * from './help-index'

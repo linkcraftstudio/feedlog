@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import draggable from 'vuedraggable'
+import HelpIndexFailure from '#layers/feedlog/app/components/help/HelpIndexFailure.vue'
+import type { HelpIndexStatus } from '#layers/feedlog/shared/types/help-index'
 import { toast } from 'vue-sonner'
 import type { HelpCollectionFormValue } from '#layers/feedlog/app/components/help/HelpCollectionDialog.vue'
 import type { HelpArticleStatus, HelpCollectionIcon } from '#layers/feedlog/shared/constants/help'
@@ -9,6 +11,7 @@ definePageMeta({ layout: 'dashboard', middleware: 'admin' })
 interface InlineArticle {
   id: string
   title: string
+  indexStatus: HelpIndexStatus | null
   aiEnabled: boolean
   status: HelpArticleStatus
   position: number
@@ -31,6 +34,7 @@ interface FlatArticle {
   shortId: string
   slug: string
   title: string
+  indexStatus: HelpIndexStatus | null
   aiEnabled: boolean
   status: HelpArticleStatus
   position: number
@@ -89,11 +93,34 @@ const { data: articlesData, refresh: refreshArticles } = await useFetch<{
   data: FlatArticle[]
   pagination: { total: number }
 }>('/api/admin/help/articles', {
+  deep: true,
   query: computed(() => ({ page: page.value, pageSize: PAGE_SIZE, q: debouncedSearch.value || undefined })),
 })
 
 const collections = computed(() => collectionsData.value?.data ?? [])
 const articles = computed(() => articlesData.value?.data ?? [])
+
+let indexPoll: ReturnType<typeof setInterval> | undefined
+let pollingIndex = false
+onMounted(() => {
+  indexPoll = setInterval(async () => {
+    if (pollingIndex || document.hidden) return
+    const visibleArticles = flat.value ? articles.value : collections.value.flatMap(c => c.articles)
+    const pending = visibleArticles.filter(a => a.indexStatus === 'indexing')
+    if (!pending.length) return
+    pollingIndex = true
+    try {
+      await Promise.allSettled(pending.map(async (article) => {
+        const state = await $fetch<{ status: HelpIndexStatus; enabled: boolean }>(`/api/admin/help/articles/${article.id}/index-status`)
+        for (const current of [...articles.value, ...collections.value.flatMap(c => c.articles)]) {
+          if (current.id === article.id) current.indexStatus = state.enabled ? state.status : null
+        }
+      }))
+    }
+    finally { pollingIndex = false }
+  }, 5000)
+})
+onBeforeUnmount(() => { clearInterval(indexPoll); clearTimeout(searchTimer) })
 
 const total = computed(() => (flat.value ? articlesData.value?.pagination.total ?? 0 : collections.value.length))
 const pageCount = computed(() => Math.max(1, Math.ceil(total.value / PAGE_SIZE)))
@@ -391,7 +418,8 @@ function formatDate(iso: string) {
               {{ article.collection.name }}
             </span>
             <HelpStatusBadge :status="article.status" />
-                      <span v-if="article.aiEnabled" :class="[CHIP, 'gap-1 border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300']"><Icon name="lucide:sparkles" size="11" />{{ $t('help.admin.aiVisible') }}</span>
+            <span v-if="article.aiEnabled" :class="[CHIP, 'gap-1 border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300']"><Icon name="lucide:sparkles" size="11" />{{ $t('help.admin.aiVisible') }}</span>
+            <HelpIndexFailure v-if="article.indexStatus === 'failed' || article.indexStatus === 'indexing'" :indexing="article.indexStatus === 'indexing'" />
             <span class="w-24 shrink-0 text-right text-xs font-medium leading-4 text-muted-foreground">{{ formatDate(article.updatedAt) }}</span>
           </NuxtLink>
         </template>
@@ -441,7 +469,6 @@ function formatDate(iso: string) {
                     <span class="block truncate text-sm font-bold leading-5">{{ collection.name }}</span>
                     <span class="block truncate text-xs leading-4 text-muted-foreground">{{ collection.description }}</span>
                   </span>
-                  <HelpStatusBadge v-if="!collection.visible" status="hidden" />
                   <span class="shrink-0 text-xs font-medium leading-4 text-muted-foreground">
                     {{ $t('help.admin.articleCount', { n: collection.articleCount }, collection.articleCount) }}
                   </span>
@@ -484,6 +511,7 @@ function formatDate(iso: string) {
                       <span class="min-w-0 flex-1 truncate text-sm font-semibold leading-5">{{ article.title }}</span>
                       <HelpStatusBadge :status="article.status" />
                       <span v-if="article.aiEnabled" :class="[CHIP, 'gap-1 border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300']"><Icon name="lucide:sparkles" size="11" />{{ $t('help.admin.aiVisible') }}</span>
+                      <HelpIndexFailure v-if="article.indexStatus === 'failed' || article.indexStatus === 'indexing'" :indexing="article.indexStatus === 'indexing'" />
                       <span class="w-24 shrink-0 text-right text-xs font-medium leading-4 text-muted-foreground">{{ formatDate(article.updatedAt) }}</span>
                     </NuxtLink>
                   </template>

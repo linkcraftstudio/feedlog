@@ -44,7 +44,7 @@ pnpm dlx shadcn-vue@latest add <component>  # Add shadcn-vue component (run pnpm
 - `components/ui/` — shadcn-vue base components (no prefix, `pathPrefix: false`)
 - `composables/` — `useApiFetch` (request wrapper), `useAuth` (auth state), `usePermission` (permissions)
 - `stores/` — Pinia stores: `board`, `postDetail`
-- `lib/md-editor-helper.ts` — Workaround for md-editor-v3 nested in shadcn Dialog (prevents internal popups from closing the outer Dialog); read this first when hitting similar issues
+- `components/TiptapMarkdownEditor.client.vue` — visual Markdown editing; `MarkdownEditorShell.vue` owns the toolbar and CodeMirror source surface; `lib/markdown-render.ts` renders sanitized public content
 
 ### Backend (`server/`)
 

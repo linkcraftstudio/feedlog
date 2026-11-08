@@ -1,7 +1,6 @@
 <script setup lang="ts">
 
 import type { PostUpdatedEvent } from './PostDetail.vue'
-import { preventShadcnDialogClose } from '~/lib/md-editor-helper';
 
 const props = defineProps<{
   slug?: string | null
@@ -27,13 +26,10 @@ watch(open, (isOpen) => {
 </script>
 
 <template>
-  <!-- Keep non-modal so md-editor/medium-zoom overlays teleported to body stay interactive -->
   <Dialog v-model:open="open" :modal="true">
     <DialogContent
       :show-close-button="false"
       @open-auto-focus.prevent
-      @pointer-down-outside="preventShadcnDialogClose"
-      @escape-key-down="preventShadcnDialogClose"
       class="!max-w-[1100px] h-[90vh] !p-0 !gap-0 overflow-hidden border-border bg-background !rounded-2xl flex flex-col"
     >
       <!-- Modal header -->

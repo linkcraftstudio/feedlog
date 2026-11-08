@@ -11,6 +11,7 @@ interface AuthSession {
     name: string
     email: string
     image: string | null
+    isAnonymous?: boolean
     role: string | null
   }
   session: {

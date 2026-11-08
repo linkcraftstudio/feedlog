@@ -47,6 +47,7 @@ async function handleSignOut() {
 }
 
 const { mainNav, settingsNav, developerNav } = useDashboardNav()
+const { canVisit, guardNavigation } = useDashboardAccess()
 
 // Mobile menu
 const mobileMenuOpen = ref(false)
@@ -72,14 +73,20 @@ useHead({ title: () => navTitle.value })
 // Developer section: collapsed by default, but auto-expanded when the current
 // route lives inside it (so the active page stays visible).
 const { count: inboxCount, refresh: refreshInboxCount } = useInboxBadge()
-const { canModerate } = usePermission(computed(() => undefined), 'post')
+const { canAccessInbox } = usePermission(computed(() => undefined), 'post')
 let inboxTimer: ReturnType<typeof setInterval> | undefined
 onMounted(() => {
-  if (canModerate.value) void refreshInboxCount()
-  inboxTimer = setInterval(() => { if (!document.hidden && canModerate.value) void refreshInboxCount() }, 10000)
+  if (canAccessInbox.value) void refreshInboxCount()
+  inboxTimer = setInterval(() => { if (!document.hidden && canAccessInbox.value) void refreshInboxCount() }, 10000)
 })
 onBeforeUnmount(() => clearInterval(inboxTimer))
 const developerOpen = ref(developerNav.value.some(item => route.path.startsWith(item.to)))
+
+const onboarding = useOnboarding()
+// Resolved by the dashboard middleware before any dashboard page renders, so the
+// guide opens as soon as the page hydrates.
+const onboardingStatus = useState<{ autoOpen: boolean } | null>('onboarding-status')
+onMounted(() => onboarding.load(onboardingStatus.value?.autoOpen === true))
 </script>
 
 <template>
@@ -127,8 +134,10 @@ const developerOpen = ref(developerNav.value.some(item => route.path.startsWith(
                 v-for="item in mainNav"
                 :key="item.to"
                 :to="localePath(item.to)"
+                :aria-disabled="!canVisit(item.to)"
                 class="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-background hover:text-foreground transition-colors font-semibold"
                 active-class="!bg-secondary !text-primary !font-bold"
+                @click.capture="guardNavigation($event, item.to)"
               >
                 <Icon :name="item.icon" size="20" />
                 <span class="text-sm">{{ item.label }}</span><span v-if="item.to === '/dashboard/inbox' && inboxCount" class="ml-auto inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] leading-none text-primary-foreground" :aria-label="$t('inbox.unreadOpenCount', { count: inboxCount })"><span class="relative top-px tabular-nums">{{ inboxCount > 99 ? '99+' : inboxCount }}</span></span>
@@ -142,8 +151,10 @@ const developerOpen = ref(developerNav.value.some(item => route.path.startsWith(
                 v-for="item in settingsNav"
                 :key="item.to"
                 :to="localePath(item.to)"
+                :aria-disabled="!canVisit(item.to)"
                 class="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-background hover:text-foreground transition-colors font-semibold"
                 active-class="!bg-secondary !text-primary !font-bold"
+                @click.capture="guardNavigation($event, item.to)"
               >
                 <Icon :name="item.icon" size="20" />
                 <span class="text-sm">{{ item.label }}</span><span v-if="item.to === '/dashboard/inbox' && inboxCount" class="ml-auto inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] leading-none text-primary-foreground" :aria-label="$t('inbox.unreadOpenCount', { count: inboxCount })"><span class="relative top-px tabular-nums">{{ inboxCount > 99 ? '99+' : inboxCount }}</span></span>
@@ -167,8 +178,10 @@ const developerOpen = ref(developerNav.value.some(item => route.path.startsWith(
                 v-for="item in developerNav"
                 :key="item.to"
                 :to="localePath(item.to)"
+                :aria-disabled="!canVisit(item.to)"
                 class="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-background hover:text-foreground transition-colors font-semibold"
                 active-class="!bg-secondary !text-primary !font-bold"
+                @click.capture="guardNavigation($event, item.to)"
               >
                 <Icon :name="item.icon" size="20" />
                 <span class="text-sm">{{ item.label }}</span><span v-if="item.to === '/dashboard/inbox' && inboxCount" class="ml-auto inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] leading-none text-primary-foreground" :aria-label="$t('inbox.unreadOpenCount', { count: inboxCount })"><span class="relative top-px tabular-nums">{{ inboxCount > 99 ? '99+' : inboxCount }}</span></span>
@@ -176,6 +189,8 @@ const developerOpen = ref(developerNav.value.some(item => route.path.startsWith(
             </div>
           </div>
         </nav>
+
+        <OnboardingSidebarEntry mobile />
 
         <!-- User info -->
         <div class="h-16 px-4 border-t border-border flex items-center">
@@ -250,9 +265,11 @@ const developerOpen = ref(developerNav.value.some(item => route.path.startsWith(
               v-for="item in mainNav"
               :key="item.to"
               :to="localePath(item.to)"
+              :aria-disabled="!canVisit(item.to)"
               class="relative flex items-center gap-3 py-2 rounded-lg justify-center min-[1360px]:justify-start px-0 min-[1360px]:px-3 text-muted-foreground hover:bg-background hover:text-foreground transition-colors font-semibold"
               :title="item.label"
               active-class="!bg-secondary !text-primary !font-bold"
+              @click.capture="guardNavigation($event, item.to)"
             >
               <Icon :name="item.icon" size="20" class="shrink-0" />
               <span class="hidden min-[1360px]:inline text-sm">{{ item.label }}</span>
@@ -269,9 +286,11 @@ const developerOpen = ref(developerNav.value.some(item => route.path.startsWith(
               v-for="item in settingsNav"
               :key="item.to"
               :to="localePath(item.to)"
+              :aria-disabled="!canVisit(item.to)"
               class="flex items-center gap-3 py-2 rounded-lg justify-center min-[1360px]:justify-start px-0 min-[1360px]:px-3 text-muted-foreground hover:bg-background hover:text-foreground transition-colors font-semibold"
               :title="item.label"
               active-class="!bg-secondary !text-primary !font-bold"
+              @click.capture="guardNavigation($event, item.to)"
             >
               <Icon :name="item.icon" size="20" class="shrink-0" />
               <span class="hidden min-[1360px]:inline text-sm">{{ item.label }}</span>
@@ -297,9 +316,11 @@ const developerOpen = ref(developerNav.value.some(item => route.path.startsWith(
               v-for="item in developerNav"
               :key="item.to"
               :to="localePath(item.to)"
+              :aria-disabled="!canVisit(item.to)"
               class="flex items-center gap-3 py-2 rounded-lg justify-center min-[1360px]:justify-start px-0 min-[1360px]:px-3 text-muted-foreground hover:bg-background hover:text-foreground transition-colors font-semibold"
               :title="item.label"
               active-class="!bg-secondary !text-primary !font-bold"
+              @click.capture="guardNavigation($event, item.to)"
             >
               <Icon :name="item.icon" size="20" class="shrink-0" />
               <span class="hidden min-[1360px]:inline text-sm">{{ item.label }}</span>
@@ -308,59 +329,65 @@ const developerOpen = ref(developerNav.value.some(item => route.path.startsWith(
         </div>
       </nav>
 
-      <!-- User info (bottom) -->
-      <div class="border-t border-border flex items-center flex-col min-[1360px]:flex-row gap-1 py-3 min-[1360px]:py-0 px-1 min-[1360px]:px-4 min-[1360px]:h-16">
-        <DropdownMenu>
-          <DropdownMenuTrigger as-child>
-            <button class="flex items-center gap-3 rounded-xl hover:bg-background transition-colors p-1.5 min-[1360px]:flex-1 min-[1360px]:min-w-0 min-[1360px]:p-2">
-              <Avatar class="w-8 h-8 shrink-0">
-                <img v-if="avatarUrl && !avatarError" :src="avatarUrl" :alt="user?.name" class="aspect-square size-full rounded-full object-cover" referrerpolicy="no-referrer" @error="avatarError = true">
-                <AvatarFallback v-else class="bg-accent text-accent-foreground text-sm font-bold">
-                  {{ initials }}
-                </AvatarFallback>
-              </Avatar>
-              <div class="hidden min-[1360px]:block flex-1 min-w-0 text-left">
-                <p class="text-xs font-bold truncate">{{ user?.name }}</p>
-                <p class="text-[10px] text-muted-foreground truncate">{{ user?.email }}</p>
-              </div>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" side="top" class="w-[228px]">
-            <DropdownMenuLabel class="font-normal">
-              <div class="flex flex-col space-y-1">
-                <p class="text-sm font-medium">{{ user?.name }}</p>
-                <p class="text-xs text-muted-foreground truncate">{{ user?.email }}</p>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem as-child>
-              <NuxtLink :to="localePath('/dashboard/settings/personal')" :aria-current="isPersonalSettings ? 'page' : undefined" :class="{ 'text-primary': isPersonalSettings }">
-                <Icon name="lucide:sliders-horizontal" size="16" class="mr-2" />
-                {{ $t('settings.personal.title') }}
-              </NuxtLink>
-            </DropdownMenuItem>
-            <DropdownMenuItem @click="onEditProfile">
-              <Icon name="lucide:user-round-pen" size="16" class="mr-2" />
-              {{ $t('nav.editProfile') }}
-            </DropdownMenuItem>
-            <DropdownMenuItem @click="onChangePassword">
-              <Icon name="lucide:key-round" size="16" class="mr-2" />
-              {{ $t('nav.changePassword') }}
-            </DropdownMenuItem>
-            <DropdownMenuItem as-child>
-              <NuxtLink :to="localePath('/')">
-                <Icon name="lucide:arrow-left" size="16" class="mr-2" />
-                {{ $t('dashboard.backToSite') }}
-              </NuxtLink>
-            </DropdownMenuItem>
-            <DropdownMenuItem @click="handleSignOut">
-              <Icon name="lucide:log-out" size="16" class="mr-2" />
-              {{ $t('common.signOut') }}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <ThemeSwitcher />
-        <LocaleSwitcher />
+      <!-- Pinned below one divider, so the scrolling navigation visibly ends above
+           both the Getting started entry and the user row. -->
+      <div class="border-t border-border">
+        <OnboardingSidebarEntry class="pt-3" />
+
+        <!-- User info (bottom) -->
+        <div class="flex items-center flex-col min-[1360px]:flex-row gap-1 pb-3 min-[1360px]:pb-0 px-1 min-[1360px]:px-4 min-[1360px]:h-16">
+          <DropdownMenu>
+            <DropdownMenuTrigger as-child>
+              <button class="flex items-center gap-3 rounded-xl hover:bg-background transition-colors p-1.5 min-[1360px]:flex-1 min-[1360px]:min-w-0 min-[1360px]:p-2">
+                <Avatar class="w-8 h-8 shrink-0">
+                  <img v-if="avatarUrl && !avatarError" :src="avatarUrl" :alt="user?.name" class="aspect-square size-full rounded-full object-cover" referrerpolicy="no-referrer" @error="avatarError = true">
+                  <AvatarFallback v-else class="bg-accent text-accent-foreground text-sm font-bold">
+                    {{ initials }}
+                  </AvatarFallback>
+                </Avatar>
+                <div class="hidden min-[1360px]:block flex-1 min-w-0 text-left">
+                  <p class="text-xs font-bold truncate">{{ user?.name }}</p>
+                  <p class="text-[10px] text-muted-foreground truncate">{{ user?.email }}</p>
+                </div>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="top" class="w-[228px]">
+              <DropdownMenuLabel class="font-normal">
+                <div class="flex flex-col space-y-1">
+                  <p class="text-sm font-medium">{{ user?.name }}</p>
+                  <p class="text-xs text-muted-foreground truncate">{{ user?.email }}</p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem as-child>
+                <NuxtLink :to="localePath('/dashboard/settings/personal')" :aria-current="isPersonalSettings ? 'page' : undefined" :class="{ 'text-primary': isPersonalSettings }">
+                  <Icon name="lucide:sliders-horizontal" size="16" class="mr-2" />
+                  {{ $t('settings.personal.title') }}
+                </NuxtLink>
+              </DropdownMenuItem>
+              <DropdownMenuItem @click="onEditProfile">
+                <Icon name="lucide:user-round-pen" size="16" class="mr-2" />
+                {{ $t('nav.editProfile') }}
+              </DropdownMenuItem>
+              <DropdownMenuItem @click="onChangePassword">
+                <Icon name="lucide:key-round" size="16" class="mr-2" />
+                {{ $t('nav.changePassword') }}
+              </DropdownMenuItem>
+              <DropdownMenuItem as-child>
+                <NuxtLink :to="localePath('/')">
+                  <Icon name="lucide:arrow-left" size="16" class="mr-2" />
+                  {{ $t('dashboard.backToSite') }}
+                </NuxtLink>
+              </DropdownMenuItem>
+              <DropdownMenuItem @click="handleSignOut">
+                <Icon name="lucide:log-out" size="16" class="mr-2" />
+                {{ $t('common.signOut') }}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <ThemeSwitcher />
+          <LocaleSwitcher />
+        </div>
       </div>
     </aside>
 
@@ -372,5 +399,7 @@ const developerOpen = ref(developerNav.value.some(item => route.path.startsWith(
     <ChangePasswordDialog v-model:open="showChangePassword" />
     <EditProfileDialog v-model:open="showEditProfile" />
     <LoginModal v-model:open="showLoginModal" />
+    <OnboardingGuide />
+    <OnboardingDemoWidget />
   </div>
 </template>

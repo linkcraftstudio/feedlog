@@ -2,12 +2,12 @@ import { takeInboxEvents, type InboxEvent } from '../inbox/events'
 import { Pool, type PoolClient } from 'pg'
 import { Memory } from '@mastra/memory'
 import { MastraCompositeStore } from '@mastra/core/storage'
-import { MemoryPG } from '@mastra/pg'
+import { BoundedMemoryPG } from './memory-store'
 import { createError, type H3Event } from 'h3'
 import type { Content, PageContext } from '../../../shared/agent/content'
 import { stripMarkdown } from '../../../shared/utils/markdown'
 import { CONVERSATION_RETENTION_DEFAULT_DAYS } from '../../../shared/constants/conversation'
-import { HANDOFF_NOTICE } from '../../../shared/inbox/state'
+import { HANDOFF_NOTICES, handoffNotice } from '../../../shared/inbox/state'
 
 function initialize(connectionString: string, worker = false) {
   const options = { connectionString, connectionTimeoutMillis: 10000, statement_timeout: 20000 }
@@ -16,7 +16,7 @@ function initialize(connectionString: string, worker = false) {
   // waiting for a connection already held by those same transactions.
   const memoryPool = new Pool({ ...options, max: worker ? 1 : 2 })
   const storage = new MastraCompositeStore({ id: 'feedlog-agent', disableInit: true, domains: {
-    memory: new MemoryPG({ pool: memoryPool, schemaName: 'public' }), threadState: false,
+    memory: new BoundedMemoryPG(memoryPool), threadState: false,
   } })
   const memory = new Memory({ storage, options: { lastMessages: false, generateTitle: false, semanticRecall: false, workingMemory: { enabled: false } } })
   return { pool, memory, publishInboxEvent: undefined as ((input: InboxEvent) => void) | undefined, close: async () => { await memory.settled(); await Promise.all([pool.end(), memoryPool.end()]) } }
@@ -59,7 +59,7 @@ export async function widgetActor(event: H3Event) {
   const { pool } = agentRuntime(event)
   const { rows: [settings] } = await pool.query('SELECT enabled,conversation_retention_days FROM organization_widget WHERE org_id=$1', [orgId])
   if (settings?.enabled === false) agentError(403, 'widget_disabled', 'Widget is not enabled')
-  return { session, orgId, customerId: session.user.id, retentionDays: settings?.conversation_retention_days ?? CONVERSATION_RETENTION_DEFAULT_DAYS }
+  return { session, orgId, customerId: session.user.id, requestOrigin: getRequestURL(event).origin, retentionDays: settings?.conversation_retention_days ?? CONVERSATION_RETENTION_DEFAULT_DAYS }
 }
 export type Actor = Awaited<ReturnType<typeof widgetActor>>
 
@@ -98,9 +98,10 @@ export async function appendItem(client: PoolClient, input: { id: string; conver
 export function publicItem(item: Record<string, unknown>) {
   if (item.author_type === 'system') {
     const part = (item.content as Content).parts.find(part => part.type === 'system_event')
-    if (!part || part.type !== 'system_event' || part.kind !== 'handoff') return null
-    const text = HANDOFF_NOTICE
-    return { id: item.id, seq: Number(item.seq), authorType: 'system' as const, notice: 'handoff' as const, content: { parts: [{ type: 'text' as const, text }] }, context: null, agentRunId: null, createdAt: item.created_at }
+    if (!part || part.type !== 'system_event' || part.kind !== 'handoff' || part.reason === 'ai_error') return null
+    const noticeKind = handoffNotice(part.reason, part.rule?.id)
+    const text = part.customerNotice ?? HANDOFF_NOTICES[noticeKind]
+    return { id: item.id, seq: Number(item.seq), authorType: 'system' as const, notice: 'handoff' as const, handoffNotice: noticeKind, ...(part.customerNotice ? { customerNotice: part.customerNotice } : {}), content: { parts: [{ type: 'text' as const, text }] }, context: null, agentRunId: null, createdAt: item.created_at }
   }
   return { id: item.id, seq: Number(item.seq), authorType: item.author_type, author: item.author_type === 'staff' ? { name: item.staff_name as string | null ?? null } : null, content: item.content, context: item.context, agentRunId: item.agent_run_id, createdAt: item.created_at }
 }

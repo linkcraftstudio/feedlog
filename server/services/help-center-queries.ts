@@ -1,3 +1,4 @@
+import { helpIndexError, helpIndexStatus } from '../lib/help-search/management'
 import { articleRecord, articleConditions } from './help-center'
 import { and, asc, eq, ilike, sql, inArray, ne } from 'drizzle-orm'
 import { helpArticle, helpCollection } from '../db/schemas'
@@ -22,6 +23,8 @@ export async function listManagementArticles(context: ContentReader, input: { q?
       title: helpArticle.title,
       status: helpArticle.status,
       aiEnabled: helpArticle.aiEnabled,
+      indexError: helpIndexError(),
+      indexStatus: helpIndexStatus(),
       position: helpArticle.position,
       updatedAt: helpArticle.updatedAt,
       collectionId: helpCollection.id,
@@ -71,6 +74,8 @@ export async function listManagementCollections(context: ContentReader, flat: bo
           title: helpArticle.title,
           status: helpArticle.status,
           aiEnabled: helpArticle.aiEnabled,
+          indexError: helpIndexError(),
+          indexStatus: helpIndexStatus(),
           position: helpArticle.position,
           updatedAt: helpArticle.updatedAt,
         })

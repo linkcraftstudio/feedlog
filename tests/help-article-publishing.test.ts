@@ -23,3 +23,9 @@ test('valid Markdown keeps its whitespace and metadata-only updates remain valid
   }
   assert.deepEqual(updateHelpArticleSchema.parse({ aiEnabled: false }), { aiEnabled: false })
 })
+
+test('long imported articles remain editable and saveable', () => {
+  const content = 'a'.repeat(50001)
+  assert.equal(createHelpArticleSchema.safeParse({ ...article, content }).success, true)
+  assert.equal(updateHelpArticleSchema.safeParse({ content }).success, true)
+})

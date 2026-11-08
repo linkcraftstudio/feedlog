@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { systemEventPart } from '../inbox/state'
+import { systemEventPart, type HandoffNotice } from '../inbox/state'
+import { CHAT_IMAGE_MAX_COUNT } from './images'
 
 export const textPart = z.object({ type: z.literal('text'), text: z.string().min(1).refine(value => !!value.trim()) }).strict()
 export const imagePart = z.object({ type: z.literal('image'), storage_key: z.string().min(1).max(1000) }).strict()
@@ -17,9 +18,12 @@ export const contentPart = z.discriminatedUnion('type', [
   ...(['feedback_comment_added', 'feedback_comment_updated'] as const).map(type => z.object({ type: z.literal(type), ...commentFields })),
 ])
 export const contentSchema = z.object({ parts: z.array(contentPart).min(1) })
-export const customerContent = z.object({ parts: z.array(z.discriminatedUnion('type', [textPart, imagePart])).min(1).max(10) }).strict().refine(
+export const customerContent = z.object({ parts: z.array(z.discriminatedUnion('type', [textPart, imagePart])).min(1).max(CHAT_IMAGE_MAX_COUNT + 1) }).strict().refine(
   value => value.parts.reduce((sum, part) => sum + (part.type === 'text' ? part.text.length : 0), 0) <= 4000,
   'Message text must not exceed 4000 characters',
+).refine(
+  value => value.parts.filter(part => part.type === 'image').length <= CHAT_IMAGE_MAX_COUNT,
+  `A message can contain up to ${CHAT_IMAGE_MAX_COUNT} images`,
 )
 export const pageContext = z.object({
   origin: z.string().max(2000).refine(value => {
@@ -40,7 +44,7 @@ export type Part = Content['parts'][number]
 export type FeedbackPart = Extract<Part, { feedback_id: string }>
 export type PageContext = z.infer<typeof pageContext>
 export type ChatInput = z.infer<typeof chatInput>
-export interface Item { author?: { name: string | null } | null; notice?: 'handoff' | 'closed' | 'reopened'; id: string; seq: number; authorType: 'customer' | 'agent' | 'staff' | 'system'; content: Content; context: PageContext | null; agentRunId: string | null; createdAt: string }
+export interface Item { author?: { name: string | null } | null; notice?: 'handoff' | 'closed' | 'reopened'; handoffNotice?: HandoffNotice; customerNotice?: string; id: string; seq: number; authorType: 'customer' | 'agent' | 'staff' | 'system'; content: Content; context: PageContext | null; agentRunId: string | null; createdAt: string }
 export interface Run { id: string; triggerItemId: string; status: 'running' | 'completed' | 'failed' | 'cancelled'; error: string | null; startedAt: string; deadlineAt: string; finishedAt: string | null }
 export interface Conversation { id: string; title: string | null; lastSeq: number; unread: boolean; handling?: 'ai' | 'human' | 'closed' }
 export interface Detail { conversation: Conversation; items: Item[]; runs: Run[]; nextBeforeSeq: number | null; nextAfterSeq?: number; hasMore?: boolean }

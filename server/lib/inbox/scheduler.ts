@@ -1,3 +1,4 @@
+import { helpVectorsEnabled } from '../help-search/embedding'
 import { Pool, type PoolClient } from 'pg'
 import { uuidv7 } from 'uuidv7'
 import { inboxTick } from './tick'
@@ -16,7 +17,6 @@ export interface InboxTaskContext {
   inboxSchedule?: 'internal'
 }
 const SCHEDULE_LOCK = 71839001
-const CONSUMER_LOCK = 71839002
 export function schedulerFailure(error: unknown) {
   const code = (error as { code?: unknown })?.code
   return { code: typeof code === 'string' && (/^[0-9A-Z]{5}$/.test(code) || ['ECONNREFUSED', 'ETIMEDOUT', 'ENOTFOUND', 'ECONNRESET', 'EHOSTUNREACH'].includes(code)) ? code : 'unknown' }
@@ -38,10 +38,12 @@ export function isQuotaExhausted(error: unknown) {
 
 async function pending(client: PoolClient) {
   const { rows: [row] } = await client.query(`SELECT clock_timestamp() AS now,
-    min(CASE WHEN status='processing' THEN greatest(schedule_at,updated_at+interval '10 minutes') ELSE schedule_at END) AS next_at,
-    coalesce(bool_or((status='processing' AND updated_at<clock_timestamp()-interval '10 minutes')
+    min(CASE WHEN status='processing' AND kind<>'help_index'
+      THEN greatest(schedule_at,updated_at+interval '10 minutes') ELSE schedule_at END) AS next_at,
+    coalesce(bool_or((status='processing' AND CASE WHEN kind='help_index' THEN schedule_at<=clock_timestamp()
+      ELSE updated_at<clock_timestamp()-interval '10 minutes' END)
       OR status NOT IN ('pending','processing','done','cancelled')),false) AS force
-    FROM scheduled_task WHERE status NOT IN ('done','cancelled')`)
+    FROM scheduled_task WHERE status NOT IN ('done','cancelled') AND (kind<>'help_index' OR $1)`, [helpVectorsEnabled()])
   return row as { now: Date; next_at: Date | null; force: boolean }
 }
 
@@ -79,12 +81,14 @@ async function publish(client: PoolClient, transport: DelayTransport, id: string
   }
 }
 
-async function locked<T>(runtime: SchedulerRuntime, key: number, skipped: T, fn: (client: PoolClient) => Promise<T>) {
+async function withScheduleLock<T>(runtime: SchedulerRuntime, fn: (client: PoolClient) => Promise<T>) {
   const client = await runtime.pool.connect()
   try {
     await client.query('BEGIN')
-    const acquired = (await client.query('SELECT pg_try_advisory_xact_lock($1) AS acquired', [key])).rows[0].acquired
-    const result = acquired ? await fn(client) : skipped
+    // Only serialize wake bookkeeping, never business execution. Waiting here
+    // ensures a worker's recovery wake is committed before its provider call.
+    await client.query('SELECT pg_advisory_xact_lock($1)', [SCHEDULE_LOCK])
+    const result = await fn(client)
     await client.query('COMMIT')
     return result
   } catch (error) {
@@ -94,9 +98,12 @@ async function locked<T>(runtime: SchedulerRuntime, key: number, skipped: T, fn:
 }
 
 export async function scheduleInbox(runtime: SchedulerRuntime, transport: DelayTransport, access: 'internal' | 'external' = 'internal') {
-  const result = await locked(runtime, SCHEDULE_LOCK, none(), async client => {
+  const result = await withScheduleLock(runtime, async client => {
     const state = await pending(client)
-    if (!state.next_at) return none()
+    if (!state.next_at) {
+      await client.query("UPDATE delay_message SET status='cancelled' WHERE status='scheduled'")
+      return none()
+    }
     // Due does not mean lost: allow ten minutes for delivery/consumer recovery.
     // HTTP also preserves future wakes; in-app calls may advance those.
     const { rows: [waiting] } = await client.query(`SELECT id FROM delay_message
@@ -128,30 +135,47 @@ export async function scheduleInbox(runtime: SchedulerRuntime, transport: DelayT
 
 export async function consumeInbox(runtime: SchedulerRuntime, transport: DelayTransport, message: WakeMessage) {
   if (!message || typeof message.id !== 'string' || !/^[0-9a-f-]{36}$/i.test(message.id) || typeof message.sentAt !== 'string') throw new Error('Invalid wake message')
-  return locked(runtime, CONSUMER_LOCK, { busy: true }, async client => {
-    const { rows: [record] } = await client.query('SELECT * FROM delay_message WHERE id=$1', [message.id])
-    if (!record) throw new Error('Wake record not committed; retry delivery')
-    const storedGeneration = new Date(record.sent_at).toISOString()
-    if (message.sentAt > storedGeneration) throw new Error('Wake generation not committed; retry delivery')
-    if (record.status === 'fired' || storedGeneration !== message.sentAt) return { busy: false }
-    // Old cancelled deliveries may help finish due work, but cannot resurrect themselves.
-    if (!['scheduled','cancelled'].includes(record.status)) return { busy: false }
-    if (record.status === 'scheduled' && +new Date(record.expect_at) > Date.now() + 1000) throw new Error('Queue delivered before its due time')
-    await inboxTick(runtime)
-    const renewed = await locked(runtime, SCHEDULE_LOCK, null as ReturnType<typeof none> | null, async scheduleClient => {
-      const { rows: [current] } = await scheduleClient.query('SELECT status,sent_at FROM delay_message WHERE id=$1', [message.id])
-      if (!current || current.status === 'cancelled' || new Date(current.sent_at).toISOString() !== message.sentAt) return none()
-      const state = await pending(scheduleClient)
-      if (!state.next_at) {
-        await scheduleClient.query("UPDATE delay_message SET status='fired',fired_at=clock_timestamp() WHERE id=$1", [message.id])
-        return none()
-      }
-      return publish(scheduleClient, transport, message.id, wakeAt(new Date(state.next_at), new Date(state.now), transport.maxDelaySeconds, transport.wakeResolutionMs))
-    })
-    if (renewed === null) throw new Error('Scheduler is busy; retry this delivery')
-    if (renewed.notifyOwners) await notifyQuota(runtime.pool)
-    return { busy: false }
-  })
+  const { rows: [record] } = await runtime.pool.query('SELECT * FROM delay_message WHERE id=$1', [message.id])
+  if (!record) throw new Error('Wake record not committed; retry delivery')
+  const storedGeneration = new Date(record.sent_at).toISOString()
+  if (message.sentAt > storedGeneration) throw new Error('Wake generation not committed; retry delivery')
+  if (storedGeneration !== message.sentAt || !['scheduled', 'cancelled'].includes(record.status)) return { busy: false }
+  if (record.status === 'scheduled' && +new Date(record.expect_at) > Date.now() + 1000) throw new Error('Queue delivered before its due time')
+  // Accept this delivery atomically, without holding a transaction/consumer lock
+  // during business work. New tasks may schedule their own wake immediately.
+  const accepted = await runtime.pool.query(`UPDATE delay_message SET status='fired',fired_at=clock_timestamp()
+    WHERE id=$1 AND date_trunc('milliseconds',sent_at)=$2::timestamptz AND status IN ('scheduled','cancelled') RETURNING id`, [message.id, message.sentAt])
+  if (!accepted.rows.length) return { busy: false }
+
+  const reschedule = () => scheduleInbox(runtime, transport)
+  let releaseClaim = () => {}
+  const claimSettled = new Promise<void>(resolve => { releaseClaim = resolve })
+  const work: Promise<unknown>[] = []
+  if (helpVectorsEnabled()) {
+    work.push((async () => {
+      try {
+        const { indexNextHelpArticle } = await import('../help-search/indexer')
+        // Each article owns its lease. Reserve its recovery wake after claiming,
+        // before waiting for the provider, and let Inbox execute independently.
+        return await indexNextHelpArticle(runtime.pool, undefined, async () => {
+          await reschedule()
+          releaseClaim()
+        })
+      } finally { releaseClaim() }
+    })().finally(reschedule))
+  } else releaseClaim()
+  work.push(inboxTick(runtime).finally(async () => {
+    // Wait only for the short claim step, not embedding. Otherwise an empty
+    // Inbox tick could requeue the same still-unclaimed Help task immediately.
+    await claimSettled
+    await reschedule()
+  }))
+  // Await every branch even on failure: the platform owns this invocation's
+  // lifetime and its DB pool must stay open until all work has settled.
+  const results = await Promise.allSettled(work)
+  const failed = results.find(result => result.status === 'rejected')
+  if (failed?.status === 'rejected') throw failed.reason
+  return { busy: false }
 }
 
 // Each background invocation owns its pool; Workers cannot reuse request sockets.

@@ -3,7 +3,7 @@ import { APIError } from 'better-auth/api'
 import { createDpopReplayStore, createInsufficientScopeError, enforceDpopBinding, parseAccessTokenAuthorization, verifyJwsAccessToken } from 'better-auth/oauth2'
 import { getMcpAuth } from '../utils/better-auth'
 import { activeGrant, grantOrganizations } from './grants'
-import type { mcpConfig } from './config'
+import { MCP_SCOPES, type mcpConfig } from './config'
 
 export interface McpIdentity { consentId: string; userId: string; clientId: string; resource: string }
 export const invalidMcpToken = () => new APIError('UNAUTHORIZED', { error: 'invalid_token', error_description: 'Authorization is missing, expired or revoked' })
@@ -36,8 +36,10 @@ export async function requireActiveIdentity(identity: McpIdentity) {
   return grant
 }
 export function mcpChallenge(error: unknown, resource: string) {
-  const challenge = createResourceServerChallenge(error, resource, { challengeScopes: ['mcp:access'] })
-    ?? createResourceServerChallenge(invalidMcpToken(), resource, { challengeScopes: ['mcp:access'] })!
+  // Clients that follow only the 401 scope hint must also request refresh access.
+  // Tool authorization still requires only mcp:access; 403 scopes come from the error.
+  const challenge = createResourceServerChallenge(error, resource, { challengeScopes: MCP_SCOPES })
+    ?? createResourceServerChallenge(invalidMcpToken(), resource, { challengeScopes: MCP_SCOPES })!
   return new Response(JSON.stringify({ jsonrpc: '2.0', error: { code: -32000, message: challenge.message }, id: null }), {
     status: challenge.statusCode, headers: { ...challenge.headers, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
   })

@@ -12,3 +12,10 @@ node_modules
 .data
 *.md
 docs
+
+# Local verification artifacts and credentials
+tmp
+.playwright-mcp
+.dev.vars
+.dev.vars.*
+logs

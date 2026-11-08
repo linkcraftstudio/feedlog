@@ -7,6 +7,7 @@ export const replyInput = z
   .object({ ...command, content: customerContent, notifyByEmail: z.boolean().optional() })
   .strict()
 export const actionInput = z.discriminatedUnion('action', [
+  z.object({ ...command, action: z.literal('takeover') }).strict(),
   z.object({ ...command, action: z.literal('close') }).strict(),
   z.object({ ...command, action: z.literal('resume') }).strict(),
   z

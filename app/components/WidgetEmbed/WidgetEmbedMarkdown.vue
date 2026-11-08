@@ -6,8 +6,12 @@ function sanitize(html: string) {
   const fragment = DOMPurify.sanitize(html, {
     USE_PROFILES: { html: true },
     ADD_ATTR: ['target'],
-    FORBID_TAGS: ['style', 'form', 'input', 'button'],
+    FORBID_TAGS: ['style', 'form', 'input'],
     RETURN_DOM_FRAGMENT: true,
+  })
+  fragment.querySelectorAll('button').forEach(button => {
+    if (!button.matches('.fdl-code-copy, .fdl-code-collapse') || !button.closest('.md-editor-code-head')) button.remove()
+    else button.type = 'button'
   })
   // Links must not replace the iframe and leave the customer outside the chat.
   fragment.querySelectorAll('a[href]').forEach(link => {

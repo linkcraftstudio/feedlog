@@ -48,8 +48,8 @@ async function fixture() {
       role text NOT NULL
     );
     INSERT INTO "user" VALUES
-      ('a', 'Alex', 'a@example.invalid'), ('b', 'Blair', 'b@example.invalid'),
-      ('c', 'Casey', 'c@example.invalid'), ('actor', 'Actor', 'actor@example.invalid');
+      ('a', 'Alex', 'a@example.com'), ('b', 'Blair', 'b@example.com'),
+      ('c', 'Casey', 'c@example.com'), ('actor', 'Actor', 'actor@example.com');
     INSERT INTO organization VALUES ('one', 'First workspace'), ('two', 'Second workspace');
     INSERT INTO member VALUES
       ('one-a', 'a', 'one', 'owner'), ('one-b', 'b', 'one', 'manager'),
@@ -183,7 +183,7 @@ test('delivery uses the organization link builder for settings without sending e
   try {
     for (const typeKey of ['post.created', 'post.user_commented', 'post.admin_replied', 'post.status_changed'] as const) {
       await sendNotification({
-        orgId: 'one', orgSlug: 'first', brandColor: '#C45A46', recipientEmail: 'a@example.invalid',
+        orgId: 'one', orgSlug: 'first', brandColor: '#C45A46', recipientEmail: 'a@example.com',
         typeKey, postSlug: 'test', postTitle: 'Test', payload: {}, requestOrigin: 'https://another.example.com',
       })
     }

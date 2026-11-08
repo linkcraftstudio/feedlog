@@ -8,7 +8,7 @@ const chatResumeSchema = z.object({
   articleSlug: z.string().nullable().default(null),
   articleScrollTop: z.number().finite().nonnegative().default(0),
   firstSeq: z.number().int().positive().nullable().default(null),
-  attachments: z.array(z.object({ key: z.string(), name: z.string() })),
+  attachments: z.array(z.object({ key: z.string(), name: z.string(), bytes: z.number().int().positive().optional() })),
   scrollTop: z.number().finite().nonnegative(),
 })
 

@@ -27,6 +27,54 @@ the selected closing behavior and visitor preferences remain unchanged.
 The preview supports dragging, opening, closing and resetting the launcher. It
 uses the current draft and does not create conversations or save visitor state.
 
+## Conversation language
+
+Widget controls, greetings and connection errors follow the configured Widget
+interface language (English or Chinese). AI replies follow the customer's
+requested language or the established conversation language, including languages
+without a Widget translation.
+
+AI-initiated human handoffs use `customer_notice` from the handoff tool call,
+translated from the matching confirmation template into the conversation
+language. The confirmation is saved in the handoff event only when the transfer
+succeeds. Both the live `handoff` stream event and customer history include this
+text as `customerNotice`; changing the interface language or reopening the
+conversation preserves it. Legacy handoff events without saved text retain the
+existing interface-language fallback. No database migration is required.
+
+Inbox displays the saved customer confirmation verbatim in the conversation
+bubble. Its internal handoff reason and rule details still follow the staff
+interface language; they are not part of the customer confirmation.
+
+## Human takeover in Inbox
+
+In **Inbox**, filter by **AI handling** or **All**, open a conversation and click
+**Take over and reply** in place of the send button. The conversation becomes
+**Open** immediately when AI is idle. If AI is replying, the request is saved
+and the button shows **Waiting for AI to finish replying**. The current reply
+finishes and is saved in full before the conversation becomes **Open** and the
+staff reply field is enabled. AI failure or its existing timeout also completes
+the takeover; refreshing or leaving the dashboard does not lose the request.
+This is a shared inbox action; it does not assign an exclusive owner.
+The send button replaces the takeover button once human replies are available.
+Takeover records stay in the staff timeline; the customer sees the completed AI
+answer followed by actual staff replies, with no extra takeover message.
+
+Staff keep using the existing reply, snooze and close actions. There is no
+return-to-AI action. A new customer message in a closed conversation starts a
+new AI round in that same conversation, with recent customer and staff history.
+History remains bounded to the existing memory window and size budget; a new
+conversation does not read another conversation's messages.
+
+`POST /api/admin/inbox/conversations/{id}/actions` accepts
+`{ action: 'takeover', requestId: UUID, expectedLastSeq: number }` with the
+existing `feedlog:inbox` permission, idempotency and revision checks. Only
+`ai_handling` conversations can be taken over. No database migration is required.
+Admin conversation responses include `takeoverPending`, derived from the saved
+request and active run. Pending requests are internal and do not announce a human
+before the current AI round ends. Explicitly closing a conversation still cancels
+its run and invalidates any waiting takeover for that round.
+
 ## Configuration API
 
 `GET /api/widget/config` is public and returns:

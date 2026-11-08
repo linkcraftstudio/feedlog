@@ -2,6 +2,7 @@ import { createAuthClient } from 'better-auth/vue'
 import { oauthProviderClient } from '@better-auth/oauth-provider/client'
 import { adminClient, customSessionClient, organizationClient } from 'better-auth/client/plugins'
 import { ac, contributor, manager, owner } from '~~/shared/auth/permissions'
+import { notifyPermissionDenied } from '#layers/feedlog/app/utils/permission-error'
 import { promptLocalAuthIfRequired } from '~/composables/useLoginModal'
 import type { auth } from '~~/server/utils/better-auth'
 
@@ -21,7 +22,7 @@ export const authClient = createAuthClient({
     // than through useApiFetch. Read `error`, not `response`: better-fetch hands
     // back a plain web Response and spreads the parsed body onto `error`.
     onError(ctx) {
-      promptLocalAuthIfRequired(ctx.error)
+      if (!promptLocalAuthIfRequired(ctx.error)) notifyPermissionDenied(ctx.error)
     },
   },
 })

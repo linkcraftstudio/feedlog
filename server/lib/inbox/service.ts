@@ -1,4 +1,5 @@
 import { queueInboxEvent } from './events'
+import { hasHumanSupport, scheduleHandoffEmail } from './handoff-email'
 import { syncConversationTask, syncRunTask, scheduleReplyEmail, replyCloseDelayMs } from './tasks'
 import { createHash } from 'node:crypto'
 import { uuidv7 } from 'uuidv7'
@@ -6,14 +7,21 @@ import type { PoolClient } from 'pg'
 import { agentError, appendItem, transaction, type AgentRuntime } from '../agent/runtime'
 import type { Content, FeedbackPart } from '../../../shared/agent/content'
 import type { StaffCommand } from '../../../shared/inbox/schemas'
-import type { HandoffRule, HandoffReason, InboxStatus, SystemEventPart } from '../../../shared/inbox/state'
+import { handoffCustomerNotice, type HandoffRule, type HandoffReason, type InboxStatus, type SystemEventPart } from '../../../shared/inbox/state'
 
 export type InboxRuntime = Pick<AgentRuntime, 'pool'> & Partial<Pick<AgentRuntime, 'publishInboxEvent'>>
+export const takeoverPendingSql = `(c.status='ai_handling' AND EXISTS(
+  SELECT 1 FROM agent_run r JOIN conversation_item trigger ON trigger.id=r.trigger_item_id
+  JOIN conversation_item i ON i.conversation_id=r.conversation_id AND i.seq>trigger.seq
+  WHERE r.conversation_id=c.id AND r.status='running' AND i.author_type='system'
+    AND i.content->'parts' @> jsonb_build_array(jsonb_build_object('type','system_event','kind','takeover_requested','runId',r.id::text))
+))`
 export interface ConversationRow {
   id: string
   org_id: string
   user_id: string
   status: InboxStatus
+  takeover_pending?: boolean
   priority: number
   state_due_at: Date | null
   last_seq: string | number
@@ -28,6 +36,7 @@ export function conversationResult(row: ConversationRow) {
     id: row.id,
     title: row.title,
     status: row.status,
+    takeoverPending: row.takeover_pending ?? false,
     priority: row.priority ? ('high' as const) : ('normal' as const),
     stateDueAt: row.state_due_at,
     lastSeq: Number(row.last_seq),
@@ -39,7 +48,7 @@ export async function lockInbox(client: PoolClient, id: string, orgId: string) {
   const {
     rows: [row],
   } = await client.query<ConversationRow>(
-    'SELECT * FROM conversation WHERE id=$1 AND org_id=$2 AND last_seq>0 FOR UPDATE',
+    `SELECT c.*,${takeoverPendingSql} AS takeover_pending FROM conversation c WHERE c.id=$1 AND c.org_id=$2 AND c.last_seq>0 FOR UPDATE`,
     [id, orgId],
   )
   if (!row) agentError(404, 'conversation_not_found', 'Conversation not found')
@@ -67,6 +76,24 @@ export async function eventItem(
     ...options,
   })
 }
+
+// The caller owns the conversation lock and has already ended this run.
+export async function completeTakeoverLocked(client: PoolClient, row: ConversationRow, runId: string) {
+  if (row.status !== 'ai_handling') return null
+  const { rows: [request] } = await client.query(`
+    SELECT i.id,i.author_user_id FROM agent_run r
+    JOIN conversation_item trigger ON trigger.id=r.trigger_item_id
+    JOIN conversation_item i ON i.conversation_id=r.conversation_id AND i.seq>trigger.seq
+    WHERE r.id=$2 AND r.conversation_id=$1 AND r.status IN ('completed','failed') AND i.author_type='system'
+      AND i.content->'parts' @> jsonb_build_array(jsonb_build_object('type','system_event','kind','takeover_requested','runId',r.id::text))
+      AND NOT EXISTS(SELECT 1 FROM agent_run newer WHERE newer.conversation_id=$1 AND (newer.started_at,newer.id)>(r.started_at,r.id))
+    ORDER BY i.seq LIMIT 1`, [row.id, runId])
+  if (!request) return null
+  await client.query("UPDATE conversation SET status='open',state_due_at=NULL WHERE id=$1", [row.id])
+  const item = await eventItem(client, row.id, { kind: 'takeover', reason: 'manual', fromStatus: 'ai_handling', toStatus: 'open', runId }, { id: `takeover:${request.id}`, userId: request.author_user_id })
+  await syncConversationTask(client, row.id)
+  return { id: item.id as string, seq: Number(item.seq) }
+}
 export async function handoffLocked(
   client: PoolClient,
   row: ConversationRow,
@@ -75,7 +102,10 @@ export async function handoffLocked(
   allowExpired = false,
   rule?: HandoffRule,
   feedbackResults: FeedbackPart[] = [],
+  requestOrigin?: string,
+  customerNotice?: string,
 ) {
+  const noticeText = customerNotice === undefined ? undefined : handoffCustomerNotice.parse(customerNotice)
   const id = `handoff:${runId}`
   const {
     rows: [existing],
@@ -87,6 +117,11 @@ export async function handoffLocked(
     [runId, row.id, allowExpired],
   )
   if (!rowCount) return null
+  if (!await hasHumanSupport(client, row.org_id)) {
+    await client.query("UPDATE agent_run SET status='failed',error='support_unavailable',finished_at=clock_timestamp() WHERE id=$1 AND status='running'", [runId])
+    await syncRunTask(client, runId)
+    return await completeTakeoverLocked(client, row, runId)
+  }
   // Successful business actions survive cancellation, including their visible receipts.
   if (feedbackResults.length) await appendItem(client, {
     id: `handoff-results:${runId}`, conversationId: row.id, author: 'agent',
@@ -113,7 +148,9 @@ export async function handoffLocked(
     userId: null,
     data: { conversationId: row.id, reason },
   })
-  return eventItem(client, row.id, { kind: 'handoff', reason, ...(reason === 'support_rule' && rule ? { rule } : {}), fromStatus: row.status, toStatus: 'open' }, { id })
+  const notice = await eventItem(client, row.id, { kind: 'handoff', reason, ...(reason === 'support_rule' && rule ? { rule } : {}), ...(noticeText ? { customerNotice: noticeText } : {}), fromStatus: row.status, toStatus: 'open' }, { id })
+  await scheduleHandoffEmail(client, runId, requestOrigin)
+  return notice
 }
 export async function handoff(
   runtime: InboxRuntime,
@@ -124,9 +161,11 @@ export async function handoff(
   allowExpired = false,
   rule?: HandoffRule,
   feedbackResults: FeedbackPart[] = [],
+  requestOrigin?: string,
+  customerNotice?: string,
 ) {
   const save = (expired: boolean) => transaction(runtime, async (client) =>
-    handoffLocked(client, await lockInbox(client, id, orgId), runId, reason, expired, rule, feedbackResults),
+    handoffLocked(client, await lockInbox(client, id, orgId), runId, reason, expired, rule, feedbackResults, requestOrigin, customerNotice),
   )
   try { return await save(allowExpired) }
   catch {
@@ -144,8 +183,11 @@ export async function recoverLocked(client: PoolClient, row: ConversationRow) {
     [row.id],
   )
   if (!run) return false
-  if (row.status === 'ai_handling') await handoffLocked(client, row, run.id, 'ai_error', true)
-  else await cancelRun(client, row.id)
+  if (row.status === 'ai_handling') {
+    await client.query("UPDATE agent_run SET status='failed',error='ai_timeout',finished_at=clock_timestamp() WHERE id=$1 AND status='running'", [run.id])
+    await syncRunTask(client, run.id)
+    await completeTakeoverLocked(client, row, run.id)
+  } else await cancelRun(client, row.id)
   return true
 }
 function canonical(value: unknown): string {
@@ -214,7 +256,15 @@ export async function staffCommand(
         fromStatus: row.status,
         toStatus: status,
       }
-      if (input.action === 'snooze') {
+      if (input.action === 'takeover') {
+        if (status !== 'ai_handling') agentError(409, 'state_conflict', 'Only AI conversations can be taken over')
+        if (row.takeover_pending) agentError(409, 'no_change', 'A takeover is already waiting for this reply')
+        const { rows: [run] } = await client.query("SELECT id FROM agent_run WHERE conversation_id=$1 AND status='running'", [id])
+        status = run ? 'ai_handling' : 'open'
+        part.kind = run ? 'takeover_requested' : 'takeover'
+        if (run) part.runId = run.id
+        due = run ? row.state_due_at : null
+      } else if (input.action === 'snooze') {
         if (!['open', 'pending'].includes(status))
           agentError(409, 'state_conflict', 'This conversation cannot be snoozed')
         due = new Date(input.wakeAt)
@@ -254,7 +304,7 @@ export async function staffCommand(
     const {
       rows: [updated],
     } = await client.query<ConversationRow>(
-      'UPDATE conversation SET status=$2,priority=$3,state_due_at=$4 WHERE id=$1 RETURNING *',
+      `UPDATE conversation c SET status=$2,priority=$3,state_due_at=$4 WHERE id=$1 RETURNING c.*,${takeoverPendingSql} AS takeover_pending`,
       [id, status, priority, due],
     )
     if (input.action !== 'set_priority') await syncConversationTask(client, id)

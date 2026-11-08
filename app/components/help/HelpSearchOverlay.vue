@@ -9,43 +9,103 @@ interface SearchHit {
   collection: { id: string; name: string }
 }
 
-const props = defineProps<{ query: string }>()
+const props = withDefaults(defineProps<{ query: string; autoTranslate?: boolean }>(), {
+  autoTranslate: true,
+})
 
 const localePath = useLocalePath()
 
 const hits = ref<SearchHit[]>([])
 const total = ref(0)
 const rateLimited = ref(false)
+const failed = ref(false)
+const fallback = ref(false)
 const loading = ref(false)
+const canTranslate = ref(false)
+const translating = ref(false)
+const translatedQueries = ref<string[]>([])
 
 let timer: ReturnType<typeof setTimeout>
 let seq = 0
+let controller: AbortController | undefined
+
+interface SearchResponse {
+  total: number
+  data: SearchHit[]
+  searchMode?: string
+  canTranslate?: boolean
+  translatedQueries?: string[]
+}
+
+async function search(q: string, mine: number, translate = false) {
+  controller = new AbortController()
+  loading.value = true
+  translating.value = translate
+  canTranslate.value = false
+  fallback.value = false
+  try {
+    const result = await $fetch<SearchResponse>('/api/help/search', {
+      query: { q, ...(translate ? { translate: '1' } : {}) }, signal: controller.signal, retry: 0,
+    })
+    if (mine !== seq) return
+    hits.value = result.data
+    total.value = result.total
+    fallback.value = result.searchMode === 'fallback'
+    canTranslate.value = result.canTranslate === true || (translate && fallback.value)
+    translatedQueries.value = result.translatedQueries ?? []
+    rateLimited.value = false
+    failed.value = false
+    // Only the original, empty Chinese query can start one automatic retry.
+    // Await it so the lexical request cannot clear the translation loading state.
+    if (!translate && props.autoTranslate && !result.total && result.canTranslate && /[\u3400-\u9fff]/.test(q)) {
+      await search(q, mine, true)
+    }
+  }
+  catch (e) {
+    if (mine !== seq) return
+    failed.value = true
+    hits.value = []
+    total.value = 0
+    rateLimited.value = (e as { statusCode?: number; response?: { status?: number } }).statusCode === 429
+      || (e as { response?: { status?: number } }).response?.status === 429
+    canTranslate.value = translate && !rateLimited.value
+  }
+  finally {
+    if (mine === seq) {
+      loading.value = false
+      translating.value = false
+    }
+  }
+}
+
+function translateSearch() {
+  if (loading.value || !canTranslate.value) return
+  void search(props.query.trim(), seq, true)
+}
 
 watch(() => props.query, (value) => {
   clearTimeout(timer)
-  loading.value = true
+  const mine = ++seq
+  controller?.abort()
+  hits.value = []
+  total.value = 0
+  rateLimited.value = false
+  failed.value = false
+  fallback.value = false
+  canTranslate.value = false
+  translating.value = false
+  translatedQueries.value = []
   const q = value.trim()
-  timer = setTimeout(async () => {
-    const mine = ++seq
-    try {
-      const result = await $fetch<{ total: number; data: SearchHit[] }>('/api/help/search', { query: { q } })
-      if (mine !== seq) return
-      hits.value = result.data
-      total.value = result.total
-      rateLimited.value = false
-    }
-    catch (e) {
-      if (mine !== seq) return
-      hits.value = []
-      total.value = 0
-      rateLimited.value = (e as { statusCode?: number; response?: { status?: number } }).statusCode === 429
-        || (e as { response?: { status?: number } }).response?.status === 429
-    }
-    finally {
-      if (mine === seq) loading.value = false
-    }
-  }, 200)
+  loading.value = !!q
+  if (!q) return
+  timer = setTimeout(() => { void search(q, mine) }, 200)
 }, { immediate: true })
+
+onBeforeUnmount(() => {
+  ++seq
+  clearTimeout(timer)
+  controller?.abort()
+})
 
 function segments(text: string, ranges: [number, number][]) {
   const out: { text: string; hit: boolean }[] = []
@@ -62,6 +122,9 @@ function segments(text: string, ranges: [number, number][]) {
 
 <template>
   <div class="absolute inset-x-0 top-[60px] z-20 overflow-hidden rounded-2xl border border-border bg-card shadow-[0_4px_20px_rgba(196,90,70,.08)]">
+    <p v-if="translatedQueries.length" class="px-[18px] py-2 text-xs text-muted-foreground">
+      {{ $t('help.portal.translatedSearch', { query: translatedQueries.join(' / ') }) }}
+    </p>
     <template v-if="hits.length">
       <p class="border-b border-border px-[18px] py-2.5 text-[11px] font-bold uppercase tracking-[.05em] text-muted-foreground">
         {{ $t('help.portal.results', { n: total }, total) }}
@@ -88,15 +151,19 @@ function segments(text: string, ranges: [number, number][]) {
       </p>
     </template>
 
-    <div v-else-if="loading" class="flex justify-center px-[18px] py-7">
+    <div v-else-if="loading" class="flex items-center justify-center gap-2 px-[18px] py-7" role="status">
       <Icon name="lucide:loader-2" size="20" class="animate-spin text-muted-foreground" />
+      <span v-if="translating" class="text-sm text-muted-foreground">{{ $t('help.portal.translatingSearch') }}</span>
     </div>
 
     <div v-else class="px-[18px] py-7 text-center">
-      <div class="text-sm font-semibold">{{ rateLimited ? $t('help.portal.rateLimited') : $t('help.portal.noMatch') }}</div>
+      <div class="text-sm font-semibold">{{ fallback ? $t('help.portal.crossLanguageUnavailable') : rateLimited ? $t('help.portal.rateLimited') : failed ? $t('help.portal.searchFailed') : $t('help.portal.noMatch') }}</div>
       <div class="mt-1 text-xs leading-[18px] text-muted-foreground">
-        {{ rateLimited ? $t('help.portal.rateLimitedHint') : $t('help.portal.noMatchHint') }}
+        {{ fallback ? $t('help.portal.translationRetryHint') : rateLimited ? $t('help.portal.rateLimitedHint') : failed ? $t('help.portal.searchFailedHint') : canTranslate ? $t('help.portal.translationOfferHint') : $t('help.portal.noMatchHint') }}
       </div>
+      <Button v-if="canTranslate" variant="outline" size="sm" class="mt-3" :disabled="loading" @click="translateSearch">
+        {{ $t('help.portal.translateSearch') }}
+      </Button>
     </div>
   </div>
 </template>

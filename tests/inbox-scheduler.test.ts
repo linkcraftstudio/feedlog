@@ -3,6 +3,7 @@ import { test, before, after } from 'node:test'
 import { Pool } from 'pg'
 import postgres from 'postgres'
 import { drizzle } from 'drizzle-orm/postgres-js'
+import { drizzle as drizzlePg } from 'drizzle-orm/node-postgres'
 import { migrate } from 'drizzle-orm/postgres-js/migrator'
 import { uuidv7 } from 'uuidv7'
 import { scheduleInbox, consumeInbox, wakeAt, isQuotaExhausted, type WakeMessage, type DelayTransport } from '../server/lib/inbox/scheduler'
@@ -13,6 +14,7 @@ import { automaticRetryDelayMs, retryReplyEmail, deliverReplyNow } from '../serv
 import { registerEmailProvider, type SendEmailOptions } from '../server/utils/email'
 import { readInbox } from '../server/lib/inbox/queries'
 import { pageInput } from '../shared/inbox/schemas'
+import { queueHelpIndex, deleteHelpIndex } from '../server/lib/help-search/jobs'
 
 const url = process.env.DATABASE_URL ?? ''
 assert.match(url, /@(?:localhost|127\.0\.0\.1):\d+\/feedlog_inbox_mvp$/)
@@ -36,7 +38,7 @@ before(async () => {
   try { await migrate(drizzle(connection), { migrationsFolder: 'server/db/migrations' }) }
   finally { await connection.end() }
   await pool.query(`INSERT INTO organization(id,name,slug) VALUES ('org','Org','org');
-    INSERT INTO "user"(id,name,email) VALUES ('customer','Customer','customer@example.invalid'),('staff','Staff','staff@example.invalid'),('owner','Owner','owner@example.invalid');
+    INSERT INTO "user"(id,name,email) VALUES ('customer','Customer','customer@example.com'),('staff','Staff','staff@example.com'),('owner','Owner','owner@example.com');
     INSERT INTO member(id,organization_id,user_id,role,created_at) VALUES ('owner','org','owner','owner',now())`)
   registerEmailProvider({ name: 'scheduler-test', async send(email) { emails.push(email); if (failEmail) throw new Error('Synthetic mail failure') } })
   process.env.EMAIL_PROVIDER = 'scheduler-test'
@@ -103,7 +105,7 @@ test('quota notices go once to owners, tasks survive errors, successful delivery
   await reset(); await task()
   failQueue = new Error('quota_exhausted')
   assert.equal((await scheduleInbox(runtime, transport)).scheduled, false)
-  assert.equal(emails.length, 1); assert.equal(emails[0]!.to, 'owner@example.invalid')
+  assert.equal(emails.length, 1); assert.equal(emails[0]!.to, 'owner@example.com')
   await ageMessages(); await scheduleInbox(runtime, transport)
   assert.equal(emails.length, 1)
   assert.equal((await pool.query('SELECT status FROM scheduled_task')).rows[0].status, 'pending')
@@ -116,20 +118,21 @@ test('quota notices go once to owners, tasks survive errors, successful delivery
   assert.equal(emails.length, 0)
 })
 
-test('consumer processes due work, renews itself, ignores duplicate generations and never revives cancelled wakes', async () => {
+test('consumer accepts each wake once and schedules remaining work without reviving cancelled wakes', async () => {
   await reset(); await task('pending', -1); const later = await task('pending', 3600)
   await scheduleInbox(runtime, transport)
   const original = deliveries[0]!.message
   await consumeInbox(runtime, transport, original)
   assert.equal(deliveries.length, 2)
-  assert.equal((await pool.query('SELECT status FROM delay_message')).rows[0].status, 'scheduled')
+  assert.equal((await pool.query('SELECT status FROM delay_message WHERE id=$1', [original.id])).rows[0].status, 'fired')
+  assert.equal((await pool.query("SELECT count(*)::int AS n FROM delay_message WHERE status='scheduled'")).rows[0].n, 1)
   await consumeInbox(runtime, transport, original)
   assert.equal(deliveries.length, 2)
   const current = deliveries[1]!.message
   await pool.query("UPDATE delay_message SET status='cancelled'")
   await pool.query("UPDATE scheduled_task SET schedule_at=now()-interval '1 second' WHERE id=$1", [later])
   await consumeInbox(runtime, transport, current)
-  assert.equal((await pool.query('SELECT status FROM delay_message')).rows[0].status, 'cancelled')
+  assert.equal((await pool.query('SELECT status FROM delay_message WHERE id=$1', [current.id])).rows[0].status, 'fired')
   assert.equal((await pool.query('SELECT status FROM scheduled_task WHERE id=$1', [later])).rows[0].status, 'done')
   assert.equal(deliveries.length, 2)
 })
@@ -309,7 +312,7 @@ test('immediate delivery keeps its policy through automatic and manual retries',
 test('anonymous and empty-email customers do not queue either reply email mode', async () => {
   await reset()
   try {
-    for (const recipient of [{ anonymous: true, email: 'placeholder@example.invalid' }, { anonymous: false, email: '   ' }]) {
+    for (const recipient of [{ anonymous: true, email: 'placeholder@example.com' }, { anonymous: false, email: '   ' }]) {
       await pool.query("UPDATE \"user\" SET is_anonymous=$1,email=$2 WHERE id='customer'", [recipient.anonymous, recipient.email])
       const id = await conversation()
       for (const notifyByEmail of [false, true]) {
@@ -324,10 +327,27 @@ test('anonymous and empty-email customers do not queue either reply email mode',
     }
     assert.equal(emails.length, 0)
   } finally {
-    await pool.query("UPDATE \"user\" SET is_anonymous=false,email='customer@example.invalid' WHERE id='customer'")
+    await pool.query("UPDATE \"user\" SET is_anonymous=false,email='customer@example.com' WHERE id='customer'")
   }
 })
 
+
+test('a named customer with a reserved .invalid address records the reply email as unavailable', async () => {
+  await reset()
+  try {
+    await pool.query("UPDATE \"user\" SET is_anonymous=false,email='emma.chen-abcd1234@sample.invalid' WHERE id='customer'")
+    const id = await conversation()
+    const { rows: [row] } = await pool.query('SELECT last_seq FROM conversation WHERE id=$1', [id])
+    const saved = await staffCommand(runtime, id, 'org', 'staff', {
+      action: 'reply', requestId: uuidv7(), expectedLastSeq: Number(row.last_seq), notifyByEmail: true,
+      content: { parts: [{ type: 'text', text: 'Reply to a sample customer' }] },
+    })
+    assert.equal((await deliverReplyNow(runtime, 'org', id, saved.item.id))?.status, 'unavailable')
+    assert.equal(emails.length, 0)
+  } finally {
+    await pool.query("UPDATE \"user\" SET is_anonymous=false,email='customer@example.com' WHERE id='customer'")
+  }
+})
 
 test('reply deadlines remain 48 hours even with a stale test environment flag', async () => {
   await reset()
@@ -382,7 +402,7 @@ test('direct delivery sends without a scheduler, respects tenancy and does not d
 test('reply email uses preceding customer source and never copies the conversation title into its subject', async () => {
   await reset()
   const id = await conversation()
-  await pool.query("UPDATE conversation SET title='Private order SYNTHETIC-123 customer@example.invalid' WHERE id=$1", [id])
+  await pool.query("UPDATE conversation SET title='Private order SYNTHETIC-123 customer@example.com' WHERE id=$1", [id])
   await pool.query(`INSERT INTO conversation_item(id,conversation_id,seq,author_type,author_user_id,content,context)
     VALUES($1,$2,1,'customer','customer',$3,$4)`, [uuidv7(), id, JSON.stringify({parts:[{type:'text',text:'Help with a refund'}]}), JSON.stringify({origin:'https://product.example',pathname:'/support'})])
   const saved = await staffCommand(runtime, id, 'org', 'staff', {
@@ -396,4 +416,189 @@ test('reply email uses preceding customer source and never copies the conversati
   assert.match(emails[0]!.html, /https:\/\/product.example\/support/)
   assert.doesNotMatch(emails[0]!.html, /later.example/)
   assert.doesNotMatch(emails[0]!.subject, /SYNTHETIC|customer@example|Private order/)
+})
+
+test('Help indexing reuses the existing delayed delivery and reschedules only pending retries', async () => {
+  await reset()
+  const enabled = process.env.HELP_VECTOR_SEARCH, key = process.env.OPENAI_API_KEY, originalFetch = globalThis.fetch
+  const articleId = uuidv7(), collectionId = uuidv7()
+  let calls = 0
+  try {
+    process.env.HELP_VECTOR_SEARCH = 'true'
+    process.env.OPENAI_API_KEY = 'local-test-only'
+    globalThis.fetch = async (_url, init) => {
+      calls++
+      if (calls === 1) return new Response('{}', { status: 429 })
+      const input = JSON.parse(String(init?.body)).input as string[]
+      return Response.json({ data: input.map((_, index) => ({ index, embedding: [1, ...Array(767).fill(0)] })) })
+    }
+    await pool.query("INSERT INTO help_collection(id,org_id,name,icon,position) VALUES($1,'org','Help scheduler','book-open',0)", [collectionId])
+    await pool.query(`INSERT INTO help_article(id,org_id,collection_id,short_id,slug,title,content,tsv,position)
+      VALUES($1,'org',$2,'wake01','wake','Help wake','Retry this article',''::tsvector,0)`, [articleId, collectionId])
+    await queueHelpIndex(drizzlePg(pool), articleId)
+    assert.equal((await scheduleInbox(runtime, transport)).scheduled, true)
+    assert.equal(deliveries.length, 1)
+    await consumeInbox(runtime, transport, deliveries[0]!.message)
+    const job = (await pool.query("SELECT status,result,attempts FROM scheduled_task WHERE kind='help_index' AND ref_id=$1", [articleId])).rows[0]
+    assert.equal(job.status, 'pending')
+    assert.equal(job.result, 'provider_429')
+    assert.equal(job.attempts, 1)
+    const active = (await pool.query("SELECT id,sent_at,expect_at FROM delay_message WHERE status='scheduled'")).rows
+    assert.equal(active.length, 1, 'only one wake covers the pending retry')
+    assert.ok(+new Date(active[0].expect_at) > Date.now())
+    assert.equal((await pool.query('SELECT status FROM delay_message WHERE id=$1', [deliveries[0]!.message.id])).rows[0].status, 'fired')
+    const retryMessage = { id: active[0].id, sentAt: new Date(active[0].sent_at).toISOString() }
+    // Advance the persisted due times, without waiting for the real backoff.
+    await pool.query("UPDATE scheduled_task SET schedule_at=clock_timestamp() WHERE kind='help_index' AND ref_id=$1", [articleId])
+    await pool.query('UPDATE delay_message SET expect_at=clock_timestamp() WHERE id=$1', [retryMessage.id])
+    await consumeInbox(runtime, transport, retryMessage)
+    assert.equal((await pool.query("SELECT status FROM scheduled_task WHERE kind='help_index' AND ref_id=$1", [articleId])).rows[0].status, 'done')
+    assert.equal((await pool.query("SELECT count(*)::int AS n FROM delay_message WHERE status='scheduled'")).rows[0].n, 0, 'recovery wakes are cancelled when all work finishes')
+    const deliveryCount = deliveries.length
+    await scheduleInbox(runtime, transport)
+    assert.equal(deliveries.length, deliveryCount, 'no new wake when both Help and Inbox have no pending work')
+    await consumeInbox(runtime, transport, retryMessage)
+    assert.equal(calls, 2, 'duplicate deliveries do not embed again')
+  } finally {
+    globalThis.fetch = originalFetch
+    if (enabled === undefined) delete process.env.HELP_VECTOR_SEARCH; else process.env.HELP_VECTOR_SEARCH = enabled
+    if (key === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = key
+    await pool.query('DELETE FROM help_article WHERE id=$1', [articleId])
+    await deleteHelpIndex(drizzlePg(pool), articleId)
+    await pool.query('DELETE FROM help_collection WHERE id=$1', [collectionId])
+  }
+})
+
+test('Help wake failure keeps work durable and disabling Help creates no deliveries', async () => {
+  await reset()
+  const enabled = process.env.HELP_VECTOR_SEARCH, articleId = uuidv7(), collectionId = uuidv7()
+  try {
+    await pool.query("INSERT INTO help_collection(id,org_id,name,icon,position) VALUES($1,'org','Recovery','book-open',0)", [collectionId])
+    await pool.query(`INSERT INTO help_article(id,org_id,collection_id,short_id,slug,title,content,tsv,position)
+      VALUES($1,'org',$2,'wake02','wake','Recovery','Durable work',''::tsvector,0)`, [articleId, collectionId])
+    await queueHelpIndex(drizzlePg(pool), articleId)
+    process.env.HELP_VECTOR_SEARCH = 'false'
+    assert.equal((await scheduleInbox(runtime, transport)).scheduled, false)
+    process.env.HELP_VECTOR_SEARCH = 'true'
+    failQueue = new Error('Synthetic transport failure')
+    assert.equal((await scheduleInbox(runtime, transport)).scheduled, false)
+    assert.equal((await pool.query("SELECT status FROM scheduled_task WHERE kind='help_index' AND ref_id=$1", [articleId])).rows[0].status, 'pending')
+    failQueue = undefined
+    assert.equal((await scheduleInbox(runtime, transport, 'external')).scheduled, true)
+    assert.equal(deliveries.length, 1)
+  } finally {
+    failQueue = undefined
+    if (enabled === undefined) delete process.env.HELP_VECTOR_SEARCH; else process.env.HELP_VECTOR_SEARCH = enabled
+    await pool.query('DELETE FROM help_article WHERE id=$1', [articleId])
+    await deleteHelpIndex(drizzlePg(pool), articleId)
+    await pool.query('DELETE FROM help_collection WHERE id=$1', [collectionId])
+  }
+})
+
+
+async function within<T>(promise: Promise<T>, milliseconds = 3000): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([promise, new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error('Work was blocked by another delivery')), milliseconds)
+    })])
+  } finally { clearTimeout(timer) }
+}
+
+test('a blocked Help provider holds no consumer lock and does not suppress a new Inbox wake', async () => {
+  await reset()
+  const enabled = process.env.HELP_VECTOR_SEARCH, key = process.env.OPENAI_API_KEY, originalFetch = globalThis.fetch
+  const articleId = uuidv7(), collectionId = uuidv7()
+  let release!: () => void, started!: () => void, calls = 0
+  const gate = new Promise<void>(resolve => { release = resolve })
+  const providerStarted = new Promise<void>(resolve => { started = resolve })
+  let indexing: Promise<unknown> | undefined
+  try {
+    process.env.HELP_VECTOR_SEARCH = 'true'
+    process.env.OPENAI_API_KEY = 'local-test-only'
+    globalThis.fetch = async (_url, init) => {
+      calls++; started(); await gate
+      const input = JSON.parse(String(init?.body)).input as string[]
+      return Response.json({ data: input.map((_, index) => ({ index, embedding: [1, ...Array(767).fill(0)] })) })
+    }
+    await pool.query("INSERT INTO help_collection(id,org_id,name,icon,position) VALUES($1,'org','Concurrent indexing','book-open',0)", [collectionId])
+    await pool.query(`INSERT INTO help_article(id,org_id,collection_id,short_id,slug,title,content,tsv,position)
+      VALUES($1,'org',$2,'lock01','lock','Concurrent indexing','Held provider',''::tsvector,0)`, [articleId, collectionId])
+    await queueHelpIndex(drizzlePg(pool), articleId)
+    await task('pending', 60)
+    await scheduleInbox(runtime, transport)
+    const original = deliveries[0]!.message
+    indexing = consumeInbox(runtime, transport, original)
+    await within(providerStarted)
+    const recovery = (await pool.query("SELECT expect_at FROM delay_message WHERE status='scheduled'")).rows
+    assert.equal(recovery.length, 1, 'a durable wake exists before waiting on the provider')
+    assert.ok(+new Date(recovery[0].expect_at) > Date.now())
+    await within(consumeInbox(runtime, transport, original))
+    assert.equal(calls, 1, 'a duplicate delivery cannot claim the running article')
+
+    const next = await task('pending', -1)
+    assert.equal((await scheduleInbox(runtime, transport)).scheduled, true, 'new due work replaces the future recovery wake')
+    await within(consumeInbox(runtime, transport, deliveries.at(-1)!.message))
+    assert.equal((await pool.query('SELECT status FROM scheduled_task WHERE id=$1', [next])).rows[0].status, 'done')
+    assert.equal((await pool.query("SELECT status FROM scheduled_task WHERE kind='help_index' AND ref_id=$1", [articleId])).rows[0].status, 'processing')
+    assert.equal(calls, 1)
+    release(); await indexing
+    assert.equal((await pool.query("SELECT status FROM scheduled_task WHERE kind='help_index' AND ref_id=$1", [articleId])).rows[0].status, 'done')
+  } finally {
+    release(); await indexing?.catch(() => {})
+    globalThis.fetch = originalFetch
+    if (enabled === undefined) delete process.env.HELP_VECTOR_SEARCH; else process.env.HELP_VECTOR_SEARCH = enabled
+    if (key === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = key
+    await pool.query('DELETE FROM help_article WHERE id=$1', [articleId])
+    await deleteHelpIndex(drizzlePg(pool), articleId)
+    await pool.query('DELETE FROM help_collection WHERE id=$1', [collectionId])
+  }
+})
+
+test('separate deliveries index different articles concurrently using per-article leases', async () => {
+  await reset()
+  const enabled = process.env.HELP_VECTOR_SEARCH, key = process.env.OPENAI_API_KEY, originalFetch = globalThis.fetch
+  const collectionId = uuidv7(), articles = [uuidv7(), uuidv7()]
+  let release!: () => void, firstStarted!: () => void, secondStarted!: () => void, calls = 0
+  const gate = new Promise<void>(resolve => { release = resolve })
+  const first = new Promise<void>(resolve => { firstStarted = resolve })
+  const second = new Promise<void>(resolve => { secondStarted = resolve })
+  const running: Promise<unknown>[] = []
+  try {
+    process.env.HELP_VECTOR_SEARCH = 'true'
+    process.env.OPENAI_API_KEY = 'local-test-only'
+    globalThis.fetch = async (_url, init) => {
+      calls++; if (calls === 1) firstStarted(); else secondStarted()
+      await gate
+      const input = JSON.parse(String(init?.body)).input as string[]
+      return Response.json({ data: input.map((_, index) => ({ index, embedding: [1, ...Array(767).fill(0)] })) })
+    }
+    await pool.query("INSERT INTO help_collection(id,org_id,name,icon,position) VALUES($1,'org','Parallel articles','book-open',0)", [collectionId])
+    for (const [i, id] of articles.entries()) {
+      await pool.query(`INSERT INTO help_article(id,org_id,collection_id,short_id,slug,title,content,tsv,position)
+        VALUES($1,'org',$2,$3,$3,'Parallel article','Article body',''::tsvector,0)`, [id, collectionId, `para0${i}`])
+      await queueHelpIndex(drizzlePg(pool), id)
+    }
+    await scheduleInbox(runtime, transport)
+    running.push(consumeInbox(runtime, transport, deliveries[0]!.message))
+    await within(first)
+    const { rows: [wake] } = await pool.query("SELECT id,sent_at FROM delay_message WHERE status='scheduled'")
+    assert.ok(wake, 'the next article has a wake before the first finishes')
+    running.push(consumeInbox(runtime, transport, { id: wake.id, sentAt: new Date(wake.sent_at).toISOString() }))
+    await within(second)
+    const jobs = (await pool.query("SELECT status,attempts FROM scheduled_task WHERE kind='help_index' AND ref_id=ANY($1::uuid[])", [articles])).rows
+    assert.deepEqual(jobs, [{ status: 'processing', attempts: 1 }, { status: 'processing', attempts: 1 }])
+    release(); await Promise.all(running)
+    assert.equal(calls, 2)
+    assert.equal((await pool.query("SELECT count(*)::int AS n FROM scheduled_task WHERE kind='help_index' AND ref_id=ANY($1::uuid[]) AND status='done' AND result='indexed'", [articles])).rows[0].n, 2)
+    assert.equal((await pool.query("SELECT count(*)::int AS n FROM delay_message WHERE status='scheduled'")).rows[0].n, 0)
+  } finally {
+    release(); await Promise.allSettled(running)
+    globalThis.fetch = originalFetch
+    if (enabled === undefined) delete process.env.HELP_VECTOR_SEARCH; else process.env.HELP_VECTOR_SEARCH = enabled
+    if (key === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = key
+    await pool.query('DELETE FROM help_article WHERE id=ANY($1::uuid[])', [articles])
+    for (const id of articles) await deleteHelpIndex(drizzlePg(pool), id)
+    await pool.query('DELETE FROM help_collection WHERE id=$1', [collectionId])
+  }
 })

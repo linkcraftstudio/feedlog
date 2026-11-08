@@ -38,19 +38,19 @@ export const boardFields = {
 }
 // Both dashboard counts and paginated board summaries exclude merged children.
 const boardFeedbackCount = sql<number>`count(${post.id})::int`
-export async function listBoards(context: ContentReader, input?: CursorPageInput) {
-  const scope = { kind: 'boards', organizationId: context.orgId, filter: {}, sort: 'position', ascending: true }
+export async function listBoards(context: ContentReader, input?: CursorPageInput, statuses?: string[]) {
+  const scope = { kind: 'boards', organizationId: context.orgId, filter: statuses?.length ? { status: statuses } : {}, sort: 'position', ascending: true }
   const page = input ? await cursorPage(input, scope, board.position, board.id, true, true) : undefined
   const query = context.db.select({ ...boardFields, feedbackCount: boardFeedbackCount, cursorKey: board.position }).from(board)
-    .leftJoin(post, and(eq(post.boardId, board.id), ...postFilterConditions({ orgId: context.orgId })))
+    .leftJoin(post, and(eq(post.boardId, board.id), ...postFilterConditions({ orgId: context.orgId, status: statuses })))
     .where(and(eq(board.orgId, context.orgId), page?.after)).groupBy(board.id).orderBy(asc(board.position), asc(board.id))
   const rows = await (input ? query.limit(input.limit + 1) : query)
   return page ? page.finish(rows) : { items: rows.map(({ cursorKey: _key, ...row }) => row), nextCursor: null }
 }
-export async function boardOverview(context: ContentReader) {
+export async function boardOverview(context: ContentReader, statuses?: string[]) {
   const [page, totals] = await Promise.all([
-    listBoards(context),
-    context.db.select({ count: sql<number>`count(*)::int` }).from(post).where(and(...postFilterConditions({ orgId: context.orgId }))),
+    listBoards(context, undefined, statuses),
+    context.db.select({ count: sql<number>`count(*)::int` }).from(post).where(and(...postFilterConditions({ orgId: context.orgId, status: statuses }))),
   ])
   return {
     data: page.items.map(({ id, name, description, position, feedbackCount, createdAt }) => ({ id, name, description, position, postCount: feedbackCount, createdAt })),

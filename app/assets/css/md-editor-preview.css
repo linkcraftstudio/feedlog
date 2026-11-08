@@ -1,4 +1,4 @@
-/* Shared MdEditor preview styles — matches PostContent rendering */
+/* Shared Markdown preview styles — matches PostContent rendering */
 /* Imported via <script setup> so :deep() is not needed; scoped by .editor-preview-styled */
 .editor-preview-styled .md-editor-preview-wrapper {
   padding: 0;

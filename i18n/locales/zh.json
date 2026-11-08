@@ -61,12 +61,17 @@
     "recentRequests": "最新请求",
     "sortTop": "热门",
     "sortRecent": "最新",
+    "statusFilter": "按状态筛选",
+    "statusActive": "待解决",
+    "statusAll": "全部状态",
     "search": "搜索",
     "searchPlaceholder": "搜索反馈…",
     "clearSearch": "清除搜索",
     "closeSearch": "关闭搜索",
     "newRequest": "新建反馈",
     "noFeedback": "还没有反馈",
+    "noFeedbackFiltered": "没有符合该状态的反馈",
+    "showAllStatuses": "显示全部状态",
     "noMatches": "没有匹配“{query}”的结果",
     "noMatchesHint": "还没有人提过 —— 来做第一个吧。",
     "comments": "{n} 条评论",
@@ -610,7 +615,9 @@
       "guideMatchedByPre": "用户通过",
       "guideMatchedByEmail": "邮箱",
       "guideMatchedByPost": "匹配。首次使用的邮箱会创建终端用户账户(无需额外登录界面);更改用户邮箱会创建新账户,且不会迁移历史记录。"
-    }
+    },
+    "accessDenied": "你没有访问此页面的权限",
+    "requestAccess": "请联系工作区所有者或管理员调整你的权限。"
   },
   "settings": {
     "loading": "加载中……",
@@ -744,7 +751,7 @@
       "saveFailed": "保存失败。",
       "saved": "已保存",
       "installSection": "安装",
-      "installDesc": "在你的产品中安装 SDK,并用工作区地址完成初始化。",
+      "installDesc": "让 AI 编程工具帮你接入，或自己动手安装。",
       "baseUrlLabel": "工作区地址",
       "baseUrlHint": "初始化 SDK 时作为 baseUrl 传入。",
       "serverLabel": "在你的服务器上",
@@ -753,7 +760,7 @@
       "copy": "复制",
       "copied": "已复制",
       "enabledLabel": "启用组件",
-      "enabledHint": "启用开关即时保存。关闭后，SDK 不会在网站上显示任何内容。",
+      "enabledHint": "组件已关闭：即使已经安装，你的网站上也不会显示。",
       "placementSection": "反馈按钮",
       "placementDesc": "访客点击网站上的悬浮按钮即可打开反馈。",
       "alignLabel": "显示位置",
@@ -801,7 +808,11 @@
       "cancel": "取消",
       "ownerOnly": "只有工作区所有者和管理员可以修改组件设置。",
       "copyFailed": "复制失败，请选中文字后手动复制。",
-      "installInstructions": "安装说明",
+      "installInstructions": "手动安装",
+      "agentTitle": "用 AI 编程工具接入",
+      "agentBody": "粘贴到 Codex、Claude Code 或 Cursor 中。提示词完整说明了安装过程，AI 可以据此把 Widget 接入你的代码。",
+      "agentCopy": "复制安装提示词",
+      "manualDesc": "自己添加依赖和代码。",
       "installGuide": "查看完整安装指南",
       "packageLabel": "安装依赖",
       "clientLabel": "在应用中接入",
@@ -888,6 +899,7 @@
     "loadFailed": "加载反馈失败。",
     "attachImage": "添加图片",
     "uploadFailed": "图片上传失败,请重试。",
+    "imageUploadFailed": "第 {number} 张图片「{name}」：{message}",
     "uploadTooLarge": "图片不能超过 {size}MB。",
     "messages": "消息",
     "agentTitle": "{product} 助手",
@@ -908,9 +920,11 @@
     "openArticle": "在新标签页打开文章",
     "articleUnavailable": "这篇文章已无法访问。",
     "earlierMessages": "更早的消息",
+    "replyTimeout": "回复超时，请重试。",
+    "replyInterrupted": "回复已中断，请重试。",
     "retryReply": "重试回复",
     "refreshStatus": "刷新状态",
-    "tooManyParts": "请减少图片数量，每条消息最多包含 10 个内容块。",
+    "tooManyParts": "每条消息最多上传 10 张图片，请减少图片数量后重试。",
     "actions": {
       "feedback_created": "已创建反馈",
       "feedback_updated": "已修改反馈",
@@ -919,12 +933,24 @@
       "feedback_comment_updated": "已修改评论"
     },
     "conversationNotices": {
-      "handoff": "你的问题已转交人工客服。你可以继续在这里发送消息，补充相关情况或截图。"
+      "handoff": "你的问题已转交人工客服。你可以继续在这里发送消息，补充相关情况或截图。",
+      "handoffBilling": "这个问题需要人工客服核查账户或账单，已为你转交。你可以继续在这里补充相关情况。",
+      "handoffAccount": "这个问题需要人工客服核查账户情况，已为你转交。你可以继续在这里补充相关情况。",
+      "handoffPrivacy": "这项申请需要人工客服处理，已为你转交。你可以继续在这里补充申请说明。",
+      "handoffRule": "这个问题需要人工客服进一步处理，已为你转交。你可以继续在这里补充相关情况。"
     },
     "messageYou": "你",
     "messageAI": "FeedLog AI",
     "messageStaffNamed": "{name}",
-    "messageStaff": "客服"
+    "messageStaff": "客服",
+    "supportUnavailable": "客服暂时不可用。你的消息已保存，请稍后再试。",
+    "imageErrors": {
+      "image_unsupported": "这张图片无法转换，请导出为 JPEG 或 PNG 后重试。",
+      "image_invalid": "无法读取这张图片，请更换文件。",
+      "image_too_large": "图片过大，暂时无法处理。请选择小于 32 MB 的图片，或导出尺寸更小的 JPEG/PNG。",
+      "image_total_too_large": "图片总大小超出限制，请移除部分附件后重试。",
+      "image_unavailable": "这张附件已不可用，请移除后重新上传。"
+    }
   },
   "help": {
     "admin": {
@@ -983,6 +1009,14 @@
         "notSaved": "尚未保存",
         "lastSaved": "上次保存 {at}",
         "preview": "预览",
+        "saving": "保存中…",
+        "saveChanges": "保存更改",
+        "publishBody": "发布后，读者可以在可见分区中访问这篇文章。",
+        "unpublishTitle": "撤下这篇文章？",
+        "unpublishBody": "仅撤下已保存的文章，不会保存当前未提交的编辑。文章的 AI 使用权限保持不变。",
+        "linkNotPublic": "文章尚未对读者公开，当前网址不能公开访问。",
+        "loadFailed": "文章加载失败或无权访问，请重试。",
+        "retryLoad": "重新加载",
         "saveDraft": "保存草稿",
         "title": "标题",
         "titlePlaceholder": "未命名文章",
@@ -997,7 +1031,6 @@
         "articleUrl": "文章网址",
         "urlPending": "首次保存后分配。",
         "copied": "链接已复制",
-        "hiddenWarning": "这篇文章已发布，但分区「{name}」对读者隐藏——他们还看不到它。把该分区设为可见后才会真正对外。",
         "previewHeader": "预览 · 读者看到的样子（门户文章版式）",
         "leaveTitle": "离开且不保存？",
         "leaveBody": "这篇文章有尚未保存的修改。现在离开将丢弃它们。",
@@ -1011,7 +1044,26 @@
         "deleteTitle": "删除「{title}」？",
         "deleteDescription": "这篇文章及其网址将被永久移除，且无法撤销。",
         "deleted": "文章已删除",
-        "deleteFailed": "文章删除失败"
+        "deleteFailed": "文章删除失败",
+        "indexStatus": {
+          "pending": "正在准备搜索",
+          "processing": "正在准备搜索",
+          "retry": "搜索准备延迟，正在重试",
+          "failed": "索引失败",
+          "ready": "已索引",
+          "not_indexed": "未索引",
+          "indexing": "索引中"
+        },
+        "indexRetry": "重试",
+        "indexRetryFailed": "重试失败，请稍后再试。",
+        "indexFailureHint": "文章已保存，但部分高级搜索暂未就绪。打开文章后点击「保存」按钮重试。",
+        "indexFailureHintEditor": "文章已保存，但部分高级搜索暂未就绪。请直接点击「保存」按钮重试。",
+        "indexHints": {
+          "not_indexed": "此文章尚未建立索引。点击「保存」建立索引，以支持高级搜索。",
+          "indexing": "正在建立或更新索引，完成后最新保存的内容将可用于高级搜索。",
+          "ready": "最新保存的内容已完成索引，可用于高级搜索。",
+          "failed": "最新保存的内容索引失败，点击「保存」重试，以支持高级搜索。"
+        }
       },
       "publishTitle": "发布这篇文章？",
       "bulkPublishTitle": "发布选中的 {n} 篇文章？",
@@ -1029,6 +1081,14 @@
       "searchPlaceholder": "搜索文章…",
       "results": "{n} 条结果",
       "more": "还有 {n} 条 —— 继续输入以缩小范围",
+      "translateSearch": "翻译后搜索英文文章",
+      "translatingSearch": "未找到直接匹配，正在为你翻译并搜索，请稍候…",
+      "translatedSearch": "已按英文关键词搜索：{query}",
+      "translationOfferHint": "未找到直接匹配，可尝试英文关键词，或翻译后再次搜索。",
+      "translationRetryHint": "请尝试英文关键词，或稍后再试。",
+      "crossLanguageUnavailable": "跨语言搜索暂时不可用，请尝试英文关键词。",
+      "searchFailed": "搜索暂时不可用",
+      "searchFailedHint": "请稍后重试。",
       "noMatch": "没有匹配的文章",
       "noMatchHint": "换个关键词试试，或浏览下方分区",
       "emptyTitle": "还没有文章",
@@ -1082,7 +1142,11 @@
     "emailFailed": "邮件发送失败，请重试。",
     "retryEmail": "重新发送一次",
     "replyPlaceholder": "输入回复…",
-    "aiReplyUnavailable": "AI 正在处理，暂不可人工回复。",
+    "aiReplyUnavailable": "AI 正在接待，你可以接管后回复用户。",
+    "takeover": "接管并回复",
+    "takeoverWaiting": "等待 AI 回复完成后接管",
+    "noticeTakeover": "{name} 接管了此会话。",
+    "noticeTakeoverSelf": "你接管了此会话。",
     "confirmClose": "确认关闭？用户再次发来新消息时，将由 AI 开始新一轮。",
     "cancel": "取消",
     "forbidden": "你没有 Inbox 访问权限。",
@@ -1238,6 +1302,121 @@
       "codex": "安装 Codex 后，运行这些命令添加 FeedLog，并在浏览器中登录。如果添加服务器时已经完成登录，可以跳过 login 命令。",
       "cursor": "点击 Add to Cursor 并在 Cursor 中确认安装。当客户端请求授权时，在浏览器中登录 FeedLog 并选择授权组织。",
       "other": "对于使用 mcpServers 格式的客户端，将此配置合并到 MCP 配置文件中。客户端需要支持远程 HTTP MCP 和浏览器 OAuth 授权。连接 FeedLog 后，登录并选择授权组织。"
+    }
+  },
+  "markdownEditor": {
+    "loading": "正在加载编辑器…",
+    "codeLanguage": "代码语言",
+    "plainText": "纯文本",
+    "moreTools": "更多格式工具",
+    "editingMode": "编辑模式",
+    "structuredMode": "可视化",
+    "sourceMode": "源码",
+    "unsupportedStructured": "当前内容包含暂不支持可视化编辑的格式，Markdown 已保留，请继续使用源码模式。",
+    "characterCount": "字数",
+    "tooLong": "内容超过字数限制。",
+    "invalidUrl": "请输入有效链接。",
+    "partialUpload": "部分图片上传失败，请重试。",
+    "uploadFailed": "图片上传失败，请重试。",
+    "formatting": "格式",
+    "paragraph": "正文",
+    "url": "链接地址",
+    "text": "文字",
+    "confirm": "确定",
+    "upload": "上传",
+    "cancel": "取消",
+    "uploading": "上传中…",
+    "bold": "加粗",
+    "italic": "斜体",
+    "strikeThrough": "删除线",
+    "title": "标题",
+    "unorderedList": "无序列表",
+    "orderedList": "有序列表",
+    "link": "链接",
+    "image": "图片",
+    "code": "代码块",
+    "collapseCode": "折叠或展开代码",
+    "staleInsertion": "操作期间正文已变化，请在目标位置重新操作。",
+    "uploadUnavailable": "此编辑器未配置图片上传。",
+    "copyCode": "复制代码",
+    "copiedCode": "已复制",
+    "copyCodeFailed": "复制失败",
+    "codeRow": "行内代码",
+    "previewOnly": "预览",
+    "quote": "引用",
+    "revoke": "撤销",
+    "next": "重做",
+    "rowActions": "行操作",
+    "columnActions": "列操作",
+    "tableActions": "表格操作",
+    "addRowBefore": "上方插入行",
+    "addRowAfter": "下方插入行",
+    "addColumnBefore": "左侧插入列",
+    "addColumnAfter": "右侧插入列",
+    "deleteRow": "删除行",
+    "deleteColumn": "删除列",
+    "deleteTable": "删除表格",
+    "table": "表格",
+    "task": "任务列表",
+    "enterCode": "输入代码",
+    "insertRowAt": "在第 {index} 行上方插入",
+    "insertColumnAt": "在第 {index} 列左侧插入"
+  },
+  "onboarding": {
+    "guide": {
+      "srTitle": "FeedLog 入门引导",
+      "srDescription": "快速了解 FeedLog",
+      "slideLabel": "第 {n} 页",
+      "pauseMedia": "暂停动画",
+      "playMedia": "播放动画",
+      "back": "上一步",
+      "next": "下一步",
+      "tryDemo": "体验 FeedLog Demo",
+      "install": "查看接入指南",
+      "readyToIntegrate": "准备好接入了吗？",
+      "slides": {
+        "widget": {
+          "title": "几分钟内为你的网站接入 AI 客服",
+          "body": "嵌入 FeedLog Widget，提供 7×24 小时 AI 客服：基于知识库作答、标注引用来源，并记住历史对话。",
+          "image": "客户在 Widget 中提问，AI 作答"
+        },
+        "inbox": {
+          "title": "人工与 AI 无缝协作",
+          "body": "在 Inbox 中随时接管对话。团队的人工回复会成为 AI 的学习素材，让 AI 的回答越来越准确。",
+          "image": "团队成员在 Inbox 中接管对话"
+        },
+        "feedback": {
+          "title": "把客户对话变成产品洞察",
+          "body": "自动提取客户反馈并关联原始对话，帮助团队把真实的用户需求转化为可执行的路线图优先级。",
+          "image": "从对话中打开 AI 创建的反馈"
+        },
+        "start": {
+          "title": "准备好升级你的客户支持了吗？",
+          "body": "体验交互式 Demo，看看 FeedLog 的实际效果；或按照接入指南，把 AI 客服带进你的产品。",
+          "image": "开启你的 AI 客服之旅"
+        }
+      }
+    },
+    "entry": {
+      "label": "快速上手",
+      "hint": "随时可以在这里重新打开引导和 Demo Widget。"
+    },
+    "demo": {
+      "badge": "Demo",
+      "caption": "客户看到的样子",
+      "install": "安装到我的网站",
+      "landedTitle": "这段对话已进入你的 Inbox。",
+      "landedBody": "以团队身份回复试试。",
+      "end": "结束体验",
+      "open": "打开 Demo Widget",
+      "close": "关闭 Demo Widget",
+      "frameTitle": "Demo Widget"
+    },
+    "installCard": {
+      "title": "把 Widget 添加到 {name}",
+      "body": "复制下方的安装提示词给你的 AI 编程工具，它会替你完成接入。你的客户会看到和 Demo 一样的 Widget，并根据你的帮助中心回答问题。",
+      "tryDemo": "体验 Demo Widget",
+      "dismiss": "关闭"
     }
   }
 }

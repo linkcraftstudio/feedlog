@@ -180,6 +180,13 @@
 }
 
 @layer base {
+  /* Reserve space before an icon's generated CSS is available. */
+  .iconify {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    flex-shrink: 0;
+  }
   * {
     @apply border-border outline-ring/50;
   }
@@ -196,29 +203,7 @@
 }
 
 
-/* md-editor modal and image preview conflict with Shadcn Dialog */
-/* md-editor / medium-zoom pointer-events hack */
-  .md-editor-modal-container,
-  .medium-zoom-overlay,
-  .medium-zoom-image--opened {
-    pointer-events: auto
-  }
-
-/* md-editor-v3 ships `word-break: break-all` on its preview containers, which splits ordinary
-   words mid-character instead of wrapping at spaces. Restore normal word wrapping, keeping
-   `overflow-wrap` as a safety net so a genuinely unbreakable run (a long URL) still breaks
-   rather than overflowing its column.
-
-   The doubled class is deliberate. The library's CSS ships in a lazy component chunk, so
-   source order cannot decide the winner and the reset has to out-rank it on specificity. Two
-   classes also beat the theme's `div.default-theme table tr th, ... td`, which sets the legacy
-   `word-wrap` alias on cells — that rule is why `th`/`td` are listed explicitly, since it
-   overrides the value the cells would otherwise inherit from the container.
-
-   `anywhere` rather than `break-word` is load-bearing. The library renders links as
-   `display: inline-flex`, so a bare URL is a flex item, and a flex item will not shrink below
-   its min-content width. Only `anywhere` reduces min-content; under `break-word` a long link
-   keeps its full width and overflows its column instead of wrapping. */
+/* Shared Markdown content wraps prose and long URLs naturally. */
 .md-editor-preview.md-editor-preview,
 .md-editor-html.md-editor-html,
 .md-editor-preview.md-editor-preview :is(h1, h2, h3, h4, h5, h6, th, td) {

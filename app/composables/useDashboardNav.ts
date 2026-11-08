@@ -16,12 +16,11 @@ export interface DashboardNav {
 
 export function useDashboardNav(): DashboardNav {
   const { t } = useI18n()
-  const { canModerate } = usePermission(computed(() => undefined), 'post')
   const { data: authConfig } = useFetch('/api/auth-config', { key: 'dashboard-auth-config' })
   const org = useOrgContext()
   return {
     mainNav: computed(() => [
-      ...(canModerate.value ? [{ label: t('inbox.title'), to: '/dashboard/inbox', icon: 'lucide:inbox' }] : []),
+      { label: t('inbox.title'), to: '/dashboard/inbox', icon: 'lucide:inbox' },
       { label: t('nav.feedback'),  to: '/dashboard/feedback',  icon: 'lucide:message-square' },
       { label: t('nav.roadmap'),   to: '/dashboard/roadmap',   icon: 'lucide:map' },
       { label: t('nav.changelog'), to: '/dashboard/changelog', icon: 'lucide:newspaper' },
