@@ -5,16 +5,11 @@ import { resolveOnboardingStatus } from '#layers/feedlog/app/composables/useOnbo
 export default defineNuxtRouteMiddleware(async (to, from) => {
   const { data } = await useAuthSession()
 
-  if (!data.value?.user) {
-    return navigateTo('/')
-  }
-
-  // An SSO session is not bounced: the server honours its real member role, and
-  // the orgList check below still gates it — for such a session that list holds
-  // only the org that minted it.
-  const orgList = (data.value as { orgList?: { role: string }[] }).orgList
-  if (!orgList || orgList.length === 0) {
-    return navigateTo('/')
+  // Staff is a user with an organization. An SSO session is not bounced for being
+  // SSO: the server honours its real member role, and its list holds only the org
+  // that minted it. A guest or a customer session goes to the staff sign-in.
+  if (!hasStaffAccess(data.value)) {
+    return navigateTo(useRuntimeConfig().public.dashboardLoginOnly ? '/dashboard/login' : '/')
   }
   const { canVisit, entry, notifyDenied } = useDashboardAccess()
   const localePath = useLocalePath()
