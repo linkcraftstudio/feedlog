@@ -345,7 +345,7 @@ function onPostDeleted(postId: string) {
       </div>
 
       <!-- Data table -->
-      <div class="flex-1 overflow-auto" :class="{ 'opacity-50 pointer-events-none': fetchStatus === 'pending' && posts.length > 0 }" style="transition: opacity 0.2s ease;">
+      <div class="feedback-table-scroll scrollbar-subtle flex-1 overflow-auto" :class="{ 'opacity-50 pointer-events-none': fetchStatus === 'pending' && posts.length > 0 }" style="transition: opacity 0.2s ease;">
         <!-- Loading -->
         <div v-if="fetchStatus === 'pending' && posts.length === 0" class="flex items-center justify-center py-16">
           <div class="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
@@ -420,11 +420,11 @@ function onPostDeleted(postId: string) {
           </div>
 
           <!-- Desktop table -->
-          <table class="hidden md:table w-full text-left border-collapse min-w-[900px] table-fixed">
+          <table class="feedback-table hidden md:table w-full text-left border-collapse table-fixed">
             <thead class="sticky top-0 bg-background border-b border-border z-10">
               <tr>
                 <th
-                  class="w-[72px] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-primary transition-colors"
+                  class="w-[96px] px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-primary transition-colors"
                   @click="toggleSort('votes')"
                 >
                   <div class="flex items-center gap-1">
@@ -432,11 +432,11 @@ function onPostDeleted(postId: string) {
                     <Icon v-if="sortBy === 'votes'" :name="sortOrder === 'asc' ? 'lucide:arrow-up' : 'lucide:arrow-down'" size="14" class="text-primary" />
                   </div>
                 </th>
-                <th class="w-1/4 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('dashboard.feedback.colTitle') }}</th>
-                <th class="w-[152px] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('dashboard.feedback.colBoard') }}</th>
-                <th class="w-[160px] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('dashboard.feedback.colAuthor') }}</th>
+                <th class="px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('dashboard.feedback.colTitle') }}</th>
+                <th class="feedback-col-board px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('dashboard.feedback.colBoard') }}</th>
+                <th class="feedback-col-author px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('dashboard.feedback.colAuthor') }}</th>
                 <th
-                  class="w-[104px] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-primary transition-colors"
+                  class="w-[104px] px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-primary transition-colors"
                   @click="toggleSort('comments')"
                 >
                   <div class="flex items-center gap-1">
@@ -445,7 +445,7 @@ function onPostDeleted(postId: string) {
                   </div>
                 </th>
                 <th
-                  class="w-[122px] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-primary transition-colors"
+                  class="w-[104px] px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-primary transition-colors"
                   @click="toggleSort('createdAt')"
                 >
                   <div class="flex items-center gap-1">
@@ -453,7 +453,7 @@ function onPostDeleted(postId: string) {
                     <Icon v-if="sortBy === 'createdAt'" :name="sortOrder === 'asc' ? 'lucide:arrow-up' : 'lucide:arrow-down'" size="14" class="text-primary" />
                   </div>
                 </th>
-                <th class="w-[80px] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('dashboard.feedback.colStatus') }}</th>
+                <th class="w-[108px] px-2 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('dashboard.feedback.colStatus') }}</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-border">
@@ -464,21 +464,21 @@ function onPostDeleted(postId: string) {
                 @click="openPostDetail(fb)"
               >
                 <!-- Votes -->
-                <td class="px-6 py-4">
+                <td class="px-2 py-4">
                   <div class="flex flex-col items-center justify-center w-10 h-10 rounded-lg bg-background border border-border">
                     <Icon name="lucide:chevron-up" size="14" class="text-muted-foreground" />
                     <span class="text-xs font-bold">{{ fb.voteCount }}</span>
                   </div>
                 </td>
                 <!-- Title -->
-                <td class="px-4 py-4 overflow-hidden">
+                <td class="px-2 py-4 overflow-hidden">
                   <div class="flex flex-col max-w-full">
                     <span class="text-sm font-bold group-hover:text-primary transition-colors truncate">{{ fb.title }}</span>
                     <span class="text-[11px] text-muted-foreground truncate">{{ fb.excerpt }}</span>
                   </div>
                 </td>
                 <!-- Board -->
-                <td class="px-4 py-4">
+                <td class="px-2 py-4">
                   <span
                     v-if="fb.boardId"
                     class="inline-block max-w-full truncate text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded whitespace-nowrap"
@@ -489,25 +489,25 @@ function onPostDeleted(postId: string) {
                   <span v-else class="text-xs italic text-muted-foreground">—</span>
                 </td>
                 <!-- Author -->
-                <td class="px-4 py-4">
+                <td class="px-2 py-4">
                   <div class="flex items-center gap-2">
                     <UserAvatar :author="fb.author" :size="6" />
                     <span class="text-xs font-medium truncate">{{ authorName(fb.author) }}</span>
                   </div>
                 </td>
                 <!-- Comments -->
-                <td class="px-4 py-4">
+                <td class="px-2 py-4">
                   <div class="flex items-center gap-1 text-xs font-bold text-muted-foreground">
                     <Icon name="lucide:message-square" size="14" />
                     {{ fb.commentCount }}
                   </div>
                 </td>
                 <!-- Created -->
-                <td class="px-4 py-4">
+                <td class="px-2 py-4">
                   <span class="text-xs font-medium text-muted-foreground">{{ formatDate(fb.createdAt) }}</span>
                 </td>
                 <!-- Status -->
-                <td class="px-4 py-4">
+                <td class="px-2 py-4">
                   <span
                     class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border"
                     :style="{
@@ -569,3 +569,21 @@ function onPostDeleted(postId: string) {
   <PostDetailModal v-model:open="showDetail" :slug="detailSlug" @updated="onPostUpdated" @deleted="onPostDeleted" />
 </template>
 
+<style scoped>
+.feedback-table-scroll {
+  container-type: inline-size;
+}
+
+.feedback-table {
+  /* Keep compact columns at 822px; share added space across the text columns. */
+  --extra-column-space: max(0px, calc(100cqi - 822px));
+}
+
+.feedback-col-board {
+  width: calc(112px + var(--extra-column-space) * 0.25);
+}
+
+.feedback-col-author {
+  width: calc(120px + var(--extra-column-space) * 0.3);
+}
+</style>

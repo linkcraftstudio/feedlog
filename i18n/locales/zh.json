@@ -1352,6 +1352,7 @@
   },
   "onboarding": {
     "guide": {
+      "close": "关闭引导",
       "srTitle": "FeedLog 入门引导",
       "srDescription": "快速了解 FeedLog",
       "slideLabel": "第 {n} 页",
