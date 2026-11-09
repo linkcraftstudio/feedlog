@@ -126,7 +126,7 @@ onMounted(() => onboarding.load(onboardingStatus.value?.autoOpen === true))
         </div>
 
         <!-- Navigation -->
-        <nav class="flex-1 px-4 space-y-8 overflow-y-auto">
+        <nav class="scrollbar-subtle flex-1 px-4 space-y-8 overflow-y-auto">
           <div>
             <p class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('dashboard.nav.main') }}</p>
             <div class="space-y-1">
@@ -249,51 +249,51 @@ onMounted(() => onboarding.load(onboardingStatus.value?.autoOpen === true))
     </Sheet>
 
     <!-- Desktop Sidebar -->
-    <aside class="hidden md:flex w-16 min-[1360px]:w-[260px] h-full shrink-0 border-r border-border bg-card flex-col">
-      <div class="hidden min-[1360px]:block">
+    <aside class="hidden md:flex w-16 min-[1280px]:w-[260px] h-full shrink-0 border-r border-border bg-card flex-col">
+      <div class="hidden min-[1280px]:block">
         <DashboardSidebarBrand />
         <DashboardSidebarTop />
       </div>
 
       <!-- Navigation -->
-      <nav class="flex-1 px-2 min-[1360px]:px-4 pt-4 min-[1360px]:pt-0 space-y-8 overflow-y-auto">
+      <nav class="scrollbar-subtle flex-1 px-2 min-[1280px]:px-4 pt-4 min-[1280px]:pt-0 space-y-8 overflow-y-auto">
         <!-- Main -->
         <div>
-          <p class="hidden min-[1360px]:block px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('dashboard.nav.main') }}</p>
+          <p class="hidden min-[1280px]:block px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('dashboard.nav.main') }}</p>
           <div class="space-y-1">
             <NuxtLink
               v-for="item in mainNav"
               :key="item.to"
               :to="localePath(item.to)"
               :aria-disabled="!canVisit(item.to)"
-              class="relative flex items-center gap-3 py-2 rounded-lg justify-center min-[1360px]:justify-start px-0 min-[1360px]:px-3 text-muted-foreground hover:bg-background hover:text-foreground transition-colors font-semibold"
+              class="relative flex items-center gap-3 py-2 rounded-lg justify-center min-[1280px]:justify-start px-0 min-[1280px]:px-3 text-muted-foreground hover:bg-background hover:text-foreground transition-colors font-semibold"
               :title="item.label"
               active-class="!bg-secondary !text-primary !font-bold"
               @click.capture="guardNavigation($event, item.to)"
             >
               <Icon :name="item.icon" size="20" class="shrink-0" />
-              <span class="hidden min-[1360px]:inline text-sm">{{ item.label }}</span>
-              <span v-if="item.to === '/dashboard/inbox' && inboxCount" data-inbox-badge class="absolute right-0 top-0 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-[9px] leading-none font-semibold text-primary-foreground min-[1360px]:static min-[1360px]:ml-auto min-[1360px]:text-[10px]" :aria-label="$t('inbox.unreadOpenCount', { count: inboxCount })"><span class="relative top-px tabular-nums">{{ inboxCount > 99 ? '99+' : inboxCount }}</span></span>
+              <span class="hidden min-[1280px]:inline text-sm">{{ item.label }}</span>
+              <span v-if="item.to === '/dashboard/inbox' && inboxCount" data-inbox-badge class="absolute right-0 top-0 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-[9px] leading-none font-semibold text-primary-foreground min-[1280px]:static min-[1280px]:ml-auto min-[1280px]:text-[10px]" :aria-label="$t('inbox.unreadOpenCount', { count: inboxCount })"><span class="relative top-px tabular-nums">{{ inboxCount > 99 ? '99+' : inboxCount }}</span></span>
             </NuxtLink>
           </div>
         </div>
 
         <!-- Settings -->
         <div>
-          <p class="hidden min-[1360px]:block px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ settingsTitle }}</p>
+          <p class="hidden min-[1280px]:block px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ settingsTitle }}</p>
           <div class="space-y-1">
             <NuxtLink
               v-for="item in settingsNav"
               :key="item.to"
               :to="localePath(item.to)"
               :aria-disabled="!canVisit(item.to)"
-              class="flex items-center gap-3 py-2 rounded-lg justify-center min-[1360px]:justify-start px-0 min-[1360px]:px-3 text-muted-foreground hover:bg-background hover:text-foreground transition-colors font-semibold"
+              class="flex items-center gap-3 py-2 rounded-lg justify-center min-[1280px]:justify-start px-0 min-[1280px]:px-3 text-muted-foreground hover:bg-background hover:text-foreground transition-colors font-semibold"
               :title="item.label"
               active-class="!bg-secondary !text-primary !font-bold"
               @click.capture="guardNavigation($event, item.to)"
             >
               <Icon :name="item.icon" size="20" class="shrink-0" />
-              <span class="hidden min-[1360px]:inline text-sm">{{ item.label }}</span>
+              <span class="hidden min-[1280px]:inline text-sm">{{ item.label }}</span>
             </NuxtLink>
           </div>
         </div>
@@ -301,7 +301,7 @@ onMounted(() => onboarding.load(onboardingStatus.value?.autoOpen === true))
         <!-- Developer (collapsible, collapsed by default) -->
         <div v-if="developerNav.length">
           <button
-            class="hidden min-[1360px]:flex w-full items-center justify-between px-3 mb-2 group"
+            class="hidden min-[1280px]:flex w-full items-center justify-between px-3 mb-2 group"
             @click="developerOpen = !developerOpen"
           >
             <span class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors">{{ $t('dashboard.nav.developer') }}</span>
@@ -311,19 +311,19 @@ onMounted(() => onboarding.load(onboardingStatus.value?.autoOpen === true))
               class="text-muted-foreground"
             />
           </button>
-          <div class="space-y-1" :class="developerOpen ? '' : 'min-[1360px]:hidden'">
+          <div class="space-y-1" :class="developerOpen ? '' : 'min-[1280px]:hidden'">
             <NuxtLink
               v-for="item in developerNav"
               :key="item.to"
               :to="localePath(item.to)"
               :aria-disabled="!canVisit(item.to)"
-              class="flex items-center gap-3 py-2 rounded-lg justify-center min-[1360px]:justify-start px-0 min-[1360px]:px-3 text-muted-foreground hover:bg-background hover:text-foreground transition-colors font-semibold"
+              class="flex items-center gap-3 py-2 rounded-lg justify-center min-[1280px]:justify-start px-0 min-[1280px]:px-3 text-muted-foreground hover:bg-background hover:text-foreground transition-colors font-semibold"
               :title="item.label"
               active-class="!bg-secondary !text-primary !font-bold"
               @click.capture="guardNavigation($event, item.to)"
             >
               <Icon :name="item.icon" size="20" class="shrink-0" />
-              <span class="hidden min-[1360px]:inline text-sm">{{ item.label }}</span>
+              <span class="hidden min-[1280px]:inline text-sm">{{ item.label }}</span>
             </NuxtLink>
           </div>
         </div>
@@ -335,17 +335,17 @@ onMounted(() => onboarding.load(onboardingStatus.value?.autoOpen === true))
         <OnboardingSidebarEntry class="pt-3" />
 
         <!-- User info (bottom) -->
-        <div class="flex items-center flex-col min-[1360px]:flex-row gap-1 pb-3 min-[1360px]:pb-0 px-1 min-[1360px]:px-4 min-[1360px]:h-16">
+        <div class="flex items-center flex-col min-[1280px]:flex-row gap-1 pb-3 min-[1280px]:pb-0 px-1 min-[1280px]:px-4 min-[1280px]:h-16">
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
-              <button class="flex items-center gap-3 rounded-xl hover:bg-background transition-colors p-1.5 min-[1360px]:flex-1 min-[1360px]:min-w-0 min-[1360px]:p-2">
+              <button class="flex items-center gap-3 rounded-xl hover:bg-background transition-colors p-1.5 min-[1280px]:flex-1 min-[1280px]:min-w-0 min-[1280px]:p-2">
                 <Avatar class="w-8 h-8 shrink-0">
                   <img v-if="avatarUrl && !avatarError" :src="avatarUrl" :alt="user?.name" class="aspect-square size-full rounded-full object-cover" referrerpolicy="no-referrer" @error="avatarError = true">
                   <AvatarFallback v-else class="bg-accent text-accent-foreground text-sm font-bold">
                     {{ initials }}
                   </AvatarFallback>
                 </Avatar>
-                <div class="hidden min-[1360px]:block flex-1 min-w-0 text-left">
+                <div class="hidden min-[1280px]:block flex-1 min-w-0 text-left">
                   <p class="text-xs font-bold truncate">{{ user?.name }}</p>
                   <p class="text-[10px] text-muted-foreground truncate">{{ user?.email }}</p>
                 </div>

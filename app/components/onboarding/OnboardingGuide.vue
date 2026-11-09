@@ -112,14 +112,18 @@ function onKey(event: KeyboardEvent) {
          226px covers the copy (up to three lines) and footer, so the whole dialog fits a
          580px-tall viewport. Below that it keeps that size (530px) and scrolls inside:
          shrinking further would make the recordings unreadable. Block, not the dialog's
-         default grid: grid rows would squeeze the media instead of scrolling. In light
-         mode no border: its light line showed as a white rim around the recording. -->
-    <DialogContent class="sm:max-w-[max(530px,min(720px,calc((100dvh_-_2rem_-_226px)*16/9)))] block max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden [scrollbar-width:thin] border-0 dark:border p-0 focus:outline-none" data-onboarding-guide @keydown="onKey" @open-auto-focus="focusDialog">
+         default grid: grid rows would squeeze the media instead of scrolling. -->
+    <DialogContent class="scrollbar-subtle scrollbar-contrast sm:max-w-[max(530px,min(720px,calc((100dvh_-_2rem_-_226px)*16/9)))] block max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden border-0 bg-transparent p-0 focus:outline-none" :show-close-button="false" data-onboarding-guide @keydown="onKey" @open-auto-focus="focusDialog">
       <DialogTitle class="sr-only">{{ $t('onboarding.guide.srTitle') }}</DialogTitle>
       <DialogDescription class="sr-only">{{ $t('onboarding.guide.srDescription') }}</DialogDescription>
 
-      <!-- Recordings stay mounted and are cross-faded, so going back does not refetch. -->
-      <div class="relative aspect-video bg-secondary/60 border-b border-border overflow-hidden">
+      <!-- Only the dialog clips the top corners. A transparent backdrop avoids
+           a pale seam where the video and dialog are composited at the edge. -->
+      <div
+        class="relative aspect-video border-b border-border overflow-hidden"
+        :class="!slide.media && 'bg-[color-mix(in_oklab,var(--secondary)_60%,var(--background))]'"
+      >
+        <!-- Recordings stay mounted and are cross-faded, so going back does not refetch. -->
         <template v-for="(item, index) in slides" :key="item.key">
           <video
             v-if="item.media"
@@ -151,9 +155,18 @@ function onKey(event: KeyboardEvent) {
         </Transition>
       </div>
 
+      <DialogClose
+        type="button"
+        class="absolute top-4 right-4 z-20 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background disabled:pointer-events-none [&_svg]:pointer-events-none"
+        :aria-label="$t('onboarding.guide.close')"
+        data-onboarding-close
+      >
+        <Icon name="lucide:x" size="16" />
+      </DialogClose>
+
       <!-- Every slide sits in the same grid cell, so the copy area always takes the
            height of the longest slide and the footer never moves between slides. -->
-      <div class="grid px-8 pt-6 pb-4">
+      <div class="grid bg-background px-8 pt-6 pb-4">
         <div
           v-for="(item, index) in slides" :key="item.key"
           class="[grid-area:1/1] transition-[opacity,transform] duration-200 ease-out"
@@ -175,7 +188,7 @@ function onKey(event: KeyboardEvent) {
         </div>
       </div>
 
-      <div class="px-8 py-5 flex items-center justify-between gap-2">
+      <div class="bg-background px-8 py-5 flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-1.5">
           <button
             v-for="(item, index) in slides" :key="item.key" type="button"
@@ -185,7 +198,7 @@ function onKey(event: KeyboardEvent) {
             @click="setSlide(index)"
           />
         </div>
-        <div class="flex items-center gap-2">
+        <div class="ml-auto flex flex-wrap items-center justify-end gap-2">
           <!-- Back is always present and the primary button keeps its right edge, so
                the controls do not jump between slides. On the last slide the two next
                steps take their place; the dots still lead back, and closing is left to

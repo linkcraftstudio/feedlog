@@ -18,17 +18,17 @@ const { state, openGuide } = useOnboarding()
     </button>
   </div>
 
-  <div v-else class="relative px-2 min-[1360px]:px-4 pb-3">
+  <div v-else class="relative px-2 min-[1280px]:px-4 pb-3">
     <button
       type="button"
-      class="w-full flex items-center gap-3 py-2 rounded-lg justify-center min-[1360px]:justify-start px-0 min-[1360px]:px-3 font-semibold transition-colors"
+      class="w-full flex items-center gap-3 py-2 rounded-lg justify-center min-[1280px]:justify-start px-0 min-[1280px]:px-3 font-semibold transition-colors"
       :class="state.entryHint ? 'bg-secondary text-primary ring-2 ring-primary/30' : 'text-muted-foreground hover:bg-background hover:text-foreground'"
       :title="$t('onboarding.entry.label')"
       data-onboarding-entry
       @click="openGuide()"
     >
       <Icon name="lucide:rocket" size="20" class="shrink-0" />
-      <span class="hidden min-[1360px]:inline text-sm">{{ $t('onboarding.entry.label') }}</span>
+      <span class="hidden min-[1280px]:inline text-sm">{{ $t('onboarding.entry.label') }}</span>
     </button>
     <Transition name="onboarding-fade">
       <div v-if="state.entryHint && !state.demoPanelOpen" class="absolute left-full bottom-3 ml-3 z-50 w-56 rounded-lg bg-foreground text-background px-3 py-2.5 text-xs leading-relaxed shadow-lg">

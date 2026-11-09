@@ -1352,6 +1352,7 @@
   },
   "onboarding": {
     "guide": {
+      "close": "Close guide",
       "srTitle": "Getting started with FeedLog",
       "srDescription": "A short tour of FeedLog",
       "slideLabel": "Slide {n}",
