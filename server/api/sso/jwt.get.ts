@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm'
 import { organizationSso } from '#layers/feedlog/server/db/schemas'
 
-// GET /api/sso/jwt — third-party product SSO entry (JWT handoff).
+// GET /api/sso/jwt — third-party portal SSO entry (JWT handoff).
 //
 // The customer's backend pre-signs an HS256 JWT with one of this org's shared
 // secrets and redirects the signed-in user here. The org is resolved from the

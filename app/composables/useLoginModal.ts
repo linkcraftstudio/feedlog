@@ -1,15 +1,58 @@
+import {
+  buildExternalAuthRedirectUrl,
+  selectExternalAuthUrl,
+  type ExternalAuthIntent,
+} from '#layers/feedlog/shared/utils/external-auth'
+
 // `reason` holds an i18n key rather than rendered text: the modal is mounted
 // elsewhere and may render in a different locale than the caller.
 export function useLoginModal() {
   const isOpen = useState('login-modal', () => false)
   const reason = useState<string | null>('login-modal-reason', () => null)
+  const intent = useState<ExternalAuthIntent>('login-modal-intent', () => 'login')
+  const portalContext = useState('login-modal-portal-context', () => false)
+  const portal = usePortalOrg()
+
+  async function redirectExternal(requestedIntent: ExternalAuthIntent): Promise<boolean> {
+    if (!import.meta.client) return false
+    intent.value = requestedIntent
+    const externalUrl = selectExternalAuthUrl(portal.value.auth, requestedIntent, {
+      portal: portalContext.value,
+      localAuthRequired: reason.value === LOCAL_AUTH_REASON,
+    })
+    if (!externalUrl) return false
+
+    const destination = buildExternalAuthRedirectUrl(
+      externalUrl,
+      window.location.origin,
+      window.location.pathname + window.location.search,
+    )
+    if (!destination) return false
+    window.location.assign(destination)
+    return true
+  }
+
+  async function open(reasonKey?: string) {
+    reason.value = reasonKey ?? null
+    portalContext.value = false
+    isOpen.value = true
+  }
+
+  async function openPortal() {
+    reason.value = null
+    portalContext.value = true
+    if (await redirectExternal('login')) return
+    isOpen.value = true
+  }
+
   return {
     isOpen,
     reason,
-    open: (reasonKey?: string) => {
-      reason.value = reasonKey ?? null
-      isOpen.value = true
-    },
+    intent,
+    portalContext,
+    open,
+    openPortal,
+    redirectExternal,
   }
 }
 

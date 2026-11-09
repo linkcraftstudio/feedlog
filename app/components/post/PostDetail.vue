@@ -267,7 +267,7 @@ async function handleReplySubmit(content: string) {
 }
 
 function handleReply(commentId: string) {
-  if (!canOpenCommentBox.value) return loginModal.open()
+  if (!canOpenCommentBox.value) return loginModal.openPortal()
 
   editingCommentId.value = null
   editing.value = false

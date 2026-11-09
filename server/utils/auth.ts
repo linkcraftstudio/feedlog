@@ -13,7 +13,7 @@ export type OrgPermissionStatement = Record<string, string[]>
 export async function getUserSession(event: H3Event) {
   const result = await auth.api.getSession({ headers: event.headers })
   if (!result) return null
-  // Host-binding collar: a product-SSO session is valid only on the
+  // Host-binding collar: a portal SSO session is valid only on the
   // org host that minted it. On any other host — e.g. a token replayed to a
   // different org's host — treat it as unauthenticated so it can't reach
   // staff surfaces or another org's data. Single-tenant deployments: ssoOrgId
@@ -34,11 +34,18 @@ export async function requireAuth(event: H3Event) {
   return session
 }
 
-// Product-SSO sessions are deliberately NOT rejected here: getUserSession has
-// already pinned them to this org, so the member row's real role is exactly what
-// the minting org asserted. Stepping outside that org is requireLocalSession's
-// job, not this one's.
-function assertNotGuestSession(session: Awaited<ReturnType<typeof requireAuth>>) {
+// Dashboard/staff authorization accepts only identities established through
+// FeedLog's own login methods. Portal SSO is org-bound but its asserted email
+// may collide with an existing owner/manager, so membership must never promote
+// that session into dashboard access.
+function assertDashboardSession(session: Awaited<ReturnType<typeof requireAuth>>) {
+  if ((session.session as { ssoOrgId?: string | null }).ssoOrgId) {
+    throw createError({
+      statusCode: 403,
+      message: 'Portal SSO sessions cannot access staff areas',
+      data: { code: 'LOCAL_AUTH_REQUIRED' },
+    })
+  }
   if ((session.user as { isAnonymous?: boolean | null }).isAnonymous) {
     throw createError({ statusCode: 403, message: 'Guest sessions cannot access staff areas' })
   }
@@ -76,7 +83,7 @@ export async function requireOrgPermission(
   permissions: OrgPermissionStatement,
 ) {
   const session = await requireAuth(event)
-  assertNotGuestSession(session)
+  assertDashboardSession(session)
   const orgId = event.context.orgId
   if (!orgId) {
     throw createError({ statusCode: 500, message: 'orgId missing from request context' })
@@ -119,7 +126,7 @@ export async function requireAuthInOrg(event: H3Event) {
 // Permission-less — for fine-grained checks use requireOrgPermission.
 export async function requireOrgMember(event: H3Event) {
   const session = await requireAuth(event)
-  assertNotGuestSession(session)
+  assertDashboardSession(session)
   const orgId = event.context.orgId
   if (!orgId) {
     throw createError({ statusCode: 500, message: 'orgId missing from request context' })
@@ -141,6 +148,7 @@ export function getOrgMemberRole(
   orgId: string | undefined,
 ): string | null {
   if (!session || !orgId) return null
+  if ((session.session as { ssoOrgId?: string | null }).ssoOrgId) return null
   if ((session.user as { isAnonymous?: boolean | null }).isAnonymous) return null
   const orgList = (session as { orgList?: { orgId: string; role: string }[] }).orgList
   return orgList?.find(o => o.orgId === orgId)?.role ?? null

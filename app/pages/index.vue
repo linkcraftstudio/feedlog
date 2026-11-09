@@ -201,7 +201,7 @@ const detailSlug = ref<string | null>(null)
 // draft is actually submitted.
 const canOpenSubmit = computed(() => mayAct('allowPost'))
 function openSubmit() {
-  if (!canOpenSubmit.value) return loginModal.open()
+  if (!canOpenSubmit.value) return loginModal.openPortal()
   showSubmit.value = true
 }
 
