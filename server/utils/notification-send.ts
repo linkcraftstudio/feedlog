@@ -43,7 +43,7 @@ function buildNotificationEmail(input: SendNotificationInput, brandName?: string
     brandName,
   })
   if (!content) return null
-  return { to: input.recipientEmail, subject: content.subject, html: content.html, text: content.text }
+  return { to: input.recipientEmail, fromName: brandName, subject: content.subject, html: content.html, text: content.text }
 }
 
 export async function sendNotification(input: SendNotificationInput): Promise<void> {

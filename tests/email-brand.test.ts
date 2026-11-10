@@ -36,16 +36,27 @@ test('the brand name is the organization name, and nothing for the unnamed defau
   assert.equal(await emailBrandName(), undefined)
 })
 
-test('an email is sent under the brand name, and a given sender name wins', async () => {
+test('an app that builds FeedLog as a layer can change the brand name with a hook', async () => {
+  organization('Acme')
+  const hooks: string[] = []
+  globals.useNitroApp = () => ({ hooks: { callHook: async (name: string, brand: { name?: string }) => { hooks.push(name); brand.name = `${brand.name} Support` } } })
+  assert.equal(await emailBrandName(), 'Acme Support')
+  assert.deepEqual(hooks, ['feedlog:email:brand'])
+  globals.getOrgInfo = async () => { throw new Error('database down') }
+  assert.equal(await emailBrandName(), 'undefined Support')
+  delete globals.useNitroApp
+})
+
+test('sendEmail sends under the given sender name and never looks one up', async () => {
   const sent: SendEmailOptions[] = []
   process.env.EMAIL_PROVIDER = 'capture'
   registerEmailProvider({ name: 'capture', send: async (options) => { sent.push(options) } })
-  organization('Acme')
+  let lookups = 0
+  globals.getOrgInfo = async () => { lookups++; return { name: 'Acme' } }
   await sendEmail({ to: 'a@example.com', subject: 's', html: 'h' })
   await sendEmail({ to: 'a@example.com', subject: 's', html: 'h', fromName: 'Billing' })
-  organization('Default')
-  await sendEmail({ to: 'a@example.com', subject: 's', html: 'h' })
-  assert.deepEqual(sent.map(options => options.fromName), ['Acme', 'Billing', undefined])
+  assert.deepEqual(sent.map(options => options.fromName), [undefined, 'Billing'])
+  assert.equal(lookups, 0)
 })
 
 test('a sender name with a comma, a quote or a line break cannot change the From header', () => {

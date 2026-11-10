@@ -1,10 +1,9 @@
 // Email sending abstraction — Registry pattern
 // Auto-imported by Nitro, available in all server/ code
-import { emailBrandName } from './email-brand'
 
 export interface SendEmailOptions {
   to: string
-  fromName?: string // sender display name; defaults to the organization's name
+  fromName?: string // sender display name, resolved once by the caller; the provider's default without it
   idempotencyKey?: string
   subject: string
   html: string
@@ -57,5 +56,5 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
   // Defense-in-depth: a subject is a single header line, so collapse any CR/LF —
   // a subject carrying user data (post title, org name) can't inject extra headers.
   const subject = options.subject.replace(/[\r\n]+/g, ' ')
-  await resolveEmailProvider().send({ ...options, subject, fromName: options.fromName ?? await emailBrandName() })
+  await resolveEmailProvider().send({ ...options, subject })
 }

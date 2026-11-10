@@ -73,6 +73,7 @@ const emailAndPassword = emailLoginEnabled
       sendResetPassword: async ({ user, url }: { user: { email: string; name: string }; url: string }) => {
         const brandName = await emailBrandName()
         await sendEmail({
+          fromName: brandName,
           to: user.email,
           subject: `Reset your ${brandName ?? 'FeedLog'} password`,
           html: renderResetPasswordEmail({ url, name: user.name, brandName }),
@@ -90,6 +91,7 @@ const emailVerification = hasEmailProvider
     sendVerificationEmail: async ({ user, url }: { user: { email: string; name: string }; url: string }) => {
       const brandName = await emailBrandName()
       await sendEmail({
+        fromName: brandName,
         to: user.email,
         subject: `Confirm your email to start using ${brandName ?? 'FeedLog'}`,
         html: renderVerificationEmail({ url, name: user.name, brandName }),
@@ -187,6 +189,7 @@ export function buildAuthConfig(overrides: AuthConfigOverrides = {}): BetterAuth
     const url = `${baseUrl}/invite?id=${data.id}`
     const brandName = await emailBrandName()
     await sendEmail({
+      fromName: brandName,
       to: data.email,
       subject: invitationSubject(data.organization.name, brandName),
       html: renderInvitationEmail({ url, orgName: data.organization.name, brandName }),

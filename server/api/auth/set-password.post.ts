@@ -33,6 +33,7 @@ export default defineEventHandler(async (event) => {
   // Notify user that a password was added (security measure)
   const brandName = await emailBrandName()
   await sendEmail({
+    fromName: brandName,
     to: session.user.email,
     subject: `Password added to your ${brandName ?? 'FeedLog'} account`,
     html: renderPasswordSetEmail({ name: session.user.name, brandName }),

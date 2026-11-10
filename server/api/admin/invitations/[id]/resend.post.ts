@@ -46,6 +46,7 @@ export default defineEventHandler(async (event) => {
   }
   const brandName = await emailBrandName()
   await sendEmail({
+    fromName: brandName,
     to: row.email,
     subject: invitationSubject(row.orgName, brandName),
     html: renderInvitationEmail({ url, orgName: row.orgName, brandName }),
