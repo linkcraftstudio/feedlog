@@ -30,7 +30,7 @@ export async function runRuntimeMigration(
   connectionString: string,
 ): Promise<MigrationResult> {
   const start = Date.now()
-  const client = postgres(connectionString, { max: 1, prepare: false })
+  const client = postgres(connectionString, { max: 1, prepare: true })
   const db = drizzle(client) as PostgresJsDatabase<Record<string, unknown>>
   try {
     await db.execute(sql`SELECT pg_advisory_lock(${LOCK_KEY})`)

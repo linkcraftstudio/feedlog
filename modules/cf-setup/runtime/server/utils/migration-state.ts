@@ -46,7 +46,7 @@ export async function probeDatabaseState(
   if (!connectionString) {
     return { state: 'unreachable', expected, applied: 0, error: 'Database connection not configured — Hyperdrive binding missing' }
   }
-  const client = postgres(connectionString, { max: 1, prepare: false })
+  const client = postgres(connectionString, { max: 1, prepare: true })
   const db = drizzle(client)
   try {
     // Hyperdrive caches SELECT queries keyed on the query text; right after
