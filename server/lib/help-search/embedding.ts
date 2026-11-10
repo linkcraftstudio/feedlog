@@ -1,4 +1,5 @@
-export const HELP_EMBEDDING_MODEL = 'text-embedding-3-large'
+import { embeddingModel } from '../../utils/ai-models'
+
 export const HELP_EMBEDDING_DIMENSIONS = 768
 export const HELP_INDEX_VERSION = 'heading-v1'
 
@@ -15,7 +16,7 @@ export async function embedHelpTexts(input: string[], timeoutMs = 20000): Promis
     response = await fetch(`${(process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '')}/embeddings`, {
       method: 'POST', signal: AbortSignal.timeout(timeoutMs),
       headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: HELP_EMBEDDING_MODEL, dimensions: HELP_EMBEDDING_DIMENSIONS, input }),
+      body: JSON.stringify({ model: embeddingModel(), dimensions: HELP_EMBEDDING_DIMENSIONS, input }),
     })
   } catch { throw new HelpEmbeddingError('provider_unavailable', true) }
   if (!response.ok) throw new HelpEmbeddingError(`provider_${response.status}`, [408, 409, 429].includes(response.status) || response.status >= 500)

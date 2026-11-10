@@ -1,5 +1,6 @@
 import OpenAI from 'openai'
 import { imageBatchLimits } from './image-batch-limits'
+import { visionModel } from '../../utils/ai-models'
 import { z } from 'zod'
 import type { MastraDBMessage } from '@mastra/core/agent'
 import { withDependencyTimeout } from './dependency-timeout'
@@ -49,7 +50,7 @@ export function createImageBatchAnalyzer(onUsage: (usage: { inputTokens?: number
     for (const image of images) content.push({ type: 'text', text: `Image ${image.index}` }, { type: 'image_url', image_url: { url: image.data, detail: 'high' } })
     try {
       const result = await client.chat.completions.create({
-        model: process.env.OPENAI_TEXT_MODEL!, max_completion_tokens: 4000, response_format: { type: 'json_object' },
+        model: visionModel()!, max_completion_tokens: 4000, response_format: { type: 'json_object' },
         messages: [{ role: 'system', content: instructions }, { role: 'user', content }],
       }, { signal })
       await onUsage({ inputTokens: result.usage?.prompt_tokens, outputTokens: result.usage?.completion_tokens })

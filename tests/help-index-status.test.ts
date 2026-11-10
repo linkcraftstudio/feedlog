@@ -8,7 +8,8 @@ import type { Pool } from 'pg'
 import { ensureHelpIndex, queueHelpIndex, pauseHelpIndex } from '../server/lib/help-search/jobs'
 import { helpIndexStatus } from '../server/lib/help-search/management'
 import { indexNextHelpArticle } from '../server/lib/help-search/indexer'
-import { HELP_EMBEDDING_MODEL, HELP_INDEX_VERSION, HelpEmbeddingError } from '../server/lib/help-search/embedding'
+import { embeddingModel } from '../server/utils/ai-models'
+import { HELP_INDEX_VERSION, HelpEmbeddingError } from '../server/lib/help-search/embedding'
 
 // Fully isolated PostgreSQL engine: no .env, external service or real articles.
 test('four states, unchanged saves and three reproducible indexing failures', async t => {
@@ -99,7 +100,7 @@ test('four states, unchanged saves and three reproducible indexing failures', as
       await queueHelpIndex(db, id)
       const generation = (await task(id)).id
       await client.query("UPDATE scheduled_task SET status='done',result='indexed' WHERE ref_id=$1", [id])
-      await client.query('INSERT INTO help_article_chunk VALUES($1,$2,$3,$4)', [id, generation, HELP_EMBEDDING_MODEL, HELP_INDEX_VERSION])
+      await client.query('INSERT INTO help_article_chunk VALUES($1,$2,$3,$4)', [id, generation, embeddingModel(), HELP_INDEX_VERSION])
       await client.query("UPDATE help_article SET status='archived' WHERE id=$1", [id])
       await pauseHelpIndex(db, id)
       assert.equal(await status(id), null)
