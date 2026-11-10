@@ -56,7 +56,8 @@ async function notifyQuota(client: Pool | PoolClient) {
     for (const owner of rows) {
       try {
         const text = 'Automatic conversation closing, snoozed conversation reminders and unread reply emails will be delayed because the scheduling queue quota has been exhausted. Your tasks are still saved and will resume after quota is restored. Check your Vercel or Cloudflare usage dashboard.'
-        await sendEmail({ to: owner.email, subject: 'FeedLog: scheduling queue quota exhausted', text, html: `<p>${text}</p>` })
+        const brandName = await emailBrandName()
+        await sendEmail({ to: owner.email, fromName: brandName, subject: `${brandName ?? 'FeedLog'}: scheduling queue quota exhausted`, text, html: `<p>${text}</p>` })
       } catch { console.warn('[inbox] Could not notify organization owner of queue quota', { orgId: owner.organization_id }) }
     }
   } catch { console.warn('[inbox] Queue quota notification unavailable') }
