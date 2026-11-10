@@ -336,9 +336,20 @@ unset to use the console-logging fallback.
 
 `cloudflare` sends through Cloudflare Email Sending, with the Worker's
 `send_email` binding named `EMAIL`. It works on Cloudflare Workers only and
-needs `EMAIL_FROM`. Like a Resend key, it turns on sign-up email verification
-by default (override with `AUTH_EMAIL_VERIFY`). See
-[Deploying to Cloudflare Workers](deploy/cloudflare-workers.md).
+needs `EMAIL_FROM`. See [Deploying to Cloudflare Workers](deploy/cloudflare-workers.md).
+
+- **Plan.** Sending to any recipient needs the Workers Paid plan. On Workers
+  Free, the binding sends only to the verified destination addresses of the
+  Cloudflare account, so sign-up, invitation and reply emails to other people fail.
+- **Sender domain.** The domain of `EMAIL_FROM` must use Cloudflare DNS and be
+  onboarded in Email Service > Email Sending, which adds its SPF and DKIM records.
+- **Verification.** Like a Resend key, this provider turns on sign-up email
+  verification by default. On Workers Free, set `AUTH_EMAIL_VERIFY=false`, or
+  new accounts cannot confirm their email.
+- **Duplicates.** The binding takes no idempotency key, so delivery is at least
+  once. If Cloudflare accepts a message but the call still fails, an Inbox reply
+  or handoff email that FeedLog retries can arrive twice. Resend deduplicates
+  these retries.
 
 ### `RESEND_API_KEY` &nbsp;⬜ optional
 

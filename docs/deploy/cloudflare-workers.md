@@ -139,6 +139,8 @@ wrangler secret put RESEND_API_KEY
 # and add the binding:
 #   [[send_email]]
 #   name = "EMAIL"
+# Any recipient needs Workers Paid and an onboarded sender domain; see
+# EMAIL_PROVIDER in docs/configuration.md.
 ```
 
 ### 7. Build and deploy
