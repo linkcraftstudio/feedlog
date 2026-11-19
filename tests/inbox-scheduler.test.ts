@@ -17,7 +17,7 @@ import { pageInput } from '../shared/inbox/schemas'
 import { queueHelpIndex, deleteHelpIndex } from '../server/lib/help-search/jobs'
 
 const url = process.env.DATABASE_URL ?? ''
-assert.match(url, /@(?:localhost|127\.0\.0\.1):\d+\/feedlog_inbox_mvp$/)
+assert.match(url, /@(?:localhost|127\.0\.0\.1):\d+\/(?:feedlog_inbox_mvp|feedlog_web_source_tasks_\d+)$/)
 const admin = new Pool({ connectionString: url })
 const database = `feedlog_inbox_mvp_scheduler_${Date.now()}`
 const target = new URL(url); target.pathname = `/${database}`
@@ -433,8 +433,8 @@ test('Help indexing reuses the existing delayed delivery and reschedules only pe
       return Response.json({ data: input.map((_, index) => ({ index, embedding: [1, ...Array(767).fill(0)] })) })
     }
     await pool.query("INSERT INTO help_collection(id,org_id,name,icon,position) VALUES($1,'org','Help scheduler','book-open',0)", [collectionId])
-    await pool.query(`INSERT INTO help_article(id,org_id,collection_id,short_id,slug,title,content,tsv,position)
-      VALUES($1,'org',$2,'wake01','wake','Help wake','Retry this article',''::tsvector,0)`, [articleId, collectionId])
+    await pool.query(`INSERT INTO help_article(id,org_id,collection_id,short_id,slug,title,content,tsv,position,status)
+      VALUES($1,'org',$2,'wake01','wake','Help wake','Retry this article',''::tsvector,0,'published')`, [articleId, collectionId])
     await queueHelpIndex(drizzlePg(pool), articleId)
     assert.equal((await scheduleInbox(runtime, transport)).scheduled, true)
     assert.equal(deliveries.length, 1)
@@ -474,8 +474,8 @@ test('Help wake failure keeps work durable and disabling Help creates no deliver
   const enabled = process.env.HELP_VECTOR_SEARCH, articleId = uuidv7(), collectionId = uuidv7()
   try {
     await pool.query("INSERT INTO help_collection(id,org_id,name,icon,position) VALUES($1,'org','Recovery','book-open',0)", [collectionId])
-    await pool.query(`INSERT INTO help_article(id,org_id,collection_id,short_id,slug,title,content,tsv,position)
-      VALUES($1,'org',$2,'wake02','wake','Recovery','Durable work',''::tsvector,0)`, [articleId, collectionId])
+    await pool.query(`INSERT INTO help_article(id,org_id,collection_id,short_id,slug,title,content,tsv,position,status)
+      VALUES($1,'org',$2,'wake02','wake','Recovery','Durable work',''::tsvector,0,'published')`, [articleId, collectionId])
     await queueHelpIndex(drizzlePg(pool), articleId)
     process.env.HELP_VECTOR_SEARCH = 'false'
     assert.equal((await scheduleInbox(runtime, transport)).scheduled, false)
@@ -522,8 +522,8 @@ test('a blocked Help provider holds no consumer lock and does not suppress a new
       return Response.json({ data: input.map((_, index) => ({ index, embedding: [1, ...Array(767).fill(0)] })) })
     }
     await pool.query("INSERT INTO help_collection(id,org_id,name,icon,position) VALUES($1,'org','Concurrent indexing','book-open',0)", [collectionId])
-    await pool.query(`INSERT INTO help_article(id,org_id,collection_id,short_id,slug,title,content,tsv,position)
-      VALUES($1,'org',$2,'lock01','lock','Concurrent indexing','Held provider',''::tsvector,0)`, [articleId, collectionId])
+    await pool.query(`INSERT INTO help_article(id,org_id,collection_id,short_id,slug,title,content,tsv,position,status)
+      VALUES($1,'org',$2,'lock01','lock','Concurrent indexing','Held provider',''::tsvector,0,'published')`, [articleId, collectionId])
     await queueHelpIndex(drizzlePg(pool), articleId)
     await task('pending', 60)
     await scheduleInbox(runtime, transport)
@@ -575,8 +575,8 @@ test('separate deliveries index different articles concurrently using per-articl
     }
     await pool.query("INSERT INTO help_collection(id,org_id,name,icon,position) VALUES($1,'org','Parallel articles','book-open',0)", [collectionId])
     for (const [i, id] of articles.entries()) {
-      await pool.query(`INSERT INTO help_article(id,org_id,collection_id,short_id,slug,title,content,tsv,position)
-        VALUES($1,'org',$2,$3,$3,'Parallel article','Article body',''::tsvector,0)`, [id, collectionId, `para0${i}`])
+      await pool.query(`INSERT INTO help_article(id,org_id,collection_id,short_id,slug,title,content,tsv,position,status)
+        VALUES($1,'org',$2,$3,$3,'Parallel article','Article body',''::tsvector,0,'published')`, [id, collectionId, `para0${i}`])
       await queueHelpIndex(drizzlePg(pool), id)
     }
     await scheduleInbox(runtime, transport)

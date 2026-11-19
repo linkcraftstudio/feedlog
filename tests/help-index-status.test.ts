@@ -34,7 +34,7 @@ test('four states, unchanged saves and three reproducible indexing failures', as
     await client.exec(`CREATE TABLE help_article(id uuid PRIMARY KEY,org_id text,title text,description text,content text,status text);
       CREATE TABLE scheduled_task(id uuid PRIMARY KEY,kind text,ref_id uuid,item_id text,schedule_at timestamptz,status text,attempts int,result text,manual_retry boolean DEFAULT false,updated_at timestamptz DEFAULT now());
       CREATE UNIQUE INDEX task_reference ON scheduled_task(kind,ref_id) WHERE item_id IS NULL;
-      CREATE TABLE help_article_chunk(article_id uuid,generation_id uuid,model text,index_version text);`)
+      CREATE TABLE content_chunk(content_id uuid,generation_id uuid,model text,index_version text,content_type text DEFAULT 'help_article');`)
     await t.test('legacy article stays unindexed until an explicit save; repeated saves preserve the job', async () => {
       const id = await article()
       assert.equal(await status(id), 'not_indexed')
@@ -99,17 +99,17 @@ test('four states, unchanged saves and three reproducible indexing failures', as
       await queueHelpIndex(db, id)
       const generation = (await task(id)).id
       await client.query("UPDATE scheduled_task SET status='done',result='indexed' WHERE ref_id=$1", [id])
-      await client.query('INSERT INTO help_article_chunk VALUES($1,$2,$3,$4)', [id, generation, HELP_EMBEDDING_MODEL, HELP_INDEX_VERSION])
+      await client.query('INSERT INTO content_chunk(content_id,generation_id,model,index_version) VALUES($1,$2,$3,$4)', [id, generation, HELP_EMBEDDING_MODEL, HELP_INDEX_VERSION])
       await client.query("UPDATE help_article SET status='archived' WHERE id=$1", [id])
       await pauseHelpIndex(db, id)
       assert.equal(await status(id), null)
       assert.equal((await task(id)).id, generation)
-      assert.equal((await client.query('SELECT * FROM help_article_chunk WHERE article_id=$1', [id])).rows.length, 1)
+      assert.equal((await client.query(`SELECT * FROM content_chunk WHERE content_type='help_article' AND content_id=$1`, [id])).rows.length, 1)
       await client.query("UPDATE help_article SET status='published' WHERE id=$1", [id])
       await queueHelpIndex(db, id)
       assert.equal(await status(id), 'indexing')
       assert.notEqual((await task(id)).id, generation)
-      assert.equal((await client.query('SELECT * FROM help_article_chunk WHERE article_id=$1', [id])).rows.length, 0)
+      assert.equal((await client.query(`SELECT * FROM content_chunk WHERE content_type='help_article' AND content_id=$1`, [id])).rows.length, 0)
     })
     await t.test('unpublish revokes a running generation; republish starts a fresh one', async () => {
       const id = await article()

@@ -1,3 +1,4 @@
+import { embedHelpTexts } from '../help-search/embedding'
 import { searchHelpVectors, fuseHelpResults } from '../help-search/vector-search'
 import { PgDialect } from 'drizzle-orm/pg-core'
 import { buildBilingualHelpQuery } from '../help-search/query'
@@ -29,11 +30,15 @@ export interface HelpArticleSearchResult {
   description: string | null
   excerpt: string
   matched_queries: string[]
+  query_ranks: Record<string, number>
 }
 
 export const helpArticleSearchDescription = 'Search AI-enabled knowledge articles, including internal articles. Use one to four focused queries in the customer’s language, preserving product names and important constraints. When semantic search is enabled, multilingual vector candidates are combined with full-text results. Without a ready semantic index, keyword search remains available; use a few specific subject words or alternative wording when it returns no results. Each query returns up to three articles; results are interleaved and deduplicated, with at most twelve articles. matched_queries lists the searches that returned each article. A generic title does not make a body-matching candidate irrelevant. Excerpts are candidate evidence, not verified answers: read full articles matching the named feature or requested condition before concluding the documentation has no answer, verify ALL original question constraints, and follow relevant internal links.'
 
-export async function searchHelpArticles(pool: Pick<Pool, 'query'>, orgId: string, input: HelpArticleSearchInput, origin: string) {
+export interface KnowledgeSearchWarning { sourceType: 'help_article' | 'web_page'; query: string; stage: 'semantic' | 'lexical' | 'provider' }
+
+export async function searchHelpArticles(pool: Pick<Pool, 'query'>, orgId: string, input: HelpArticleSearchInput, origin: string, embed = embedHelpTexts, signal?: AbortSignal) {
+  signal?.throwIfAborted()
   const parsed = helpArticleSearchInput.parse(input)
   const { rows: [org] } = await pool.query('SELECT metadata FROM organization WHERE id=$1', [orgId])
   const publicEnabled = resolvePortalModules(org?.metadata).helpCenter
@@ -47,6 +52,7 @@ export async function searchHelpArticles(pool: Pick<Pool, 'query'>, orgId: strin
     queries.push(normalized)
   }
 
+  const warnings: KnowledgeSearchWarning[] = []
   const dialect = new PgDialect()
   const groups = await Promise.all(queries.map(async query => {
     type Row = {
@@ -69,7 +75,7 @@ export async function searchHelpArticles(pool: Pick<Pool, 'query'>, orgId: strin
       const { rows } = await pool.query<Row>(`SELECT a.id AS article_id,a.title,a.description,a.content,a.short_id||'-'||a.slug AS slug,(a.status='published' AND c.visible) AS published
         FROM help_article a
         JOIN help_collection c ON c.id=a.collection_id AND c.org_id=a.org_id
-        WHERE a.org_id=$1 AND a.ai_enabled
+        WHERE a.org_id=$1 AND a.ai_enabled AND c.ai_enabled
           AND a.tsv @@ (${expression})
         ORDER BY ts_rank_cd(a.tsv,(${expression})) DESC,a.id
         LIMIT $${limitIndex}`, [orgId, ...compiled.params, RESULTS_PER_QUERY])
@@ -88,7 +94,7 @@ export async function searchHelpArticles(pool: Pick<Pool, 'query'>, orgId: strin
           SELECT count(*) AS matched, sum(ts_rank_cd(a.tsv,terms.q)) AS rank
           FROM terms WHERE a.tsv @@ terms.q
         ) AS hits
-        WHERE a.org_id=$1 AND a.ai_enabled
+        WHERE a.org_id=$1 AND a.ai_enabled AND c.ai_enabled
           AND a.tsv @@ (SELECT string_agg(q::text,' | ')::tsquery FROM terms)
           AND (SELECT count(*) FROM terms)>=3 AND hits.matched>=2
         ORDER BY hits.matched DESC,hits.rank DESC,a.id
@@ -97,14 +103,18 @@ export async function searchHelpArticles(pool: Pick<Pool, 'query'>, orgId: strin
       }
       return rows
     }
-    const [vectors, result] = await Promise.all([
-      searchHelpVectors(pool, orgId, query, 'agent'),
+    const [vectors, lexical] = await Promise.allSettled([
+      searchHelpVectors(pool, orgId, query, 'agent', 12, embed),
       searchHelpProgressively({ orgId, query, translate: true, search: run }),
     ])
-    const semantic = vectors.map(row => ({ article_id: row.articleId, title: row.title, description: row.description, content: row.content, slug: `${row.shortId}-${row.slug}`, published: row.published }))
-    // CJK lexical lookup uses broad OR bigrams; its first hit may match only a
-    // generic word. Preserve an exact English full-text winner, not that hit.
-    return { rows: fuseHelpResults(result.rows, semantic, row => row.article_id, RESULTS_PER_QUERY, !/[\u3400-\u9fff]/.test(query)), excerptTokens: splitHelpQuery([query, ...result.translatedQueries].join(' ')) }
+    signal?.throwIfAborted()
+    if (vectors.status === 'rejected') warnings.push({ sourceType: 'help_article', query, stage: 'semantic' })
+    if (lexical.status === 'rejected') warnings.push({ sourceType: 'help_article', query, stage: 'lexical' })
+    const semantic = (vectors.status === 'fulfilled' ? vectors.value : []).map(row => ({ article_id: row.articleId, title: row.title, description: row.description, content: row.content, slug: `${row.shortId}-${row.slug}`, published: row.published }))
+    const result = lexical.status === 'fulfilled' ? lexical.value : { rows: [] as Row[], translatedQueries: [] as string[] }
+    // Preserve exact English lexical winners and each query's original rank.
+    return { rows: fuseHelpResults(result.rows, semantic, row => row.article_id, RESULTS_PER_QUERY, !/[\u3400-\u9fff]/.test(query)), excerptTokens: splitHelpQuery([query, ...result.translatedQueries].join(' ')), failed: lexical.status === 'rejected' && !semantic.length }
+
   }))
 
   const articles = new Map<string, HelpArticleSearchResult>()
@@ -117,12 +127,13 @@ export async function searchHelpArticles(pool: Pick<Pool, 'query'>, orgId: strin
       const existing = articles.get(row.article_id)
       if (existing) {
         existing.matched_queries.push(query)
+        existing.query_ranks[query] = rank
       } else {
         const { content, published, ...article } = row
         const { excerpt } = buildHelpExcerpt(stripMarkdown(content), row.description, group.excerptTokens, { bestMatch: true })
-        articles.set(row.article_id, { ...article, excerpt, matched_queries: [query], customer_visible: publicEnabled && published, url: publicEnabled && published ? new URL(`/help/${article.slug}`, origin).href : null })
+        articles.set(row.article_id, { ...article, excerpt, matched_queries: [query], query_ranks: { [query]: rank }, customer_visible: publicEnabled && published, url: publicEnabled && published ? new URL(`/help/${article.slug}`, origin).href : null })
       }
     }
   }
-  return { articles: [...articles.values()] }
+  return { articles: [...articles.values()], warnings, failedQueries: queries.filter((_, index) => groups[index]!.failed) }
 }

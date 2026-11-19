@@ -14,7 +14,7 @@ export async function queueHelpIndex(db: JobDatabase, articleId: string) {
     ON CONFLICT(kind,ref_id) WHERE item_id IS NULL DO UPDATE SET
       id=excluded.id,schedule_at=excluded.schedule_at,status='pending',attempts=0,
       result=NULL,manual_retry=false,updated_at=clock_timestamp()`)
-  await db.execute(sql`DELETE FROM help_article_chunk WHERE article_id=${articleId}
+  await db.execute(sql`DELETE FROM content_chunk WHERE content_type='help_article' AND content_id=${articleId}
     AND EXISTS(SELECT 1 FROM help_article WHERE id=${articleId} AND status='published')`)
 }
 
@@ -43,5 +43,5 @@ export async function pauseHelpIndex(db: JobDatabase, articleId: string) {
 // The vector table intentionally has no article FK; keep cleanup in the writer.
 export async function deleteHelpIndex(db: JobDatabase, articleId: string) {
   await db.execute(sql`DELETE FROM scheduled_task WHERE kind='help_index' AND ref_id=${articleId}`)
-  await db.execute(sql`DELETE FROM help_article_chunk WHERE article_id=${articleId}`)
+  await db.execute(sql`DELETE FROM content_chunk WHERE content_type='help_article' AND content_id=${articleId}`)
 }

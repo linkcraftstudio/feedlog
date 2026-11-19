@@ -30,6 +30,7 @@ test('article search preserves query order despite completion order and merges s
   const pool = {
     query: async (_sql: string, params: unknown[]) => {
       if (_sql.startsWith('SELECT metadata')) return { rows: [{ metadata: JSON.stringify({ portalModules: { helpCenter: true } }) }] }
+      if (_sql.includes('FROM content_chunk')) return { rows: [] }
       const query = params[1] as string
       calls.push(query)
       if (query === 'Alpha topic') {
@@ -97,7 +98,7 @@ test('article search applies tenant and AI visibility filters before each top-th
     const ordered = [0, 1, 2].flatMap(rank => expected.map(group => group[rank]))
     assert.deepEqual(result.articles.map(a => a.article_id), ordered)
     assert.equal(result.articles.length, 12)
-    assert.deepEqual(await searchHelpArticles(client, orgId, { queries: ['missingterm', 'the and of', "' | ! :*"] }, origin), { articles: [] })
+    assert.deepEqual(await searchHelpArticles(client, orgId, { queries: ['missingterm', 'the and of', "' | ! :*"] }, origin), { articles: [], warnings: [], failedQueries: [] })
   } finally {
     await client.query('ROLLBACK')
     client.release()

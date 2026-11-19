@@ -4,6 +4,7 @@ import { uuidv7 } from 'uuidv7'
 import { inboxTick } from './tick'
 import type { InboxEvent } from './events'
 import { sendEmail, resolveEmailProvider } from '../../utils/email'
+import { webSourceConcurrency } from '../web-source/concurrency'
 
 export interface WakeMessage { id: string; sentAt: string }
 export interface DelayTransport {
@@ -37,13 +38,18 @@ export function isQuotaExhausted(error: unknown) {
 }
 
 async function pending(client: PoolClient) {
-  const { rows: [row] } = await client.query(`SELECT clock_timestamp() AS now,
-    min(CASE WHEN status='processing' AND kind<>'help_index'
+  const { rows: [row] } = await client.query(`WITH capacity AS (
+    SELECT count(*)>=$2::int AS exhausted FROM scheduled_task
+    WHERE kind='web_page' AND status='processing' AND schedule_at>clock_timestamp()
+  ) SELECT clock_timestamp() AS now,
+    min(CASE WHEN kind='web_page' AND (SELECT exhausted FROM capacity) AND schedule_at<=clock_timestamp()
+      THEN clock_timestamp()+interval '5 seconds'
+      WHEN status='processing' AND kind NOT IN ('help_index','web_page','ai_training_website')
       THEN greatest(schedule_at,updated_at+interval '10 minutes') ELSE schedule_at END) AS next_at,
-    coalesce(bool_or((status='processing' AND CASE WHEN kind='help_index' THEN schedule_at<=clock_timestamp()
+    coalesce(bool_or((status='processing' AND CASE WHEN kind IN ('help_index','web_page','ai_training_website') THEN schedule_at<=clock_timestamp()
       ELSE updated_at<clock_timestamp()-interval '10 minutes' END)
       OR status NOT IN ('pending','processing','done','cancelled')),false) AS force
-    FROM scheduled_task WHERE status NOT IN ('done','cancelled') AND (kind<>'help_index' OR $1)`, [helpVectorsEnabled()])
+    FROM scheduled_task WHERE status NOT IN ('done','cancelled') AND (kind<>'help_index' OR $1)`, [helpVectorsEnabled(), webSourceConcurrency()])
   return row as { now: Date; next_at: Date | null; force: boolean }
 }
 
@@ -151,6 +157,26 @@ export async function consumeInbox(runtime: SchedulerRuntime, transport: DelayTr
   let releaseClaim = () => {}
   const claimSettled = new Promise<void>(resolve => { releaseClaim = resolve })
   const work: Promise<unknown>[] = []
+  const webSourceClaims: Promise<void>[] = []
+  for (let i = 0; i < webSourceConcurrency(); i++) {
+    let releaseWebSourceClaim = () => {}
+    webSourceClaims.push(new Promise<void>(resolve => { releaseWebSourceClaim = resolve }))
+    work.push((async () => {
+      let claimed = false
+      try {
+        const { runNextWebSourceTask } = await import('../web-source/worker')
+        return await runNextWebSourceTask(runtime.pool, { onClaim: async () => {
+          claimed = true
+          await reschedule()
+          releaseWebSourceClaim()
+        } })
+      } finally {
+        releaseWebSourceClaim()
+        if (claimed) await reschedule()
+      }
+    })())
+  }
+  const webSourceClaimSettled = Promise.all(webSourceClaims)
   if (helpVectorsEnabled()) {
     work.push((async () => {
       try {
@@ -167,7 +193,7 @@ export async function consumeInbox(runtime: SchedulerRuntime, transport: DelayTr
   work.push(inboxTick(runtime).finally(async () => {
     // Wait only for the short claim step, not embedding. Otherwise an empty
     // Inbox tick could requeue the same still-unclaimed Help task immediately.
-    await claimSettled
+    await Promise.all([claimSettled, webSourceClaimSettled])
     await reschedule()
   }))
   // Await every branch even on failure: the platform owns this invocation's

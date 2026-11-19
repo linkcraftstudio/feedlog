@@ -37,6 +37,10 @@ RUN pnpm build
 # Stage 3: Production
 FROM node:22-slim AS runner
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY --from=builder /app/.output ./.output

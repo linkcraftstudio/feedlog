@@ -1,18 +1,20 @@
 import { helpIndexError, helpIndexStatus } from '../lib/help-search/management'
-import { articleRecord, articleConditions } from './help-center'
 import { and, asc, eq, ilike, sql, inArray, ne } from 'drizzle-orm'
 import { helpArticle, helpCollection } from '../db/schemas'
 import type { ContentReader } from './content-context'
 import { createError } from 'h3'
 
-export async function listManagementArticles(context: ContentReader, input: { q?: string; page: number; pageSize: number }) {
+export async function listManagementArticles(context: ContentReader, input: { q?: string; collectionId?: string; status?: 'published' | 'unpublished' | 'draft' | 'archived'; page: number; pageSize: number }) {
   const { db, orgId } = context
   const { q, page, pageSize } = input
-  const where = and(...articleConditions(orgId), q ? ilike(helpArticle.title, `%${q}%`) : undefined)
+  const where = and(eq(helpArticle.orgId, orgId), q ? ilike(helpArticle.title, `%${q}%`) : undefined,
+    input.collectionId ? eq(helpArticle.collectionId, input.collectionId) : undefined,
+    input.status === 'unpublished' ? inArray(helpArticle.status, ['draft', 'archived']) : input.status ? eq(helpArticle.status, input.status) : undefined)
 
   const [countResult] = await db
     .select({ total: sql<number>`cast(count(*) as int)` })
     .from(helpArticle)
+    .innerJoin(helpCollection, and(eq(helpArticle.collectionId, helpCollection.id), eq(helpCollection.orgId, orgId)))
     .where(where)
 
   const rows = await db
@@ -27,21 +29,23 @@ export async function listManagementArticles(context: ContentReader, input: { q?
       indexStatus: helpIndexStatus(),
       position: helpArticle.position,
       updatedAt: helpArticle.updatedAt,
+      publishedAt: helpArticle.publishedAt,
       collectionId: helpCollection.id,
       collectionName: helpCollection.name,
       collectionVisible: helpCollection.visible,
+      collectionAiEnabled: helpCollection.aiEnabled,
     })
     .from(helpArticle)
-    .innerJoin(helpCollection, eq(helpArticle.collectionId, helpCollection.id))
+    .innerJoin(helpCollection, and(eq(helpArticle.collectionId, helpCollection.id), eq(helpCollection.orgId, orgId)))
     .where(where)
     .orderBy(asc(helpCollection.position), asc(helpArticle.position), asc(helpArticle.id))
     .limit(pageSize)
     .offset((page - 1) * pageSize)
 
   return {
-    data: rows.map(({ collectionId, collectionName, collectionVisible, ...a }) => ({
+    data: rows.map(({ collectionId, collectionName, collectionVisible, collectionAiEnabled, ...a }) => ({
       ...a,
-      collection: { id: collectionId, name: collectionName, visible: collectionVisible },
+      collection: { id: collectionId, name: collectionName, visible: collectionVisible, aiEnabled: collectionAiEnabled },
     })),
     pagination: { page, pageSize, total: countResult?.total ?? 0 },
   }
@@ -55,6 +59,7 @@ export async function listManagementCollections(context: ContentReader, flat: bo
     description: helpCollection.description,
     icon: helpCollection.icon,
     visible: helpCollection.visible,
+    aiEnabled: helpCollection.aiEnabled,
     position: helpCollection.position,
   }
 
@@ -64,7 +69,14 @@ export async function listManagementCollections(context: ContentReader, flat: bo
     .where(eq(helpCollection.orgId, orgId))
     .orderBy(asc(helpCollection.position), asc(helpCollection.id))
 
-  if (flat) return { data: collections }
+  if (flat) {
+    const counts = await db.select({ collectionId: helpArticle.collectionId,
+      articleCount: sql<number>`count(*)::int`,
+      aiUsableCount: sql<number>`count(*) FILTER(WHERE ${helpArticle.aiEnabled})::int`,
+    }).from(helpArticle).where(eq(helpArticle.orgId, orgId)).groupBy(helpArticle.collectionId)
+    return { data: collections.map(c => ({ ...c, articleCount: counts.find(n => n.collectionId === c.id)?.articleCount ?? 0,
+      aiUsableCount: c.aiEnabled ? counts.find(n => n.collectionId === c.id)?.aiUsableCount ?? 0 : 0 })) }
+  }
 
   const articles = collections.length
     ? await db
@@ -171,6 +183,7 @@ export async function getPublicCollection(context: ContentReader, id: string) {
 
 export async function getPublicArticle(context: ContentReader, shortId: string) {
   const { db, orgId } = context
+  const { articleRecord } = await import('./help-center')
   const row = await articleRecord(context, shortId, 'public', false, 'shortId')
 
   const siblings = await db

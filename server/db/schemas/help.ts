@@ -17,6 +17,7 @@ export const helpCollection = pgTable('help_collection', {
   description: varchar({ length: 200 }),
   icon: varchar({ length: 32 }).$type<HelpCollectionIcon>().notNull(),
   visible: boolean().notNull().default(true),
+  aiEnabled: boolean('ai_enabled').notNull().default(true),
   position: integer().notNull(),
 }, t => [
   index('idx_help_collection_org').on(t.orgId, t.position, t.id),

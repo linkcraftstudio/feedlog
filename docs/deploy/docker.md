@@ -43,6 +43,11 @@ while the schema is created.
 
 Visit `http://localhost:3000` — the app is ready.
 
+Website knowledge uses HTTP extraction without a browser service. Raw HTML is not
+retained. Configure cleanup and embedding models in the
+[configuration reference](../configuration.md#website-knowledge) before importing
+website pages.
+
 ## Full stack via the bundled `compose.yml`
 
 The repo ships a [`compose.yml`](../../compose.yml) that brings up the

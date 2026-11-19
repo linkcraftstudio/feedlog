@@ -116,14 +116,14 @@ test('durable indexing lifecycle, concurrency and authorization filters', { skip
       await pool.query("UPDATE scheduled_task SET schedule_at=now() WHERE kind='help_index' AND ref_id=$1",[id])
       await indexNextHelpArticle(pool,embed)
       assert.equal((await state(id)).status,'ready')
-      assert.equal((await pool.query('SELECT count(*)::int AS n FROM help_article_chunk WHERE article_id=$1',[id])).rows[0].n,1)
+      assert.equal((await pool.query(`SELECT count(*)::int AS n FROM content_chunk WHERE content_type='help_article' AND content_id=$1`,[id])).rows[0].n,1)
       await pool.query('UPDATE help_article SET position=5 WHERE id=$1',[id])
       assert.equal((await state(id)).status,'ready')
       const generation = (await state(id)).id
       await updateContent(id, 'Changed answer')
       assert.notEqual((await state(id)).id,generation)
       assert.equal((await state(id)).status,'pending')
-      assert.equal((await pool.query('SELECT count(*)::int AS n FROM help_article_chunk WHERE article_id=$1',[id])).rows[0].n,0)
+      assert.equal((await pool.query(`SELECT count(*)::int AS n FROM content_chunk WHERE content_type='help_article' AND content_id=$1`,[id])).rows[0].n,0)
       await remove()
     })
     await t.test('concurrent claim does not duplicate calls and stale result cannot overwrite updated article', async () => {
@@ -137,7 +137,7 @@ test('durable indexing lifecycle, concurrency and authorization filters', { skip
       release();assert.equal((await old).stale,true)
       assert.notEqual((await state(id)).id,generation)
       assert.equal((await state(id)).status,'ready')
-      assert.equal((await pool.query('SELECT body FROM help_article_chunk WHERE article_id=$1',[id])).rows[0].body,'Latest generation')
+      assert.equal((await pool.query(`SELECT body FROM content_chunk WHERE content_type='help_article' AND content_id=$1`,[id])).rows[0].body,'Latest generation')
       await remove()
     })
     await t.test('expired worker is fenced, recovery works, exhausted leases stop', async () => {
@@ -162,7 +162,7 @@ test('durable indexing lifecycle, concurrency and authorization filters', { skip
       await updateContent(id, '# First\nfirst section\n# Second\nsecond section')
       await indexNextHelpArticle(pool,async () => [vector(),[1]])
       assert.equal((await state(id)).status,'retry')
-      assert.equal((await pool.query('SELECT count(*)::int AS n FROM help_article_chunk WHERE article_id=$1',[id])).rows[0].n,0)
+      assert.equal((await pool.query(`SELECT count(*)::int AS n FROM content_chunk WHERE content_type='help_article' AND content_id=$1`,[id])).rows[0].n,0)
       await remove()
     })
     await t.test('permanent provider error stops and deletion during a call cannot resurrect chunks', async () => {
@@ -172,7 +172,7 @@ test('durable indexing lifecycle, concurrency and authorization filters', { skip
       await pool.query("UPDATE scheduled_task SET id=gen_random_uuid(),status='pending',attempts=0,result=NULL,schedule_at=now() WHERE kind='help_index' AND ref_id=$1",[id])
       await indexNextHelpArticle(pool,async inputs => { await deleteArticle(id);return embed(inputs) })
       assert.equal(await state(id),undefined)
-      assert.equal((await pool.query('SELECT count(*)::int AS n FROM help_article_chunk WHERE article_id=$1',[id])).rows[0].n,0)
+      assert.equal((await pool.query(`SELECT count(*)::int AS n FROM content_chunk WHERE content_type='help_article' AND content_id=$1`,[id])).rows[0].n,0)
     })
     await t.test('immediate indexing targets the saved article rather than unrelated backlog', async () => {
       const backlog = await create(), current = await create()
@@ -180,7 +180,7 @@ test('durable indexing lifecycle, concurrency and authorization filters', { skip
       assert.equal((await state(current)).status,'ready')
       assert.equal((await state(backlog)).status,'pending')
       const task = await state(current)
-      assert.equal((await pool.query('SELECT generation_id FROM help_article_chunk WHERE article_id=$1',[current])).rows[0].generation_id,task.id)
+      assert.equal((await pool.query(`SELECT generation_id FROM content_chunk WHERE content_type='help_article' AND content_id=$1`,[current])).rows[0].generation_id,task.id)
       await remove()
     })
     await t.test('lease takeover fences the old attempt even without a content edit', async () => {
@@ -216,7 +216,7 @@ test('durable indexing lifecycle, concurrency and authorization filters', { skip
         assert.equal(paused.result, 'paused')
         release()
         assert.equal((await worker).stale, true)
-        assert.equal((await pool.query('SELECT count(*)::int AS n FROM help_article_chunk WHERE article_id=$1', [id])).rows[0].n, 0)
+        assert.equal((await pool.query(`SELECT count(*)::int AS n FROM content_chunk WHERE content_type='help_article' AND content_id=$1`, [id])).rows[0].n, 0)
         assert.equal((await state(id)).id, paused.id)
       } finally { release(); await worker; await remove() }
     })

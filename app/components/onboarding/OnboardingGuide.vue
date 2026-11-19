@@ -127,7 +127,7 @@ function onKey(event: KeyboardEvent) {
         <template v-for="(item, index) in slides" :key="item.key">
           <video
             v-if="item.media"
-            :ref="el => { videos[item.key] = el as HTMLVideoElement | null }"
+            :ref="(el: unknown) => { videos[item.key] = el as HTMLVideoElement | null }"
             :poster="`${item.media}.webp`"
             :preload="preloadFor(index)"
             class="absolute inset-0 size-full object-cover transition-opacity duration-200"
