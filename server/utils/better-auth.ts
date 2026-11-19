@@ -25,7 +25,7 @@ export const systemAdminEmails = env.SYSTEM_ADMIN_EMAILS?.split(',').map(s => s.
 const hasGoogle = !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET)
 const hasGithub = !!(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET)
 const hasOAuth = hasGoogle || hasGithub
-const hasEmailProvider = !!env.RESEND_API_KEY
+const hasEmailProvider = hasEmailTransport(env)
 
 function parseBool(v: string | undefined): boolean | undefined {
   if (v === undefined) return undefined

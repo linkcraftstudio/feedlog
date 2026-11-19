@@ -30,6 +30,12 @@ export default defineNitroPlugin(() => {
     logger.info(`Registered email provider: resend (from=${from})`)
   }
 
+  // Cloudflare Email Sending, through the Worker's send_email binding.
+  if (process.env.EMAIL_PROVIDER === 'cloudflare') {
+    const env = () => (globalThis as typeof globalThis & { __env__?: { EMAIL?: SendEmailBinding } }).__env__
+    registerEmailProvider(cloudflareEmailProvider(emailFrom, () => env()?.EMAIL))
+  }
+
   // Console — always registered as fallback for development
   registerEmailProvider({
     name: 'console',

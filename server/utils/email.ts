@@ -37,6 +37,12 @@ export function resolveEmailProvider(): EmailProvider {
   throw new Error('No email provider registered')
 }
 
+// A provider that delivers: a Resend key, or the Cloudflare binding provider.
+// The console fallback does not count.
+export function hasEmailTransport(env: Record<string, string | undefined> = process.env): boolean {
+  return !!env.RESEND_API_KEY || env.EMAIL_PROVIDER === 'cloudflare'
+}
+
 // `.invalid` is reserved by RFC 2606 and can never resolve. Guest rows and
 // seeded sample customers carry such addresses, so every send path treats them
 // as having no email instead of handing them to a provider.
