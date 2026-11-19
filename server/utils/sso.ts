@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm'
 import { uuidv7 } from 'uuidv7'
 import { user } from '#layers/feedlog/server/db/schemas'
 
-// Product-SSO helpers: verify the customer-signed HS256 JWT, resolve the
+// Portal-SSO helpers: verify the customer-signed HS256 JWT, resolve the
 // asserted identity to a user row, guard the return_to target against open
 // redirects, and produce the signed session cookie value.
 

@@ -103,7 +103,7 @@ export function useGuestSession() {
   async function ensureIdentity(action: GuestAction): Promise<boolean> {
     if (hasAccount.value) return true
     if (!guestMay(action)) {
-      loginModal.open()
+      loginModal.openPortal()
       return false
     }
     // Already a guest, and allowed: nothing to mint.

@@ -327,6 +327,11 @@
     "checkEmail": "查收邮件",
     "localAuthRequired": "你通过 {org} 登录，此操作需要直接登录。",
     "localAuthTitle": "直接登录",
+    "configUnavailable": {
+      "title": "登录暂时不可用",
+      "description": "FeedLog 无法加载登录设置，请重试。",
+      "retry": "重试"
+    },
     "backToSignIn": "← 返回登录",
     "signingIn": "登录中……",
     "fields": {
@@ -683,7 +688,14 @@
       "modulesDesc": "每个模块都可以显示或隐藏。隐藏后，它的导航入口消失、页面无法访问，但内容与发布状态不受影响。",
       "moduleHelpCenter": "帮助中心",
       "moduleHelpCenterOn": "在门户导航中显示帮助中心，允许打开与搜索其中的文章。",
-      "moduleHelpCenterEmpty": "请先创建分区——目前还没有可展示的内容。"
+      "moduleHelpCenterEmpty": "请先创建分区——目前还没有可展示的内容。",
+      "authSection": "门户身份验证",
+      "authDesc": "将门户访客发送到你的应用登录或注册，然后通过 JWT SSO 返回。",
+      "loginUrlLabel": "外部登录网址",
+      "signupUrlLabel": "外部注册网址",
+      "authHint": "可选。只配置一个网址时，登录和注册都会使用它。门户 SSO 仅用于反馈、评论和投票；控制台登录方式保持不变。",
+      "authInvalidUrl": "请使用不含凭据或敏感查询参数的有效 HTTPS 网址。仅本地开发可使用 HTTP。",
+      "authSaveFailed": "保存门户身份验证设置失败。"
     },
     "members": {
       "title": "成员",
