@@ -126,6 +126,11 @@ must be exactly:
 <BETTER_AUTH_URL>/api/auth/callback/github
 ```
 
+### `NUXT_PUBLIC_DASHBOARD_LOGIN_ONLY` &nbsp;⬜ optional, default `false`
+
+Set `true` to hide sign-in on public pages and offer it only at `/dashboard/login`. Use it
+when only staff sign in and customers post as guests or through SSO.
+
 ### `AUTH_EMAIL_ENABLED` &nbsp;⬜ optional
 
 Force-toggle email + password login. Three states:

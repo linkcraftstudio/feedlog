@@ -37,7 +37,8 @@ const awaitingLogin = ref(false)
 // moment the draft is finished and the hand is moving to submit; below it would
 // be past the end of the reading path. State first, benefit second: the reader's
 // first question is whether they can post at all without an account.
-const showGuestHint = computed(() => !hasAccount.value && guestMay('allowPost'))
+const { dashboardLoginOnly } = useRuntimeConfig().public
+const showGuestHint = computed(() => !hasAccount.value && guestMay('allowPost') && !dashboardLoginOnly)
 
 const selectedBoardId = ref<string | null>(null)
 const title = ref('')
