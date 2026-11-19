@@ -342,14 +342,37 @@ Setting this also auto-enables sign-up email verification (override with
 
 ### `EMAIL_FROM` &nbsp;⬜ optional
 
-Sender address for outbound mail (the display name `FeedLog` is added
-automatically). Example:
+Sender address for outbound mail. The display name comes from the email
+identity below. Example:
 
 ```
 EMAIL_FROM=noreply@yourdomain.com
 ```
 
 The domain must be verified with your email provider.
+
+### Email identity
+
+Each email resolves one name and uses it for the sender, the subject and the body.
+
+- **About one organization's conversation** (an Inbox reply to a customer, a
+  handoff to the team): that organization's name.
+- **Account and site emails** (verification, password reset, password added,
+  invitations, notifications, the queue quota warning): the site name, which is
+  the default organization's name.
+
+While the default organization keeps the name `Default`, account and site emails
+say FeedLog, as before. Once it has its own name, they use that name and leave
+out the FeedLog links, contacts and attribution: the install answers for its own
+emails.
+
+An app that builds FeedLog as a Nuxt layer can set the site name in a server plugin:
+
+```ts
+export default defineNitroPlugin(nitroApp => {
+  nitroApp.hooks.hook('feedlog:email:brand', (brand) => { brand.name = 'Acme' })
+})
+```
 
 ---
 

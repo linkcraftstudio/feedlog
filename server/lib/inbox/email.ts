@@ -43,6 +43,7 @@ export async function sendInboxEmail(
     await sendEmail({
       to: row.email,
       idempotencyKey: `inbox-reply/${itemId}`,
+      fromName: row.product_name,
       subject: topic ? `${row.product_name}: A reply about ${topic}` : `${row.product_name}: A reply to your question`,
       ...renderInboxReplyEmail({ reply: text, productName: row.product_name, topic, url }),
     })

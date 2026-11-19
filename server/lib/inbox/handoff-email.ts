@@ -74,7 +74,7 @@ export async function deliverHandoffEmail(runtime: InboxRuntime, task: HandoffEm
     for (const recipient of recipients) {
       if (delivered.includes(recipient.id)) continue
       try {
-        await sendEmail({ to: recipient.email, idempotencyKey: `inbox-handoff/${task.ref_id}/${recipient.id}`,
+        await sendEmail({ to: recipient.email, idempotencyKey: `inbox-handoff/${task.ref_id}/${recipient.id}`, fromName: conversation.name,
           ...renderInboxHandoffEmail({ productName: conversation.name, url, ...context }) })
         delivered.push(recipient.id)
         // Save each successful recipient so retries do not resend the whole batch.

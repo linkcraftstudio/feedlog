@@ -10,6 +10,7 @@ import { findOwnMemberPreference, findStaffFeedbackRecipients, saveMemberNotific
 import { renderNotificationEmail } from '../server/utils/email-templates'
 import { requireOrgMember } from '../server/utils/auth'
 import { registerEmailProvider, type SendEmailOptions } from '../server/utils/email'
+import { emailBrandName } from '../server/utils/email-brand'
 import { sendNotification } from '../server/utils/notification-send'
 import { registerPostLinkBuilder } from '../server/utils/post-link-builder'
 
@@ -178,6 +179,7 @@ test('only staff feedback emails link to personal settings, in HTML and plain te
 test('delivery uses the organization link builder for settings without sending external email', async () => {
   const delivered: SendEmailOptions[] = []
   const previousProvider = process.env.EMAIL_PROVIDER
+  Object.assign(globalThis, { emailBrandName })
   registerEmailProvider({ name: 'preference-test', send: async options => { delivered.push(options) } })
   process.env.EMAIL_PROVIDER = 'preference-test'
   registerPostLinkBuilder((slug, path) => `https://${slug}.example.com${path}`)

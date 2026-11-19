@@ -71,10 +71,12 @@ const emailAndPassword = emailLoginEnabled
     password: { hash: hashPassword, verify: verifyPassword },
     ...(hasEmailProvider && {
       sendResetPassword: async ({ user, url }: { user: { email: string; name: string }; url: string }) => {
+        const brandName = await emailBrandName()
         await sendEmail({
+          fromName: brandName,
           to: user.email,
-          subject: 'Reset your FeedLog password',
-          html: renderResetPasswordEmail({ url, name: user.name }),
+          subject: `Reset your ${brandName ?? 'FeedLog'} password`,
+          html: renderResetPasswordEmail({ url, name: user.name, brandName }),
         })
       },
     }),
@@ -87,10 +89,12 @@ const emailVerification = hasEmailProvider
     autoSignInAfterVerification: true,
     expiresIn: 3600,
     sendVerificationEmail: async ({ user, url }: { user: { email: string; name: string }; url: string }) => {
+      const brandName = await emailBrandName()
       await sendEmail({
+        fromName: brandName,
         to: user.email,
-        subject: 'Confirm your email to start using FeedLog',
-        html: renderVerificationEmail({ url, name: user.name }),
+        subject: `Confirm your email to start using ${brandName ?? 'FeedLog'}`,
+        html: renderVerificationEmail({ url, name: user.name, brandName }),
       })
     },
   }
@@ -183,10 +187,12 @@ export function buildAuthConfig(overrides: AuthConfigOverrides = {}): BetterAuth
     if (!hasEmailProvider) return
     const baseUrl = env.BETTER_AUTH_URL || 'http://localhost:3000'
     const url = `${baseUrl}/invite?id=${data.id}`
+    const brandName = await emailBrandName()
     await sendEmail({
+      fromName: brandName,
       to: data.email,
-      subject: `You're invited to join ${data.organization.name} on FeedLog`,
-      html: renderInvitationEmail({ url, orgName: data.organization.name }),
+      subject: invitationSubject(data.organization.name, brandName),
+      html: renderInvitationEmail({ url, orgName: data.organization.name, brandName }),
     })
   }
   const rawSendInvite: SendInvite = overrides.organizationExtras?.sendInvitationEmail ?? layerDefaultSendInvite
