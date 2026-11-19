@@ -11,6 +11,7 @@ export const createHelpCollectionSchema = z.object({
 })
 
 export const updateHelpCollectionSchema = z.object({
+  aiEnabled: z.boolean().optional(),
   name: z.string().trim().min(1, 'Give the collection a name').max(100, 'Name must be 100 characters or less').optional(),
   description: z.string().trim().max(200, 'Description must be 200 characters or less').nullable().optional(),
   icon: z.enum(HELP_COLLECTION_ICONS).optional(),

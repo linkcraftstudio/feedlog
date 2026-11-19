@@ -26,6 +26,11 @@ else — OAuth, AI, file uploads, email — is optional.
 
 - **[Markdown editor architecture](./markdown-editor.md)** — visual editing, historical content preservation, unchanged entry behavior and deployment verification.
 
+## AI Training
+
+- [Configuration](./configuration.md#website-knowledge) — website extraction, cleanup, embeddings and concurrency.
+- [Docker deployment](./deploy/docker.md) — HTTP-only website imports without a browser service.
+
 ## Community
 
 - [README](../README.md)

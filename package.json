@@ -20,7 +20,8 @@
     "agent:prompt": "node --import tsx scripts/preview-agent-prompt.ts",
     "agent:test": "node --env-file=.env --import tsx --test tests/agent-*.test.ts",
     "agent:search-eval": "node --env-file=.env --import tsx scripts/evaluate-agent-help-search.ts",
-    "mcp:test": "node --import tsx --test tests/mcp*.test.ts"
+    "mcp:test": "node --import tsx --test tests/mcp*.test.ts",
+    "web-source:test": "node --import tsx --test tests/web-source.test.ts tests/web-source-failure.test.ts tests/web-source-discovery.test.ts tests/web-source-data.test.ts tests/web-source-fetch.test.ts tests/web-source-storage.test.ts tests/ai-training.test.ts tests/content-chunk.test.ts tests/web-source-index-integrity.test.ts tests/web-source-concurrency.test.ts tests/knowledge-search.test.ts tests/knowledge-embedding-config.test.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "4.0.69",
@@ -63,6 +64,7 @@
     "@vercel/blob": "^2.3.3",
     "@vercel/queue": "^0.7.0",
     "@vueuse/core": "^14.2.1",
+    "acorn": "8.16.0",
     "ai": "7.0.105",
     "aws4fetch": "^1.0.20",
     "better-auth": "1.7.6",
@@ -73,7 +75,9 @@
     "dompurify": "^3.4.15",
     "drizzle-kit": "^0.31.10",
     "drizzle-orm": "^0.45.2",
+    "fast-xml-parser": "5.4.2",
     "heic-to": "1.6.6",
+    "htmlparser2": "8.0.2",
     "image-meta": "0.2.2",
     "jose": "^6.2.3",
     "js-tiktoken": "1.0.21",

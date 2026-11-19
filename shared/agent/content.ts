@@ -13,7 +13,7 @@ const commentFields = { ...feedbackFields, comment_id: z.uuid(), comment_text: z
 export const contentPart = z.discriminatedUnion('type', [
   systemEventPart,
   textPart, imagePart,
-  z.object({ type: z.literal('article_reference'), articles: z.array(z.object({ article_id: z.uuid(), slug: z.string().min(1), title: z.string().min(1) })).min(1) }),
+  z.object({ type: z.literal('article_reference'), articles: z.array(z.object({ article_id: z.uuid(), slug: z.string().min(1), title: z.string().min(1), url: z.url().refine(value => ['https:', 'http:'].includes(new URL(value).protocol)).optional() })).min(1) }),
   ...(['feedback_created', 'feedback_updated', 'feedback_upvoted'] as const).map(type => z.object({ type: z.literal(type), ...feedbackFields })),
   ...(['feedback_comment_added', 'feedback_comment_updated'] as const).map(type => z.object({ type: z.literal(type), ...commentFields })),
 ])

@@ -214,6 +214,10 @@ export function buildAuthConfig(overrides: AuthConfigOverrides = {}): BetterAuth
         await overrides.organizationExtras?.organizationHooks?.afterRemoveMember?.(data)
       },
       afterDeleteOrganization: async (data, context) => {
+        const [{ withHelpPool }, { removeWebSourceOrganization }] = await Promise.all([
+          import('../lib/help-search/runtime'), import('../services/web-source'),
+        ])
+        await withHelpPool(undefined, pool => removeWebSourceOrganization(pool, data.organization.id))
         await cleanupOrganizationMcpAccess(data.organization.id, data.user.id)
         await overrides.organizationExtras?.organizationHooks?.afterDeleteOrganization?.(data, context)
       },

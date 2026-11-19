@@ -1,6 +1,8 @@
-export const HELP_EMBEDDING_MODEL = 'text-embedding-3-large'
-export const HELP_EMBEDDING_DIMENSIONS = 768
-export const HELP_INDEX_VERSION = 'heading-v1'
+export const HELP_EMBEDDING_MODEL = process.env.KNOWLEDGE_EMBEDDING_MODEL || 'text-embedding-3-large'
+const configuredDimensions = Number(process.env.KNOWLEDGE_EMBEDDING_DIMENSIONS || 768)
+if (!Number.isInteger(configuredDimensions) || configuredDimensions < 1 || configuredDimensions > 16000) throw new Error('Invalid KNOWLEDGE_EMBEDDING_DIMENSIONS')
+export const HELP_EMBEDDING_DIMENSIONS = configuredDimensions
+export const HELP_INDEX_VERSION = HELP_EMBEDDING_DIMENSIONS === 768 ? 'heading-v1' : `heading-v1:dim-${HELP_EMBEDDING_DIMENSIONS}`
 
 export function helpVectorsEnabled() { return process.env.HELP_VECTOR_SEARCH === 'true' }
 export class HelpEmbeddingError extends Error {
@@ -15,7 +17,7 @@ export async function embedHelpTexts(input: string[], timeoutMs = 20000): Promis
     response = await fetch(`${(process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '')}/embeddings`, {
       method: 'POST', signal: AbortSignal.timeout(timeoutMs),
       headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: HELP_EMBEDDING_MODEL, dimensions: HELP_EMBEDDING_DIMENSIONS, input }),
+      body: JSON.stringify({ model: HELP_EMBEDDING_MODEL, ...(HELP_EMBEDDING_MODEL.startsWith('text-embedding-3-') ? { dimensions: HELP_EMBEDDING_DIMENSIONS } : {}), input }),
     })
   } catch { throw new HelpEmbeddingError('provider_unavailable', true) }
   if (!response.ok) throw new HelpEmbeddingError(`provider_${response.status}`, [408, 409, 429].includes(response.status) || response.status >= 500)

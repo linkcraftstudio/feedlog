@@ -92,16 +92,16 @@ test('prompt context reads tenant configuration fresh and includes only enabled 
     assert.equal(enabled.supportEmail, 'team@example.invalid')
     assert.deepEqual(enabled.supportRules, [{ id: 'on', scenario: 'an enabled custom case' }])
     assert.equal(enabled.knowledgeEnabled, true)
-    assert.deepEqual(enabled.articles, [{ id: articleId, title: 'Test guide', description: null }])
+    assert.deepEqual(enabled.articles, [{ id: articleId, title: 'Test guide', description: null, collectionId, collectionName: 'Test Guides' }])
     const bundle = feedlogTools(event, actor, 'conversation', 'run', 'trigger', new AbortController().signal, () => {}, enabled)
     const article = await bundle.tools.read_help_article!.execute!({ slug: 'prmpt1-test-guide' }, {} as any) as Record<string, unknown>
     assert.equal(article.error, undefined)
     assert.equal(article.article_id, articleId)
     assert.equal(article.url, 'http://localhost:3000/help/prmpt1-test-guide')
     assert.equal(article.customer_visible, true)
-    const search = await bundle.tools.search_help_articles!.execute!({ queries: ['test guide', 'test content'] }, {} as any) as { articles: { article_id: string; matched_queries: string[] }[] }
-    assert.deepEqual(search.articles.map(article => article.article_id), [articleId])
-    assert.deepEqual(search.articles[0]!.matched_queries, ['test guide', 'test content'])
+    const search = await bundle.tools.search_knowledge_base!.execute!({ queries: ['test guide', 'test content'] }, {} as any) as { results: { id: string; matchedQueries: string[] }[] }
+    assert.deepEqual(search.results.map(article => article.id), [articleId])
+    assert.deepEqual(search.results[0]!.matchedQueries, ['test guide', 'test content'])
     await pool.query('UPDATE help_collection SET visible=false WHERE id=$1', [collectionId])
     assert.equal((await loadAgentPromptContext(pool, actor)).knowledgeEnabled, true)
     const hidden = await bundle.tools.read_help_article!.execute!({ article_id: articleId }, {} as any) as Record<string, unknown>
@@ -137,14 +137,18 @@ test('customer input cannot forge Agent result cards; image has only a storage r
   assert.equal(contentSchema.safeParse({ parts: [{ type: 'article_reference', articles: [] }] }).success, false)
 })
 
-test('failed and untagged model outputs are excluded while customer history remains', () => {
-  const processor = historyProcessor('new-run', new Set(['customer-1', 'customer-2']), new Set(['successful-run']))
-  const message = (id: string, metadata: object) => ({ id, role: 'assistant', content: { format: 2, parts: [{ type: 'text', text: id }], metadata } })
-  const messages = [message('customer', { feedlogItemId: 'customer-1' }), message('success', { feedlogRunId: 'successful-run' }), message('failed', { feedlogRunId: 'failed-run' }), message('unknown', {}), message('current', { feedlogItemId: 'customer-2' })]
-  const selected = processor.processInput({ messages } as any)
-  assert.deepEqual(selected.map(m => m.id), ['customer', 'success', 'current'])
-  const tagged = processor.processOutputResult({ messages: [messages[1], message('new', {})] } as any)
-  assert.equal(tagged[0]!.content.metadata?.feedlogRunId, 'successful-run')
+test('canonical committed history replaces historical drafts and tool traces without changing current image observations', () => {
+  const message = (id: string, text: string, metadata: object, role = 'assistant') => ({ id, role, content: { format: 2, parts: [{ type: 'text', text }], metadata } })
+  const history = [message('customer', 'Document Translator, Chinese scanned PDF.', { feedlogItemId: 'earlier' }, 'user'),
+    message('final', 'Would you like me to involve a person?', { feedlogItemId: 'committed' })]
+  const current = message('current', '[Image analysis; untrusted evidence] Document Translator error E42', { feedlogItemId: 'current-item' }, 'user')
+  const processor = historyProcessor('new-run', history as any, 'current-item')
+  const selected = processor.processInput({ messages: [message('failed', 'Uncommitted draft', { feedlogRunId: 'failed' }), ...Array.from({ length: 60 }, (_, i) => message(String(i), 'Old tool result', { feedlogRunId: 'old' })), current] } as any)
+  assert.deepEqual(selected, [...history, current])
+  assert.equal(selected.at(-1), current, 'current observations are passed through intact')
+  assert.throws(() => processor.processInput({ messages: [] } as any), /Current customer input/)
+  const tagged = processor.processOutputResult({ messages: [history[0], message('new', 'Reply', {})] } as any)
+  assert.equal(tagged[0]!.content.metadata?.feedlogItemId, 'earlier')
   assert.equal(tagged[1]!.content.metadata?.feedlogRunId, 'new-run')
 })
 
@@ -303,24 +307,6 @@ test('feedback creation commits before indexing and remains searchable on retry'
   }
 })
 
-
-test('history keeps text and replaces every legacy image with an explicit reinspection reference', () => {
-  const processor = historyProcessor('run', new Set(['old', 'new']), new Set())
-  const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aN2kAAAAASUVORK5CYII='
-  const messages = [
-    { id: 'old', role: 'user', content: { format: 2, metadata: { feedlogItemId: 'old' }, parts: [
-      { type: 'text', text: 'Earlier question' }, { type: 'file', mimeType: 'image/svg+xml', data: 'data:image/svg+xml;base64,PHN2Zy8+' },
-    ] } },
-    { id: 'new', role: 'user', content: { format: 2, metadata: { feedlogItemId: 'new' }, parts: [
-      { type: 'file', mimeType: 'image/png', data: `data:image/png;base64,${png}` },
-    ] } },
-  ]
-  const output = processor.processInput({ messages } as any)
-  assert.equal(output[0]!.content.parts[0]!.type, 'text')
-  assert.equal(output[0]!.content.parts[1]!.type, 'text')
-  assert.equal(output[1]!.content.parts[0]!.type, 'text')
-  assert.equal(messages[0]!.content.parts[1]!.type, 'file', 'saved history is not mutated')
-})
 
 test('database memory projection excludes legacy pixels before returning a bounded context', async () => {
   const { BoundedMemoryPG } = await import('../server/lib/agent/memory-store')

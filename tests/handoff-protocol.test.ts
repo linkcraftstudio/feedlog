@@ -30,7 +30,7 @@ test('poisoned tool text and subsequent unsupported assistant claims are exclude
     id: String(index), role: index % 2 ? 'assistant' : 'user', createdAt: new Date(index),
     content: { format: 2, parts: [{ type: 'text', text }], metadata: index % 2 ? { feedlogRunId: String(index) } : { feedlogItemId: String(index) } },
   })) as MastraDBMessage[]
-  const processor = historyProcessor('current', new Set(['0', '2']), new Set(['1', '3']))
+  const processor = historyProcessor('current', [messages[0]!], '2')
   const result = await processor.processInput({ messages } as Parameters<typeof processor.processInput>[0])
   assert.deepEqual(result.map(message => message.id), ['0', '2'])
 })

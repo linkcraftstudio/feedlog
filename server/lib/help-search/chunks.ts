@@ -9,14 +9,14 @@ export function cleanHelpText(text: string) {
   return text.replace(/!\[[^\]]*\]\([^)]*\)/g, '').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/<[^>]*>/g, '').replace(/\r\n/g, '\n').trim()
 }
-export function chunkHelpArticle(article: { title: string; description: string | null; content: string }): HelpChunk[] {
+export function chunkHelpArticle(article: { title: string; description: string | null; content: string }, options: { clean?: boolean } = {}): HelpChunk[] {
   // Fail explicitly instead of silently indexing a truncated article.
   if (article.content.length > 500000) throw new HelpEmbeddingError('article_too_large', false)
   const enc = tokens(), chunks: HelpChunk[] = [], headings: string[] = []
   const sections: { heading: string; body: string }[] = []
   let body: string[] = [], fence = ''
   const flush = () => { if (body.join('\n').trim()) sections.push({ heading: headings.filter(Boolean).join(' > '), body: body.join('\n').trim() }); body = [] }
-  for (const line of cleanHelpText(article.content).split('\n')) {
+  for (const line of (options.clean === false ? article.content : cleanHelpText(article.content)).split('\n')) {
     const marker = line.match(/^\s*(`{3,}|~{3,})/)
     if (marker) { if (!fence) fence = marker[1]![0]!; else if (marker[1]![0] === fence) fence = '' }
     const heading = !fence && line.match(/^(#{1,6})\s+(.+)$/)

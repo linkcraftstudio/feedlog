@@ -67,7 +67,7 @@ async function fixture() {
       await pool.query('DELETE FROM conversation_item WHERE conversation_id=$1', [id])
     }
     await pool.query("DELETE FROM scheduled_task WHERE kind='help_index' AND ref_id IN (SELECT id FROM help_article WHERE org_id=$1)", [orgId])
-    await pool.query('DELETE FROM help_article_chunk WHERE org_id=$1', [orgId])
+    await pool.query('DELETE FROM content_chunk WHERE org_id=$1', [orgId])
     for (const table of ['vote', 'comment', 'post_subscription']) await pool.query(`DELETE FROM ${table} WHERE post_id IN (SELECT id FROM post WHERE org_id=$1)`, [orgId])
     for (const table of ['post', 'board', 'help_article', 'help_collection', 'conversation']) await pool.query(`DELETE FROM ${table} WHERE org_id=$1`, [orgId])
     await pool.query('DELETE FROM member WHERE organization_id=$1', [orgId])

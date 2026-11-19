@@ -8,7 +8,7 @@ import { startStreamHeartbeat } from './stream-heartbeat'
 import { z } from 'zod'
 import { uuidv7 } from 'uuidv7'
 import { toAISdkStream } from '@mastra/ai-sdk'
-import { createEventStream, type H3Event } from 'h3'
+import { createEventStream, getRequestURL, type H3Event } from 'h3'
 import { chatInput, contentSchema, type Part } from '#layers/feedlog/shared/agent/content'
 import { type Actor, agentRuntime, agentError } from '#layers/feedlog/server/lib/agent/runtime'
 import { handoff } from '../inbox/service'
@@ -119,6 +119,7 @@ export async function streamAgentReply(event: H3Event, actor: Actor, options: { 
       await send('run', { runId: run.id, itemId: replyId, run: publicRun(run) })
       if (!aiConfigured) throw new Error('AI unavailable')
       prepared = await prepareAgent(event, actor, id, run, item, signal, () => {}, unavailable => { handoffUnavailable = !!unavailable; controller.abort() }, recordUsage, preparedMessage, () => controller.abort())
+      agentTiming('prepared', { runId: run.id, elapsedMs: Math.round(performance.now() - started) })
       let firstText = true
       let failed = false
       let executionError: unknown
@@ -127,7 +128,7 @@ export async function streamAgentReply(event: H3Event, actor: Actor, options: { 
       const output = await prepared.agent.stream([prepared.input], {
         runId: run.id, memory: { thread: id, resource: prepared.resourceId, options: { lastMessages: prepared.historySize } },
         maxSteps: resolveAgentMaxSteps(process.env.AGENT_MAX_STEPS), toolCallConcurrency: 1, abortSignal: modelSignal, onError: error => { failed = true; executionError = error }, onAbort: () => { failed = true },
-        onStepFinish: step => recordUsage(step.usage),
+        onStepFinish: step => { agentTiming('model_step', { runId: run.id, elapsedMs: Math.round(performance.now() - started) }); return recordUsage(step.usage) },
       })
       const gate = handoffTextGate()
       const writeText = async (delta: string) => {
@@ -149,25 +150,29 @@ export async function streamAgentReply(event: H3Event, actor: Actor, options: { 
       })
       await writeText(gate.finish())
       if (failed || signal.aborted) throw executionError ?? new Error('Model execution did not complete')
+      const finalizeStarted = performance.now()
       await runtime.memory.settled()
+      agentTiming('memory_settled', { runId: run.id, elapsedMs: Math.round(performance.now() - finalizeStarted) })
       let text = reply.message.parts.filter(part => part.type === 'text').map(part => part.text).join('\n\n').trim()
       let parts = await prepared.resultParts()
+      const readSourceUrls = text ? await prepared.sourceUrls() : []
       const citedIds = [...new Set(parts.flatMap(part => part.type === 'article_reference'
         ? part.articles.map(article => article.article_id) : []))]
       if (text && citedIds.length) {
-        const { rows: candidates } = await runtime.pool.query<{ id: string; title: string; content: string }>(
-          'SELECT id,title,content FROM help_article WHERE id=ANY($1::uuid[]) AND org_id=$2 AND ai_enabled',
-          [citedIds, actor.orgId],
-        )
+        const candidates = await prepared.citationCandidates()
         const question = item.content.parts.filter((part: Part) => part.type === 'text').map((part: { text: string }) => part.text).join('\n')
+        const verificationStarted = performance.now()
         const verdict = await verifyHelpCitations(question, text, candidates, {
           timeoutMs: Math.max(1000, Math.min(12000, activity.deadline() - Date.now() - 1000)),
+          context: prepared.conversationContext,
         })
-        if (verdict.status === 'unavailable') console.warn('[agent] Citation verification unavailable', { runId: run.id })
+        agentTiming('citation_verify', { runId: run.id, elapsedMs: Math.round(performance.now() - verificationStarted), candidates: candidates.length, contentChars: candidates.reduce((sum, source) => sum + source.content.length, 0), status: verdict.status })
+        if (verdict.status === 'unavailable') console.warn('[agent] Citation verification unavailable', { runId: run.id, reason: verdict.reason, providerStatus: verdict.providerStatus })
         const verifiedIds = new Set(verdict.matches.map(match => match.id))
         parts = keepVerifiedHelpReferences(parts, verifiedIds)
-        text = removeUnverifiedAnswerLinks(text, candidates, verifiedIds)
+        text = removeUnverifiedAnswerLinks(text, candidates, verifiedIds, readSourceUrls)
       }
+      else if (readSourceUrls.length) text = removeUnverifiedAnswerLinks(text, [], new Set(), readSourceUrls)
       const content = contentSchema.parse({ parts: [...(text ? [{ type: 'text', text }] : []), ...parts] })
       const { lastSeq, takeover } = await completeRun(runtime, id, actor, run.id, replyId, content, usage)
       await requestSchedule(event)

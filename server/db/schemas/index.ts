@@ -5,6 +5,7 @@ import { conversation } from './widget'
 import { user, session, account, organization, member, invitation } from './auth'
 
 export { conversationItem, agentRun } from './agent'
+export { aiTrainingWebsite, aiTrainingWebPage, aiTrainingWebsiteRun } from './ai-training-website'
 
 // Auth + organization table definitions and relations.
 export {
@@ -286,4 +287,4 @@ export const changelogReactionRelations = relations(changelogReaction, ({ one })
 export * from './scheduler'
 
 export * from './oauth'
-export * from './help-index'
+export * from './content-chunk'

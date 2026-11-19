@@ -1,4 +1,8 @@
-import { recoverLocked } from '../server/lib/inbox/service'
+import { prepareAgent } from '../server/lib/agent/agent'
+import { removeWebSource } from '../server/services/web-source'
+import { updateAiTrainingReference } from './fixtures/ai-training-reference'
+import { recoverLocked, staffCommand } from '../server/lib/inbox/service'
+import { readConversationContext } from '../server/lib/agent/conversation-context'
 import { syncRunTask } from '../server/lib/inbox/tasks'
 import { inboxTick } from '../server/lib/inbox/tick'
 /* eslint-disable @typescript-eslint/no-explicit-any -- Fixtures exercise partial request contexts and heterogeneous tool outputs. */
@@ -10,7 +14,7 @@ import { HANDOFF_NOTICE } from '../shared/inbox/state'
 import { chatInput, customerContent, pageContext } from '../shared/agent/content'
 import { readAgentEvents } from '../shared/agent/sse'
 import { agentRuntime, transaction, appendItem, lockConversation, publicItem, type Actor } from '../server/lib/agent/runtime'
-import { startRun, failRun } from '../server/lib/agent/conversations'
+import { startRun, failRun, completeRun } from '../server/lib/agent/conversations'
 import { feedlogTools } from '../server/lib/agent/tools'
 import { searchHelpArticles } from '../server/lib/agent/help-search'
 import { loadAgentPromptContext } from '../server/lib/agent/prompts/context'
@@ -131,28 +135,98 @@ test('AI visibility is independent of publishing and public module, with no inte
     assert.equal((await searchHelpArticles(pool, 'missing-org', { queries: ['report export'] }, 'http://example.localhost:3000')).articles.length, 0)
     const context = await loadAgentPromptContext(pool, f.actor)
     assert.deepEqual(context.articles.map(article => article.id).sort(), ids.slice(0, 2).sort())
-    assert.ok(context.articles.every(article => Object.keys(article).sort().join(',') === 'description,id,title'))
+    assert.ok(context.articles.every(article => Object.keys(article).sort().join(',') === 'collectionId,collectionName,description,id,title'))
     assert.doesNotMatch(renderAgentSystemPrompt(context), /Export as CSV/)
     const otherTenant = await loadAgentPromptContext(pool, { ...f.actor, orgId: 'default-org' })
     assert.ok(otherTenant.articles.every(article => !ids.includes(article.id)))
     const tools = feedlogTools(event, f.actor, f.conversationId, uuidv7(), 'input', new AbortController().signal, () => {}, context)
     const call = (name: string, input: unknown) => tools.tools[name]!.execute!(input as any, {} as any) as Promise<any>
     assert.equal((await call('read_help_article', { article_id: ids[1] })).customer_visible, false)
-    assert.ok((await call('cite_help_articles', { article_ids: [ids[1]] })).error)
+    assert.deepEqual(await tools.sourceUrls(), [], 'an internal article must not become a public navigation link')
+    assert.ok((await call('cite_knowledge_sources', { sources: [{ sourceType: 'help_article', id: ids[1] }] })).error)
     await call('read_help_article', { article_id: ids[0] })
-    await call('cite_help_articles', { article_ids: [ids[0]] })
+    assert.equal((await tools.sourceUrls()).length, 1)
+    await call('cite_knowledge_sources', { sources: [{ sourceType: 'help_article', id: ids[0] }] })
     assert.equal((await tools.resultParts()).length, 1)
+    {
+      const setting = { scope: 'collection' as const, id: collectionId, enabled: false }
+      await updateAiTrainingReference(pool, f.orgId, setting)
+      assert.equal((await loadAgentPromptContext(pool, f.actor)).knowledgeEnabled, false)
+      assert.ok((await call('read_help_article', { article_id: ids[0] })).error, 'already-created tools recheck current gates')
+      assert.equal((await tools.resultParts()).length, 0, 'closing a source after reading removes its final citation')
+      assert.deepEqual(await tools.citationCandidates(), [], 'closed collections cannot enter citation review')
+      assert.deepEqual(await tools.sourceUrls(), [], 'disabled articles must not remain available as navigation links')
+      await updateAiTrainingReference(pool, f.orgId, { ...setting, enabled: true })
+      assert.equal((await tools.resultParts()).length, 1)
+    }
     await pool.query('UPDATE organization SET metadata=$2 WHERE id=$1', [f.orgId, JSON.stringify({ portalModules: { helpCenter: false } })])
     await pool.query('UPDATE help_collection SET visible=false WHERE id=$1', [collectionId])
     await pool.query('UPDATE help_article SET description=$2 WHERE id=$1', [ids[1], 'Internal "export" guide\nMore details'])
     const refreshed = await loadAgentPromptContext(pool, f.actor)
     assert.equal(refreshed.knowledgeEnabled, true)
     assert.deepEqual(refreshed.articles.map(article => article.id).sort(), ids.slice(0, 2).sort())
-    const catalog = JSON.parse(renderAgentSystemPrompt(refreshed).match(/^\[\n[\s\S]*?\n\]$/m)![0])
-    assert.deepEqual(catalog, refreshed.articles)
-    assert.equal(catalog.find((article: { id: string }) => article.id === ids[1]).description, 'Internal "export" guide\nMore details')
+    const prompt = renderAgentSystemPrompt(refreshed)
+    assert.match(prompt, /Start with `search_knowledge_base`/)
+    assert.match(prompt, /## Article Catalog/)
+    assert.ok(refreshed.articles.some(article => article.description?.includes('Internal')))
     assert.equal((await tools.resultParts()).length, 0)
   } finally { await f.cleanup() }
+})
+
+test('website AI Reference gates remove context, reads and final citations while preserving the indexed page', async () => {
+  const f = await fixture(), sourceId = uuidv7(), pageId = uuidv7()
+  try {
+    await pool.query("INSERT INTO ai_training_website(id,org_id,url,name,input_type,frequency) VALUES($1,$2,'https://example.com','Website','website','manual')", [sourceId, f.orgId])
+    await pool.query("INSERT INTO ai_training_web_page(id,org_id,website_id,url,metadata,indexed_at) VALUES($1,$2,$3,'https://example.com/guide',jsonb_build_object('title','Widget setup','content','Install the widget.'),now())", [pageId, f.orgId, sourceId])
+    const context = await loadAgentPromptContext(pool, f.actor)
+    assert.equal(context.websiteSourcesAvailable, true)
+    assert.equal(context.knowledgeEnabled, true)
+    assert.deepEqual(context.articles, [], 'website knowledge does not require any help articles')
+    assert.match(renderAgentSystemPrompt(context), /Start with `search_knowledge_base`/)
+    const tools = feedlogTools(event, f.actor, f.conversationId, uuidv7(), 'input', new AbortController().signal, () => {}, context)
+    const call = (name: string, input: unknown) => tools.tools[name]!.execute!(input as any, {} as any) as Promise<any>
+    assert.equal(tools.tools.cite_help_articles, undefined)
+    assert.ok((await call('cite_knowledge_sources', { sources: [{ sourceType: 'web_page', id: pageId }] })).error, 'search-only or unread pages cannot be cited')
+    assert.equal((await call('read_web_page', { id: pageId })).content, 'Install the widget.')
+    assert.ok((await call('cite_knowledge_sources', { sources: [{ sourceType: 'help_article', id: pageId }] })).error, 'a page cannot be cited as a help article')
+    await call('cite_knowledge_sources', { sources: [{ sourceType: 'web_page', id: pageId }] })
+    assert.equal((await tools.resultParts()).length, 1)
+    for (let i = 0; i < 7; i++) {
+      const extra = uuidv7()
+      await pool.query("INSERT INTO ai_training_web_page(id,org_id,website_id,url,metadata,indexed_at) VALUES($1,$2,$3,$4,jsonb_build_object('title','Other documentation','content','Another product fact.'),now())", [extra, f.orgId, sourceId, `https://example.com/other-${i}`])
+      await call('read_web_page', { id: extra })
+    }
+    const selected = await tools.citationCandidates()
+    assert.deepEqual(selected.map(source => source.id), [pageId], 'reading eight pages must not expand one explicitly selected citation')
+    await pool.query("UPDATE ai_training_web_page SET metadata=jsonb_set(metadata,'{content}',to_jsonb('Install the widget. This instruction has been withdrawn.'::text)) WHERE id=$1", [pageId])
+    assert.deepEqual(await tools.citationCandidates(), [], 'changed scope invalidates stale evidence even when the old sentence remains')
+    await call('read_web_page', { id: pageId })
+    assert.deepEqual(await tools.citationCandidates(), [], 'rereading does not silently replace the previously selected source snapshot')
+    await pool.query("UPDATE ai_training_web_page SET metadata=jsonb_set(metadata,'{content}',to_jsonb('Install the widget.'::text)) WHERE id=$1", [pageId])
+    await call('read_web_page', { id: pageId })
+    assert.ok((await call('cite_knowledge_sources', { sources: Array(4).fill({ sourceType: 'web_page', id: pageId }) })).error)
+    assert.deepEqual((await tools.citationCandidates()).map(source => source.id), [pageId], 'an invalid tool call must preserve the last valid selection')
+    await pool.query("UPDATE ai_training_web_page SET metadata=jsonb_set(metadata,'{title}',to_jsonb('A different product'::text)) WHERE id=$1", [pageId])
+    await call('read_web_page', { id: pageId })
+    assert.deepEqual(await tools.citationCandidates(), [], 'a reread cannot silently change the title scope of a previous citation')
+    await pool.query("UPDATE ai_training_web_page SET metadata=jsonb_set(metadata,'{title}',to_jsonb('Widget setup'::text)) WHERE id=$1", [pageId])
+    await call('read_web_page', { id: pageId })
+    {
+      const setting = { scope: 'source' as const, id: sourceId, enabled: false }
+      await updateAiTrainingReference(pool, f.orgId, setting)
+      assert.equal((await loadAgentPromptContext(pool, f.actor)).websiteSourcesAvailable, false)
+      assert.ok((await call('read_web_page', { id: pageId })).error)
+      assert.equal((await tools.resultParts()).length, 0)
+      assert.deepEqual(await tools.citationCandidates(), [], 'closed websites cannot enter citation review')
+      assert.deepEqual(await tools.sourceUrls(), [], 'a closed website must not remain available as a navigation link')
+      assert.ok((await pool.query('SELECT indexed_at FROM ai_training_web_page WHERE id=$1', [pageId])).rows[0].indexed_at)
+      await updateAiTrainingReference(pool, f.orgId, { ...setting, enabled: true })
+      assert.equal((await tools.resultParts()).length, 1)
+    }
+  } finally {
+    await removeWebSource(pool, f.orgId, sourceId)
+    await f.cleanup()
+  }
 })
 
 test('feedback correction enforces ten-minute/community limits and falls back to owned comments; writes fence expired runs', async () => {
@@ -277,7 +351,7 @@ test('handoff recovers write, task and receipt-refresh failures without customer
       // Exercise a real aborted transaction, persistent task failure and an unavailable card refresh.
       if (failure === 'task') await pool.query("UPDATE agent_run SET started_at=clock_timestamp()-interval '3 minutes',deadline_at=clock_timestamp()-interval '1 second' WHERE id=$1", [execution.run.id])
       pool.query = ((text: string, ...args: any[]) => {
-        if (failure === 'receipt-refresh' && text.startsWith('SELECT metadata FROM organization')) {
+        if (failure === 'receipt-refresh' && text.includes('FROM post p LEFT JOIN board b')) {
           failures++
           return Promise.reject(new Error('Simulated receipt refresh failure'))
         }
@@ -369,5 +443,127 @@ test('Widget hides internal lifecycle events and exposes only a short handoff no
       assert.deepEqual(visible?.content, { parts: [{ type: 'text', text: HANDOFF_NOTICE }] })
     } else assert.equal(visible, null)
     assert.equal(item.content.parts[0]!.kind, kind)
+  }
+})
+
+
+test('production Agent preparation uses committed business history and makes the same context available to recovery and citations', async () => {
+  const f = await fixture()
+  const savedKey = process.env.OPENAI_API_KEY, savedModel = process.env.OPENAI_TEXT_MODEL
+  process.env.OPENAI_API_KEY = 'synthetic-test-key'; process.env.OPENAI_TEXT_MODEL = 'mock'
+  try {
+    const first = await startRun(runtime, f.conversationId, f.actor, send('I use Document Translator with a scanned PDF.'))
+    await completeRun(runtime, f.conversationId, f.actor, first.run.id, uuidv7(), { parts: [{ type: 'text', text: 'Plus is required. Would you like me to involve a person?' }] })
+    const second = await startRun(runtime, f.conversationId, f.actor, send('Okay.'))
+    const prepared = await prepareAgent(event, f.actor, f.conversationId, second.run, second.item, new AbortController().signal, () => {})
+    assert.equal(prepared.historySize, false, 'raw Mastra tool messages must not occupy the conversation window')
+    assert.deepEqual(prepared.conversationContext.messages.map(message => message.role), ['user', 'assistant', 'user'])
+    assert.match(JSON.stringify(prepared.conversationContext), /Would you like me to involve a person/)
+    assert.match(JSON.stringify(prepared.conversationContext), /scanned PDF/)
+    const tools = await prepared.agent.listTools()
+    const page = await tools.read_conversation_history!.execute!({ turns: 2 }, {} as any) as any
+    assert.deepEqual(page.items.map((item: any) => item.author_type), ['customer', 'agent', 'customer'])
+    const chunk = await tools.read_conversation_history!.execute!({ itemSeq: 2, offset: 0 }, {} as any) as any
+    assert.match(chunk.text, /Would you like me to involve a person/)
+  } finally {
+    if (savedKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = savedKey
+    if (savedModel === undefined) delete process.env.OPENAI_TEXT_MODEL; else process.env.OPENAI_TEXT_MODEL = savedModel
+    await f.cleanup()
+  }
+})
+
+test('repeated handoff and reopening preserve successful actions when a later action fails', async () => {
+  const f = await fixture()
+  try {
+    const boardId = uuidv7()
+    await pool.query("INSERT INTO board(id,org_id,name) VALUES($1,$2,'Suggestions')", [boardId, f.orgId])
+    await memory.createThread({ threadId: f.conversationId, resourceId: `${f.orgId}:${f.conversationId}`, title: 'Test' })
+    const context = await loadAgentPromptContext(pool, f.actor)
+    const first = await startRun(runtime, f.conversationId, f.actor, send('Save my suggestion and transfer me.'))
+    const bundle = feedlogTools(event, f.actor, f.conversationId, first.run.id, first.item.id, new AbortController().signal, () => {}, context)
+    const created = await bundle.tools.create_feedback!.execute!({ board_id: boardId, title: 'Export date filter', content: 'Allow a date range when exporting comments.' }, {} as any) as any
+    const feedbackId = created.feedback.feedback_id
+    const failed = await bundle.tools.create_feedback!.execute!({ board_id: uuidv7(), title: 'Invalid board', content: 'Must not create a second record.' }, {} as any) as any
+    assert.match(failed.error, /Board is not available/)
+    const transfer = () => bundle.tools.handoff_to_human.execute!({ reason: 'user_requested', customer_notice: HANDOFF_NOTICE }, {} as any)
+    await transfer(); await transfer()
+    let saved = (await pool.query('SELECT * FROM conversation WHERE id=$1', [f.conversationId])).rows[0]
+    await staffCommand(runtime, f.conversationId, f.orgId, f.otherId, { requestId: uuidv7(), expectedLastSeq: Number(saved.last_seq), action: 'close' })
+    const second = await startRun(runtime, f.conversationId, f.actor, send('Vote for that suggestion and transfer me again.'))
+    assert.equal(second.mode, 'ai')
+    const again = feedlogTools(event, f.actor, f.conversationId, second.run.id, second.item.id, new AbortController().signal, () => {}, context)
+    const vote = await again.tools.upvote_and_subscribe_feedback!.execute!({ feedback_id: feedbackId }, {} as any) as any
+    assert.equal(vote.type, 'feedback_upvoted')
+    assert.match((await again.tools.upvote_and_subscribe_feedback!.execute!({ feedback_id: uuidv7() }, {} as any) as any).error, /Feedback not found/)
+    await again.tools.handoff_to_human.execute!({ reason: 'user_requested', customer_notice: HANDOFF_NOTICE }, {} as any)
+    saved = (await pool.query('SELECT * FROM conversation WHERE id=$1', [f.conversationId])).rows[0]
+    await staffCommand(runtime, f.conversationId, f.orgId, f.otherId, { requestId: uuidv7(), expectedLastSeq: Number(saved.last_seq), action: 'close' })
+    const input = send('Was the suggestion saved and voted for? Do not repeat either action.')
+    const third = await startRun(runtime, f.conversationId, f.actor, input)
+    const history = await readConversationContext(pool, f.actor, f.conversationId, third.item.seq)
+    const receipts = history.items.flatMap(item => item.content.parts).filter(part => 'feedback_id' in part)
+    assert.deepEqual(receipts.map(part => [part.type, 'feedback_id' in part && part.feedback_id]), [['feedback_created', feedbackId], ['feedback_upvoted', feedbackId]])
+    const exact = await readConversationContext(pool, f.actor, f.conversationId, third.item.seq, { itemSeq: Number(history.items.find(item => item.id === `handoff-results:${second.run.id}`)!.seq) })
+    assert.equal(JSON.parse(exact.text!).content.parts[0].type, 'feedback_upvoted')
+    assert.equal((await pool.query('SELECT count(*)::int count FROM post WHERE source_conversation_id=$1', [f.conversationId])).rows[0].count, 1)
+    assert.equal((await pool.query('SELECT vote_count FROM post WHERE id=$1', [feedbackId])).rows[0].vote_count, 1)
+    assert.equal((await pool.query('SELECT count(*)::int count FROM vote WHERE post_id=$1', [feedbackId])).rows[0].count, 1)
+    assert.equal((await startRun(runtime, f.conversationId, f.actor, input)).duplicate, true)
+    assert.equal((await pool.query('SELECT count(*)::int count FROM agent_run WHERE conversation_id=$1', [f.conversationId])).rows[0].count, 3)
+  } finally { await f.cleanup() }
+})
+
+test('image observations persist through production preparation, follow-ups and handoff reopening without resending pixels', async () => {
+  const f = await fixture()
+  const env = { ...process.env }, fetchBefore = globalThis.fetch
+  const globals = globalThis as any, blobBefore = globals.blobStorage, configBefore = globals.useRuntimeConfig
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aN2kAAAAASUVORK5CYII=', 'base64')
+  const key = `uploads/${f.orgId}/diagnostic.png`
+  let reads = 0, visionCalls = 0
+  Object.assign(process.env, { OPENAI_API_KEY: 'synthetic-test-key', OPENAI_TEXT_MODEL: 'mock', OPENAI_BASE_URL: 'https://example.invalid/v1' })
+  globals.useRuntimeConfig = () => ({ public: { uploadPrefix: 'uploads' } })
+  globals.blobStorage = { head: async (path: string) => path === key ? { size: png.length, contentType: 'image/png', httpEtag: 'test-etag' } : null,
+    driver: { getArrayBuffer: async () => { reads++; return png.buffer.slice(png.byteOffset, png.byteOffset + png.byteLength) } } }
+  globalThis.fetch = async (url, init) => {
+    assert.match(String(url), /^https:\/\/example\.invalid\/v1\/chat\/completions$/)
+    const request = JSON.parse(init!.body as string)
+    assert.match(JSON.stringify(request.messages), /data:image\/png;base64,/)
+    visionCalls++
+    return Response.json({ choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: JSON.stringify({ images: [{ image: 1, observations: 'Case IMG-QA-846, task exp-1295, error E728. Region eu-west-2. Refund not issued.', uncertainty: '' }] }) } }], usage: { prompt_tokens: 10, completion_tokens: 10 } })
+  }
+  try {
+    const input = chatInput.parse({ action: 'send', idempotency_key: uuidv7(), message: { id: uuidv7(), content: { parts: [{ type: 'text', text: 'Read the diagnostic.' }, { type: 'image', storage_key: key }] } } })
+    const first = await startRun(runtime, f.conversationId, f.actor, input)
+    await prepareAgent(event, f.actor, f.conversationId, first.run, first.item, new AbortController().signal, () => {})
+    const firstHistory = await readConversationContext(pool, f.actor, f.conversationId, first.item.seq)
+    assert.match(JSON.stringify(firstHistory.items[0]!.image_analysis), /IMG-QA-846/)
+    await completeRun(runtime, f.conversationId, f.actor, first.run.id, uuidv7(), { parts: [{ type: 'text', text: 'The diagnostic reports a failure.' }] })
+    const second = await startRun(runtime, f.conversationId, f.actor, send('What was its task ID?'))
+    const prepared = await prepareAgent(event, f.actor, f.conversationId, second.run, second.item, new AbortController().signal, () => {})
+    assert.match(JSON.stringify(prepared.conversationContext), /exp-1295/)
+    assert.equal(visionCalls, 1)
+    assert.equal(reads, 1, 'ordinary follow-ups reuse observations without downloading the original image')
+    const tools = await prepared.agent.listTools()
+    await assert.rejects(() => tools.read_conversation_images!.execute!({ keys: ['uploads/foreign/diagnostic.png'], question: 'Read it' }, {} as any), /not found/)
+    const original = await tools.read_conversation_images!.execute!({ keys: [key], question: 'Check the bottom-right region in the original.' }, {} as any) as any
+    assert.match(JSON.stringify(original.observations), /eu-west-2/)
+    assert.equal(visionCalls, 2)
+    await prepared.agent.listTools().then(tools => tools.handoff_to_human!.execute!({ reason: 'user_requested', customer_notice: HANDOFF_NOTICE }, {} as any))
+    const saved = (await pool.query('SELECT last_seq FROM conversation WHERE id=$1', [f.conversationId])).rows[0]
+    await staffCommand(runtime, f.conversationId, f.orgId, f.otherId, { requestId: uuidv7(), expectedLastSeq: Number(saved.last_seq), action: 'close' })
+    const reopened = await startRun(runtime, f.conversationId, f.actor, send('Back again. Which case and error were in my image?'))
+    const after = await prepareAgent(event, f.actor, f.conversationId, reopened.run, reopened.item, new AbortController().signal, () => {})
+    assert.match(JSON.stringify(after.conversationContext), /IMG-QA-846/)
+    assert.match(JSON.stringify(after.conversationContext), /E728/)
+    assert.equal(visionCalls, 2, 'reopening must not repeat analysis of already extracted facts')
+    const { rows: messages } = await pool.query('SELECT content FROM mastra_messages WHERE thread_id=$1', [f.conversationId])
+    assert.equal(messages.length, 1)
+    assert.doesNotMatch(JSON.stringify(messages), /data:image|iVBORw0KGgo/)
+    await assert.rejects(readConversationContext(pool, { ...f.actor, orgId: 'foreign' }, f.conversationId, reopened.item.seq), /not accessible/)
+  } finally {
+    process.env = env; globalThis.fetch = fetchBefore
+    if (blobBefore === undefined) delete globals.blobStorage; else globals.blobStorage = blobBefore
+    if (configBefore === undefined) delete globals.useRuntimeConfig; else globals.useRuntimeConfig = configBefore
+    await f.cleanup()
   }
 })

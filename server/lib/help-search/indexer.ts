@@ -36,10 +36,10 @@ export async function indexNextHelpArticle(pool: Pool, embed = embedHelpTexts, o
       const owned = await client.query(`SELECT id FROM scheduled_task WHERE id=$1 AND kind='help_index' AND ref_id=$2
         AND attempts=$3 AND status='processing' AND schedule_at>clock_timestamp() FOR UPDATE`, [job.id, job.ref_id, job.attempts])
       if (!articleLock.rows.length || !owned.rows.length) { await client.query('ROLLBACK'); return { processed: true, stale: true } }
-      await client.query('DELETE FROM help_article_chunk WHERE article_id=$1', [job.ref_id])
+      await client.query("DELETE FROM content_chunk WHERE content_type='help_article' AND content_id=$1 AND org_id=$2", [job.ref_id, article.org_id])
       for (const [i, chunk] of chunks.entries()) {
-        await client.query(`INSERT INTO help_article_chunk(article_id,ordinal,org_id,generation_id,heading,body,model,index_version,embedding)
-          VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::vector)`, [job.ref_id, i, article.org_id, job.id, chunk.heading, chunk.body, HELP_EMBEDDING_MODEL, HELP_INDEX_VERSION, JSON.stringify(vectors[i])])
+        await client.query(`INSERT INTO content_chunk(content_type,content_id,ordinal,org_id,generation_id,heading,body,model,index_version,embedding)
+          VALUES('help_article',$1,$2,$3,$4,$5,$6,$7,$8,$9::vector)`, [job.ref_id, i, article.org_id, job.id, chunk.heading, chunk.body, HELP_EMBEDDING_MODEL, HELP_INDEX_VERSION, JSON.stringify(vectors[i])])
       }
       await client.query("UPDATE scheduled_task SET status='done',result='indexed',schedule_at=clock_timestamp(),updated_at=clock_timestamp() WHERE id=$1", [job.id])
       await client.query('COMMIT')

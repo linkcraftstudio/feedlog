@@ -150,7 +150,7 @@ Force-toggle "verify email before sign-in".
 
 ## Blob storage
 
-File uploads on feedback posts need a blob backend. The choice depends on
+File uploads use the existing blob backend. Website processing does not retain raw HTML or DOM snapshots and does not require blob storage. The choice depends on
 deploy target:
 
 | Target | What's used | What you set |
@@ -450,3 +450,44 @@ context or additional tracing service is installed.
 
 Active runs share one batched status query per second per database pool, avoiding
 per-conversation polling amplification. This does not serialize model execution.
+
+
+## Website knowledge
+
+Website sources use the existing PostgreSQL/pgvector database and durable Inbox
+scheduler. Apply the generated migrations before using `/dashboard/ai-training`.
+`OPENAI_API_KEY`, `OPENAI_BASE_URL` and `OPENAI_TEXT_MODEL` configure AI cleanup
+and summaries. Knowledge embeddings default to `text-embedding-3-large / 768`;
+model and dimensions can be changed together, followed by reindexing. No resident
+Agent process is needed.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `WEB_SOURCE_CLEANUP_MODEL` | `OPENAI_TEXT_MODEL` | JSON-capable model for bounded cleanup, summaries and keywords |
+| `WEB_SOURCE_MAX_SOURCES` | `20` | Maximum website configurations per organization |
+| `WEB_SOURCE_CONCURRENCY` | `8` | Maximum simultaneous website page pipelines across instances sharing one database; integer from 1 to 8 |
+| `KNOWLEDGE_EMBEDDING_MODEL` | `text-embedding-3-large` | Model for Help Center and website content chunks |
+| `KNOWLEDGE_EMBEDDING_DIMENSIONS` | `768` | Expected vector length; changing it requires reindexing |
+| `WEB_SOURCE_FETCH_GATEWAY_URL` | unset | Workers: Node deployment's `/api/internal/web-sources/fetch` endpoint |
+| `WEB_SOURCE_FETCH_GATEWAY_TOKEN` | unset | Shared server-side bearer token on Worker and Node gateway |
+
+Pages of the same website can run concurrently within one synchronization run.
+The database atomically reserves page leases up to `WEB_SOURCE_CONCURRENCY`;
+HTTP, AI cleanup and embedding calls hold no database transaction. Each page's
+chunks share an embedding request. Waiting for capacity does not consume retry
+attempts or change an existing failure's backoff. Concurrent application instances
+must use the same limit. This bounds website pipelines, not all application AI
+requests or total process memory.
+
+Website imports use HTTP extraction, including readable SSR content and page data
+explicitly embedded in or referenced by the HTML. Pages requiring JavaScript
+execution cannot be imported in this version; there is no browser service or
+rendering setting to configure. Raw HTML is processed in memory and is not stored
+in the database or object storage. Failed updates keep the previous usable index.
+Workers require a Node fetch gateway for DNS-pinned requests; this gateway does
+not provide rendering. Validate each target deployment before use.
+
+Content chunk storage uses unconstrained `vector`; query/index versions separate
+models and dimensions. The OpenAI text-embedding-3 models receive a `dimensions`
+parameter. Other model APIs receive model/input and must return the configured
+vector length. Feedback similarity vectors are unchanged.

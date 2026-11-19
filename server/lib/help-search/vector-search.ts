@@ -5,11 +5,11 @@ export interface HelpVectorHit { articleId: string; shortId: string; slug: strin
 export async function searchHelpVectors(pool: Pick<Pool, 'query'>, orgId: string, query: string, audience: 'public' | 'agent', limit = 12, embed = embedHelpTexts): Promise<HelpVectorHit[]> {
   if (!helpVectorsEnabled()) return []
   // No model request when this tenant has no eligible ready index (e.g. before backfill).
-  const visibility = audience === 'public' ? "a.status='published' AND c.visible" : "a.status='published' AND a.ai_enabled"
-  const scope = `FROM help_article_chunk k JOIN scheduled_task j ON j.ref_id=k.article_id AND j.id=k.generation_id AND j.kind='help_index' AND j.status='done' AND j.result='indexed'
-    JOIN help_article a ON a.id=k.article_id AND a.org_id=k.org_id
+  const visibility = audience === 'public' ? "a.status='published' AND c.visible" : `a.status='published' AND a.ai_enabled AND c.ai_enabled`
+  const scope = `FROM content_chunk k JOIN scheduled_task j ON j.ref_id=k.content_id AND j.id=k.generation_id AND j.kind='help_index' AND j.status='done' AND j.result='indexed'
+    JOIN help_article a ON a.id=k.content_id AND a.org_id=k.org_id
     JOIN help_collection c ON c.id=a.collection_id AND c.org_id=a.org_id
-    WHERE k.org_id=$1 AND k.model=$2 AND k.index_version=$3 AND ${visibility}`
+    WHERE k.org_id=$1 AND k.content_type='help_article' AND k.model=$2 AND k.index_version=$3 AND ${visibility}`
   const ready = await pool.query(`SELECT 1 ${scope} LIMIT 1`, [orgId, HELP_EMBEDDING_MODEL, HELP_INDEX_VERSION])
   if (!ready.rows.length) return []
   const [vector] = await embed([query], 2500)

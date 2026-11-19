@@ -10,8 +10,11 @@ import { getEnabledSupportRules } from '../shared/utils/widget-settings'
 test('recovery validates rule IDs and cannot outlive a cancelled run', async () => {
   let decision: unknown = { reason: 'support_rule', rule_id: 'builtin-billing', customer_notice: HANDOFF_NOTICES.handoffBilling }
   let requests = 0
+  let received: { messages: { content: string }[] } | undefined
   const server = createServer(async (request, response) => {
-    for await (const _chunk of request) { /* Consume the model request. */ }
+    let body = ''
+    for await (const chunk of request) body += chunk
+    received = JSON.parse(body)
     requests++
     response.setHeader('content-type', 'application/json')
     response.end(JSON.stringify({ id: 'mock', object: 'chat.completion', created: 0, model: 'mock',
@@ -39,6 +42,17 @@ test('recovery validates rule IDs and cannot outlive a cancelled run', async () 
     const notice = 'درخواست شما به تیم پشتیبانی ارجاع داده شد. می‌توانید جزئیات بیشتری را همین‌جا ارسال کنید.'
     decision = { reason: 'user_requested', rule_id: null, customer_notice: notice }
     assert.deepEqual(await run(), { reason: 'user_requested', customer_notice: notice })
+    const shortAcceptance = { messages: [
+      { role: 'customer', text: 'I cannot resolve this account issue.' },
+      { role: 'agent', text: 'Would you like me to involve a person?' },
+      { role: 'customer', text: 'Okay.' },
+    ], rules: [] }
+    assert.deepEqual(await recoverHandoffDecision(shortAcceptance, new AbortController().signal, async () => {}), { reason: 'user_requested', customer_notice: notice })
+    const supplied = received!.messages.map(message => message.content).join('\n')
+    assert.match(supplied, /Would you like me to involve a person/)
+    assert.match(supplied, /bare yes\/okay without an identifiable offer/)
+    decision = { reason: null, rule_id: null, customer_notice: null }
+    await assert.rejects(recoverHandoffDecision({ ...shortAcceptance, messages: [{ role: 'customer', text: 'Okay.' }] }, new AbortController().signal, async () => {}), HandoffProtocolError)
     const before = requests
     await assert.rejects(run(AbortSignal.abort(new Error('Run expired'))), /Run expired/)
     assert.equal(requests, before)
