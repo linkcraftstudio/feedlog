@@ -83,11 +83,25 @@ async function assertTargetOrgIsSessionOrg(
   check(body.organizationId, body.organizationSlug)
 }
 
+// Percent-encoding, `.`/`..` dot-segments or empty (`//`) segments in an
+// /api/auth path desync this guard's segment from better-auth's router.
+const AUTH_PATH_TRICKERY = /%|(^|\/)\.\.?(\/|$)|\/\//
+
 // Returns true when the caller must answer as if nobody were signed in.
 export async function guardSsoAuthRequest(event: H3Event, request: Request): Promise<boolean> {
-  const path = event.path
-  if (!path.startsWith('/api/auth/')) return false
-  const rest = path.slice('/api/auth/'.length)
+  // event.path keeps dot-segments the URL parser strips; pathname keeps the
+  // encoding it leaves. Route on pathname (as better-auth does) and reject
+  // either form's trickery, so neither can hide a guarded endpoint.
+  const pathname = new URL(request.url).pathname
+  if (!pathname.startsWith('/api/auth/')) return false
+
+  const rawPath = (event.path.split('?')[0] ?? '').slice('/api/auth'.length)
+  const normPath = pathname.slice('/api/auth'.length)
+  if (AUTH_PATH_TRICKERY.test(rawPath) || AUTH_PATH_TRICKERY.test(normPath)) {
+    throw createError({ statusCode: 400, message: 'Malformed auth request path' })
+  }
+
+  const rest = pathname.slice('/api/auth/'.length)
 
   const isOrganization = rest.startsWith('organization/')
   const isAdmin = rest.startsWith('admin/')

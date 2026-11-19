@@ -1,10 +1,7 @@
 // `auth` auto-imported from server/utils/better-auth.ts.
 
 export default defineEventHandler(async (event) => {
-  const session = await auth.api.getSession({ headers: getHeaders(event) })
-  if (!session) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' })
-  }
+  const session = await requireLocalSession(event)
 
   const body = await readBody<{ newPassword: string }>(event)
   if (!body?.newPassword) {
