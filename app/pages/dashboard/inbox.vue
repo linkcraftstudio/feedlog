@@ -477,16 +477,21 @@ onBeforeUnmount(() => {
   document.removeEventListener('visibilitychange', reportRead)
 })
 
-const { data: initialList, error: initialListError } = await useFetch<{ items: typeof rows.value; nextCursor: string | null }>('/api/admin/inbox/conversations', {
+const { data: initialList, error: initialListError, status: initialListStatus } = await useFetch<{ items: typeof rows.value; nextCursor: string | null }>('/api/admin/inbox/conversations', {
   query: { ...filters },
   immediate: canAccessInbox.value,
+  lazy: true,
 })
-if (initialList.value) {
-  rows.value = initialList.value.items
-  nextCursor.value = initialList.value.nextCursor
-}
-if (initialListError.value) error.value = t('inbox.loadFailed')
-loading.value = false
+watch([initialList, initialListError, initialListStatus], ([data, failure, status]) => {
+  // A filter change or refresh owns the list from then on, even if this request finishes later.
+  if (listVersion !== 0) return
+  if (data) {
+    rows.value = data.items
+    nextCursor.value = data.nextCursor
+  }
+  error.value = failure ? t('inbox.loadFailed') : ''
+  loading.value = status === 'pending'
+}, { immediate: true })
 </script>
 
 <template>
