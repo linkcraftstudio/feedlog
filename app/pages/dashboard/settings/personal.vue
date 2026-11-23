@@ -9,6 +9,7 @@ const { hasAccount } = useGuestSession()
 const ctx = useOrgContext()
 const { open: openLogin } = useLoginModal()
 const localePath = useLocalePath()
+const route = useRoute()
 const { t } = useI18n()
 const isMember = computed(() => hasAccount.value && !!ctx.value.role)
 const scope = computed(() => isMember.value ? `${ctx.value.orgId}:${session.value?.user.id}` : '')
@@ -107,25 +108,36 @@ watch(scope, () => {
   if (mounted) void load()
 }, { immediate: true, flush: 'sync' })
 
+function redirectLegacyAccountLink() {
+  const { hash, query } = route
+  if (!isMember.value || !['#edit-profile', '#change-password'].includes(hash)) return false
+  void navigateTo(localePath({ path: '/dashboard/settings/profile', query, hash }), { replace: true })
+  return true
+}
+
+watch([() => route.hash, isMember], () => {
+  if (mounted) redirectLegacyAccountLink()
+}, { flush: 'post' })
+
 // Wait for the async layout to hydrate before replacing its loading content.
 onMounted(() => {
   mounted = true
-  void load()
+  if (!redirectLegacyAccountLink()) void load()
 })
 
 onScopeDispose(() => {
   ++generation
   clearTimeout(savedTimer)
 })
-useHead({ title: () => t('settings.personal.title') })
+useHead({ title: () => t('settings.personal.notifications') })
 </script>
 
 <template>
   <NuxtLayout :name="isMember ? 'dashboard' : 'default'">
     <div v-if="isMember" class="flex flex-col h-full">
-      <header class="min-h-16 px-6 py-3 border-b border-border flex items-center shrink-0 bg-card">
+      <header class="dashboard-panel-page-header">
         <div>
-          <h2 class="font-heading text-lg font-bold">{{ $t('settings.personal.title') }}</h2>
+          <h2 class="font-heading text-lg font-bold">{{ $t('settings.personal.notifications') }}</h2>
           <p class="text-xs text-muted-foreground">
             {{ preferences ? $t('settings.personal.subtitle', { name: preferences.organization.name }) : $t('settings.personal.scope') }}
           </p>
@@ -133,13 +145,13 @@ useHead({ title: () => t('settings.personal.title') })
       </header>
 
       <div class="flex-1 overflow-y-auto">
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-4">
-          <section class="rounded-xl border border-border bg-card overflow-hidden" :aria-busy="busy">
-            <div class="px-6 py-5 border-b border-border">
-              <h3 class="font-heading font-bold text-sm">{{ $t('settings.personal.notifications') }}</h3>
+        <div class="dashboard-panel-container dashboard-panel-stack">
+          <section class="dashboard-panel overflow-hidden" :aria-busy="busy">
+            <div class="dashboard-panel-header border-b border-border">
+              <h3 class="font-heading font-bold text-sm">{{ $t('settings.personal.emailNotifications') }}</h3>
               <p class="text-xs text-muted-foreground mt-0.5">{{ $t('settings.personal.notificationsDesc') }}</p>
             </div>
-            <div class="px-6 py-6 space-y-6">
+            <div class="dashboard-panel-body space-y-6">
               <p v-if="state === 'loading'" role="status" class="text-sm text-muted-foreground flex items-center gap-2">
                 <Icon name="lucide:loader-circle" size="16" class="animate-spin" />
                 {{ $t('settings.loading') }}
@@ -171,7 +183,7 @@ useHead({ title: () => t('settings.personal.title') })
                 </div>
               </template>
             </div>
-            <div v-if="preferences" class="px-6 py-3 border-t border-border bg-muted/30 flex flex-wrap items-center justify-end gap-3">
+            <div v-if="preferences" class="dashboard-panel-footer border-t border-border bg-muted/30 flex flex-wrap items-center justify-end gap-3">
               <p aria-live="polite" class="text-xs flex items-center gap-1.5 mr-auto" :class="state === 'saveError' ? 'text-destructive' : 'text-muted-foreground'">
                 <template v-if="state === 'saveError'">
                   <Icon name="lucide:alert-circle" size="13" class="shrink-0" />
@@ -197,7 +209,7 @@ useHead({ title: () => t('settings.personal.title') })
       </div>
     </div>
     <section v-else class="max-w-md mx-auto my-12 p-6 rounded-xl border border-border bg-card space-y-4">
-      <h1 class="font-heading text-lg font-bold">{{ $t('settings.personal.title') }}</h1>
+      <h1 class="font-heading text-lg font-bold">{{ $t('settings.personal.notifications') }}</h1>
       <p class="text-sm text-muted-foreground">{{ $t(hasAccount ? 'settings.personal.membersOnly' : 'settings.personal.signInPrompt') }}</p>
       <Button v-if="!hasAccount" @click="openLogin()">{{ $t('common.signIn') }}</Button>
       <Button v-else variant="outline" as-child><NuxtLink :to="localePath('/')">{{ $t('common.goHome') }}</NuxtLink></Button>

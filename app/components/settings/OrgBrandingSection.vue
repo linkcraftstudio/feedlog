@@ -135,13 +135,13 @@ async function save() {
 </script>
 
 <template>
-  <section class="rounded-xl border border-border bg-card overflow-hidden">
-    <div class="px-6 py-5 border-b border-border">
+  <section class="dashboard-panel overflow-hidden">
+    <div class="dashboard-panel-header border-b border-border">
       <h3 class="font-heading font-bold text-sm">{{ $t('settings.branding.title') }}</h3>
       <p class="text-xs text-muted-foreground mt-0.5">{{ $t('settings.branding.subtitle') }}</p>
     </div>
 
-    <div class="px-6 py-6">
+    <div class="dashboard-panel-body">
       <!-- split: controls take a compact fixed left column; the preview gets the
            remaining width (it scales to its container, so a wider column = a
            larger, more faithful preview). stacked falls back to a single column. -->
@@ -262,7 +262,7 @@ async function save() {
       </div>
     </div>
 
-    <div class="px-6 py-3 border-t border-border bg-muted/30 flex items-center justify-end gap-3">
+    <div class="dashboard-panel-footer border-t border-border bg-muted/30 flex items-center justify-end gap-3">
       <p v-if="error" class="text-xs text-red-600 flex items-center gap-1.5 min-w-0 truncate mr-auto">
         <Icon name="lucide:alert-circle" size="13" class="shrink-0" />
         {{ error }}

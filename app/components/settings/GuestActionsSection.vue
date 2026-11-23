@@ -66,15 +66,15 @@ async function save() {
 </script>
 
 <template>
-  <section class="rounded-xl border border-border bg-card overflow-hidden">
-    <div class="px-6 py-5 border-b border-border">
+  <section class="dashboard-panel overflow-hidden">
+    <div class="dashboard-panel-header border-b border-border">
       <h3 class="font-heading font-bold text-sm">{{ $t('settings.guest.title') }}</h3>
       <p class="text-xs text-muted-foreground mt-0.5">{{ $t('settings.guest.subtitle') }}</p>
     </div>
 
     <!-- Spacing separates the rows; a second set of rules inside the body would
          read as another level of nesting under the header's divider. -->
-    <div class="px-6 py-6 space-y-7">
+    <div class="dashboard-panel-body space-y-7">
       <div v-for="row in ROWS" :key="row.key" class="flex items-start justify-between gap-6">
         <div class="min-w-0">
           <p class="text-sm font-bold">{{ $t(`settings.guest.${row.key}.title`) }}</p>
@@ -91,7 +91,7 @@ async function save() {
       </div>
     </div>
 
-    <div class="px-6 py-3 border-t border-border bg-muted/30 flex items-center justify-end gap-3">
+    <div class="dashboard-panel-footer border-t border-border bg-muted/30 flex items-center justify-end gap-3">
       <p v-if="error" class="text-xs text-red-600 flex items-center gap-1.5 min-w-0 truncate mr-auto">
         <Icon name="lucide:alert-circle" size="13" class="shrink-0" />
         {{ error }}

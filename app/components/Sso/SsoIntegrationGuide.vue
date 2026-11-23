@@ -52,12 +52,12 @@ function copy(key: string, text: string) {
 <template>
   <div class="space-y-6">
     <!-- Endpoint -->
-    <section class="rounded-xl border border-border bg-card overflow-hidden">
-      <div class="px-5 py-3 border-b border-border">
+    <section class="dashboard-panel overflow-hidden">
+      <div class="dashboard-panel-header border-b border-border">
         <h3 class="font-heading font-bold text-sm">{{ $t('dashboard.sso.guideEndpoint') }}</h3>
         <p class="text-[11px] text-muted-foreground mt-0.5">{{ $t('dashboard.sso.guideEndpointDesc') }}</p>
       </div>
-      <div class="px-5 py-4 space-y-4">
+      <div class="dashboard-panel-body space-y-4">
         <div class="flex items-center gap-2">
           <span class="text-[10px] font-bold uppercase tracking-wider bg-secondary text-primary px-1.5 py-0.5 rounded shrink-0">GET</span>
           <code class="flex-1 min-w-0 truncate text-xs font-mono px-2.5 py-1.5 rounded-md bg-muted border border-border">{{ endpoint }}</code>
@@ -88,13 +88,13 @@ function copy(key: string, text: string) {
     </section>
 
     <!-- JWT payload -->
-    <section class="rounded-xl border border-border bg-card overflow-hidden">
-      <div class="px-5 py-3 border-b border-border">
+    <section class="dashboard-panel overflow-hidden">
+      <div class="dashboard-panel-header border-b border-border">
         <h3 class="font-heading font-bold text-sm">{{ $t('dashboard.sso.guideJwtPayload') }}</h3>
         <p class="text-[11px] text-muted-foreground mt-0.5">{{ $t('dashboard.sso.guideJwtPayloadDesc') }}</p>
       </div>
       <ul class="divide-y divide-border">
-        <li v-for="f in payloadFields" :key="f.name" class="px-5 py-2.5 flex items-start gap-3">
+        <li v-for="f in payloadFields" :key="f.name" class="dashboard-panel-row flex items-start gap-3">
           <code class="text-xs font-mono font-bold text-foreground shrink-0 w-[110px]">{{ f.name }}</code>
           <span
             class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0"
@@ -106,8 +106,8 @@ function copy(key: string, text: string) {
     </section>
 
     <!-- Signing example -->
-    <section class="rounded-xl border border-border bg-card overflow-hidden">
-      <div class="px-5 py-3 border-b border-border flex items-center justify-between">
+    <section class="dashboard-panel overflow-hidden">
+      <div class="dashboard-panel-header border-b border-border flex items-center justify-between">
         <div>
           <h3 class="font-heading font-bold text-sm">{{ $t('dashboard.sso.guideSignTitle') }}</h3>
           <p class="text-[11px] text-muted-foreground mt-0.5">{{ $t('dashboard.sso.guideSignDesc') }}</p>
@@ -121,7 +121,7 @@ function copy(key: string, text: string) {
           {{ copiedKey === 'snippet' ? $t('dashboard.sso.copied') : $t('dashboard.sso.copy') }}
         </button>
       </div>
-      <pre class="px-5 py-4 overflow-x-auto text-xs font-mono leading-relaxed text-foreground bg-muted/40"><code>{{ snippet }}</code></pre>
+      <pre class="dashboard-panel-body overflow-x-auto text-xs font-mono leading-relaxed text-foreground bg-muted/40"><code>{{ snippet }}</code></pre>
     </section>
 
     <!-- TTL guidance -->

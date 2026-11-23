@@ -11,15 +11,15 @@ async function copyCommand() {
 </script>
 
 <template>
-  <section class="overflow-hidden rounded-xl border border-border bg-card">
-    <div class="flex flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+  <section class="dashboard-panel overflow-hidden">
+    <div class="flex flex-col gap-3 dashboard-panel-header sm:flex-row sm:items-center sm:justify-between">
       <div>
         <h2 class="flex items-center gap-2 font-heading text-sm font-bold"><Icon name="lucide:book-open" class="size-4 text-primary" />FeedLog Skills <span class="ml-1 font-sans text-xs font-normal text-muted-foreground">{{ t('mcp.optional') }}</span></h2>
         <p class="mt-1 text-xs leading-relaxed text-muted-foreground">{{ t('mcp.skillsDescription') }}</p>
       </div>
       <Button variant="outline" size="sm" class="shrink-0 self-start sm:self-auto" :aria-expanded="open" aria-controls="mcp-skills-installation" @click="open = !open">{{ t(open ? 'mcp.hideInstructions' : 'mcp.installSkills') }}<Icon :name="open ? 'lucide:chevron-up' : 'lucide:chevron-down'" class="size-4" /></Button>
     </div>
-    <div v-if="open" id="mcp-skills-installation" class="space-y-4 border-t border-border px-6 py-5">
+    <div v-if="open" id="mcp-skills-installation" class="dashboard-panel-body space-y-4 border-t border-border">
       <p class="text-sm leading-relaxed text-muted-foreground">{{ t('mcp.skillsInstructions') }}</p>
       <div class="relative rounded-lg border border-border bg-muted p-4 pr-12">
         <pre class="whitespace-pre-wrap break-all text-xs leading-relaxed"><code>{{ command }}</code></pre>

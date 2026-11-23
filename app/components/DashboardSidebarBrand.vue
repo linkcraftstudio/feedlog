@@ -1,12 +1,13 @@
 <script setup lang="ts">
+defineProps<{ compact?: boolean }>()
 const localePath = useLocalePath()
 </script>
 
 <template>
-  <div class="p-6">
-    <NuxtLink :to="localePath('/dashboard')" class="flex items-center gap-3">
+  <div :class="compact ? 'px-3' : 'px-5 py-3'">
+    <NuxtLink :to="localePath('/dashboard')" class="flex items-center gap-3" aria-label="FeedLog">
       <AppLogo :size="40" />
-      <span class="font-heading text-xl font-bold tracking-tight">FeedLog</span>
+      <span v-if="!compact" class="font-heading text-xl font-bold tracking-tight">FeedLog</span>
     </NuxtLink>
   </div>
 </template>

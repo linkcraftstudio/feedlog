@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { resolveAttachmentUrl } from '~/utils/attachment'
+import { resolveAttachmentUrl } from '#layers/feedlog/app/utils/attachment'
 
 const { signOut } = useAuth()
 const { data: session } = await useAuthSession()
@@ -16,29 +16,7 @@ const avatarError = ref(false)
 const avatarUrl = computed(() => resolveAttachmentUrl(user.value?.image))
 watch(user, () => { avatarError.value = false })
 
-const showChangePassword = ref(false)
-const showEditProfile = ref(false)
-const { isOpen: showLoginModal, open: openLoginModal } = useLoginModal()
-
-// An SSO session belongs in the dashboard but may not touch the global user
-// record. Keep the entry visible; hiding it reads as a broken page.
-const isSsoSession = computed(
-  () => !!(session.value as { session?: { ssoOrgId?: string | null } } | null)?.session?.ssoOrgId,
-)
-function onChangePassword() {
-  if (isSsoSession.value) {
-    openLoginModal(LOCAL_AUTH_REASON)
-    return
-  }
-  showChangePassword.value = true
-}
-function onEditProfile() {
-  if (isSsoSession.value) {
-    openLoginModal(LOCAL_AUTH_REASON)
-    return
-  }
-  showEditProfile.value = true
-}
+const { isOpen: showLoginModal } = useLoginModal()
 
 async function handleSignOut() {
   await signOut()
@@ -46,32 +24,50 @@ async function handleSignOut() {
   navigateTo(localePath('/'))
 }
 
-const { mainNav, settingsNav, developerNav } = useDashboardNav()
-const { canVisit, guardNavigation } = useDashboardAccess()
-
-// Mobile menu
-const mobileMenuOpen = ref(false)
+const { mainNav, aiNav, personalNav, productNav, settingsNav } = useDashboardNav()
+const { t } = useI18n()
 const route = useRoute()
+const mobileMenuOpen = ref(false)
 watch(() => route.path, () => { mobileMenuOpen.value = false })
 
-const { t } = useI18n()
-const config = useRuntimeConfig()
-const settingsTitle = computed(() => t(config.public.rootDomain ? 'dashboard.nav.organizationSettings' : 'dashboard.nav.settings'))
-const isPersonalSettings = computed(() => route.path === localePath('/dashboard/settings/personal'))
+const sidebarExpanded = ref(false)
+const sidebarPreference = 'feedlog.dashboard.sidebar.expanded'
+onMounted(() => {
+  try { sidebarExpanded.value = localStorage.getItem(sidebarPreference) === 'true' } catch { /* Use the default width. */ }
+})
+function toggleSidebar() {
+  sidebarExpanded.value = !sidebarExpanded.value
+  try { localStorage.setItem(sidebarPreference, String(sidebarExpanded.value)) } catch { /* Keep the choice for this visit. */ }
+}
+
+function isCurrent(path: string, includeChildren = false) {
+  const target = localePath(path)
+  const current = route.path.replace(/\/$/, '')
+  return current === target || (includeChildren && current.startsWith(`${target}/`))
+}
+const settingsGroups = computed(() => [
+  { label: t('dashboard.nav.personalGroup'), items: personalNav.value },
+  { label: t('dashboard.nav.productGroup'), items: productNav.value },
+  { label: t('dashboard.nav.workspaceGroup'), items: settingsNav.value },
+])
+const settingsItems = computed(() => settingsGroups.value.flatMap(group => group.items))
+const settingsEntry = computed(() => ({
+  label: t('dashboard.nav.settingsTitle'),
+  to: settingsNav.value[0]!.to,
+  icon: 'lucide:settings',
+}))
+const inAgent = computed(() => isCurrent('/dashboard/ai-agent', true))
+const inSettings = computed(() => settingsItems.value.some(item => isCurrent(item.to, true)))
+const personalEntry = computed(() => personalNav.value[0]!.to)
+const isProfileEntry = computed(() => isCurrent(personalEntry.value))
 const navTitle = computed(() => {
-  if (isPersonalSettings.value) return t('settings.personal.title')
-  const match = [...mainNav.value, ...settingsNav.value, ...developerNav.value]
-    .filter((item) => {
-      const to = localePath(item.to)
-      return route.path === to || route.path.startsWith(`${to}/`)
-    })
-    .sort((a, b) => b.to.length - a.to.length)[0]
+  const items = inAgent.value ? aiNav.value : [...mainNav.value, ...settingsItems.value]
+  const match = items.find(item => isCurrent(item.to))
+    ?? items.find(item => isCurrent(item.to, true))
   return match?.label ?? t('nav.dashboard')
 })
 useHead({ title: () => navTitle.value })
 
-// Developer section: collapsed by default, but auto-expanded when the current
-// route lives inside it (so the active page stays visible).
 const { count: inboxCount, refresh: refreshInboxCount } = useInboxBadge()
 const { canAccessInbox } = usePermission(computed(() => undefined), 'post')
 let inboxTimer: ReturnType<typeof setInterval> | undefined
@@ -80,7 +76,6 @@ onMounted(() => {
   inboxTimer = setInterval(() => { if (!document.hidden && canAccessInbox.value) void refreshInboxCount() }, 10000)
 })
 onBeforeUnmount(() => clearInterval(inboxTimer))
-const developerOpen = ref(developerNav.value.some(item => route.path.startsWith(item.to)))
 
 const onboarding = useOnboarding()
 // Resolved by the dashboard middleware before any dashboard page renders, so the
@@ -90,12 +85,13 @@ onMounted(() => onboarding.load(onboardingStatus.value?.autoOpen === true))
 </script>
 
 <template>
-  <div class="h-screen overflow-hidden flex flex-col md:flex-row bg-background text-foreground font-body">
+  <div class="h-dvh overflow-hidden flex flex-col md:flex-row bg-background text-foreground font-body">
     <!-- Mobile header -->
     <header class="md:hidden h-14 shrink-0 border-b border-border bg-card flex items-center justify-between px-4">
       <div class="flex items-center gap-3">
         <button
           class="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-background transition-colors text-muted-foreground"
+          :aria-label="$t('dashboard.nav.srTitle')"
           @click="mobileMenuOpen = true"
         >
           <Icon name="lucide:menu" size="20" />
@@ -117,80 +113,25 @@ onMounted(() => onboarding.load(onboardingStatus.value?.autoOpen === true))
         <SheetTitle class="sr-only">{{ $t('dashboard.nav.srTitle') }}</SheetTitle>
         <SheetDescription class="sr-only">{{ $t('dashboard.nav.srDescription') }}</SheetDescription>
 
-        <!-- Logo -->
-        <div class="p-6">
-          <NuxtLink :to="localePath('/dashboard')" class="flex items-center gap-3">
-            <AppLogo :size="40" />
-            <span class="font-heading text-xl font-bold tracking-tight">FeedLog</span>
-          </NuxtLink>
-        </div>
+        <DashboardSidebarBrand />
+        <DashboardSidebarTop />
 
-        <!-- Navigation -->
-        <nav class="scrollbar-subtle flex-1 px-4 space-y-8 overflow-y-auto">
-          <div>
-            <p class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('dashboard.nav.main') }}</p>
-            <div class="space-y-1">
-              <NuxtLink
-                v-for="item in mainNav"
-                :key="item.to"
-                :to="localePath(item.to)"
-                :aria-disabled="!canVisit(item.to)"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-background hover:text-foreground transition-colors font-semibold"
-                active-class="!bg-secondary !text-primary !font-bold"
-                @click.capture="guardNavigation($event, item.to)"
-              >
-                <Icon :name="item.icon" size="20" />
-                <span class="text-sm">{{ item.label }}</span><span v-if="item.to === '/dashboard/inbox' && inboxCount" class="ml-auto inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] leading-none text-primary-foreground" :aria-label="$t('inbox.unreadOpenCount', { count: inboxCount })"><span class="relative top-px tabular-nums">{{ inboxCount > 99 ? '99+' : inboxCount }}</span></span>
-              </NuxtLink>
-            </div>
-          </div>
-          <div>
-            <p class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ settingsTitle }}</p>
-            <div class="space-y-1">
-              <NuxtLink
-                v-for="item in settingsNav"
-                :key="item.to"
-                :to="localePath(item.to)"
-                :aria-disabled="!canVisit(item.to)"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-background hover:text-foreground transition-colors font-semibold"
-                active-class="!bg-secondary !text-primary !font-bold"
-                @click.capture="guardNavigation($event, item.to)"
-              >
-                <Icon :name="item.icon" size="20" />
-                <span class="text-sm">{{ item.label }}</span><span v-if="item.to === '/dashboard/inbox' && inboxCount" class="ml-auto inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] leading-none text-primary-foreground" :aria-label="$t('inbox.unreadOpenCount', { count: inboxCount })"><span class="relative top-px tabular-nums">{{ inboxCount > 99 ? '99+' : inboxCount }}</span></span>
-              </NuxtLink>
-            </div>
-          </div>
-          <div v-if="developerNav.length">
-            <button
-              class="w-full flex items-center justify-between px-3 mb-2 group"
-              @click="developerOpen = !developerOpen"
-            >
-              <span class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors">{{ $t('dashboard.nav.developer') }}</span>
-              <Icon
-                :name="developerOpen ? 'lucide:chevron-down' : 'lucide:chevron-right'"
-                size="14"
-                class="text-muted-foreground"
-              />
-            </button>
-            <div v-show="developerOpen" class="space-y-1">
-              <NuxtLink
-                v-for="item in developerNav"
-                :key="item.to"
-                :to="localePath(item.to)"
-                :aria-disabled="!canVisit(item.to)"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-background hover:text-foreground transition-colors font-semibold"
-                active-class="!bg-secondary !text-primary !font-bold"
-                @click.capture="guardNavigation($event, item.to)"
-              >
-                <Icon :name="item.icon" size="20" />
-                <span class="text-sm">{{ item.label }}</span><span v-if="item.to === '/dashboard/inbox' && inboxCount" class="ml-auto inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] leading-none text-primary-foreground" :aria-label="$t('inbox.unreadOpenCount', { count: inboxCount })"><span class="relative top-px tabular-nums">{{ inboxCount > 99 ? '99+' : inboxCount }}</span></span>
-              </NuxtLink>
-            </div>
-          </div>
+        <nav class="scrollbar-subtle min-h-0 flex-1 space-y-1 overflow-y-auto px-4" :aria-label="$t('dashboard.nav.srTitle')">
+          <p class="mb-2 px-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('dashboard.nav.main') }}</p>
+          <DashboardNavigationLink
+            v-for="item in mainNav"
+            :key="item.to"
+            :item="item"
+            :selected="isCurrent(item.to, true)"
+            :unread="item.to === '/dashboard/inbox' ? inboxCount : undefined"
+            @click="mobileMenuOpen = false"
+          />
         </nav>
 
-        <OnboardingSidebarEntry mobile />
+        <div class="border-t border-border pt-3">
+          <OnboardingSidebarEntry mobile @open="mobileMenuOpen = false" />
+          <DashboardNavigationLink :item="settingsEntry" :selected="inSettings" class="mx-4 mb-3" @click="mobileMenuOpen = false" />
+        </div>
 
         <!-- User info -->
         <div class="h-16 px-4 border-t border-border flex items-center">
@@ -219,18 +160,10 @@ onMounted(() => onboarding.load(onboardingStatus.value?.autoOpen === true))
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem as-child>
-                <NuxtLink :to="localePath('/dashboard/settings/personal')" :aria-current="isPersonalSettings ? 'page' : undefined" :class="{ 'text-primary': isPersonalSettings }">
+                <NuxtLink :to="localePath(personalEntry)" :aria-current="isProfileEntry ? 'page' : undefined" :class="{ 'text-primary': isProfileEntry }">
                   <Icon name="lucide:sliders-horizontal" size="16" class="mr-2" />
                   {{ $t('settings.personal.title') }}
                 </NuxtLink>
-              </DropdownMenuItem>
-              <DropdownMenuItem @click="onEditProfile">
-                <Icon name="lucide:user-round-pen" size="16" class="mr-2" />
-                {{ $t('nav.editProfile') }}
-              </DropdownMenuItem>
-              <DropdownMenuItem @click="onChangePassword">
-                <Icon name="lucide:key-round" size="16" class="mr-2" />
-                {{ $t('nav.changePassword') }}
               </DropdownMenuItem>
               <DropdownMenuItem as-child>
                 <NuxtLink :to="localePath('/')">
@@ -248,104 +181,58 @@ onMounted(() => onboarding.load(onboardingStatus.value?.autoOpen === true))
       </SheetContent>
     </Sheet>
 
-    <!-- Desktop Sidebar -->
-    <aside class="hidden md:flex w-16 min-[1280px]:w-[260px] h-full shrink-0 border-r border-border bg-card flex-col">
-      <div class="hidden min-[1280px]:block">
-        <DashboardSidebarBrand />
-        <DashboardSidebarTop />
+    <aside
+      class="dashboard-primary relative hidden h-full w-[260px] shrink-0 flex-col border-r border-border bg-card md:flex"
+      :class="{ 'dashboard-primary-compact': !sidebarExpanded }"
+      :aria-label="$t('dashboard.nav.srTitle')"
+    >
+      <div class="flex h-18 shrink-0 flex-col justify-center">
+        <DashboardSidebarBrand :compact="!sidebarExpanded" />
+        <DashboardSidebarTop :compact="!sidebarExpanded" />
       </div>
 
-      <!-- Navigation -->
-      <nav class="scrollbar-subtle flex-1 px-2 min-[1280px]:px-4 pt-4 min-[1280px]:pt-0 space-y-8 overflow-y-auto">
-        <!-- Main -->
-        <div>
-          <p class="hidden min-[1280px]:block px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('dashboard.nav.main') }}</p>
-          <div class="space-y-1">
-            <NuxtLink
-              v-for="item in mainNav"
-              :key="item.to"
-              :to="localePath(item.to)"
-              :aria-disabled="!canVisit(item.to)"
-              class="relative flex items-center gap-3 py-2 rounded-lg justify-center min-[1280px]:justify-start px-0 min-[1280px]:px-3 text-muted-foreground hover:bg-background hover:text-foreground transition-colors font-semibold"
-              :title="item.label"
-              active-class="!bg-secondary !text-primary !font-bold"
-              @click.capture="guardNavigation($event, item.to)"
-            >
-              <Icon :name="item.icon" size="20" class="shrink-0" />
-              <span class="hidden min-[1280px]:inline text-sm">{{ item.label }}</span>
-              <span v-if="item.to === '/dashboard/inbox' && inboxCount" data-inbox-badge class="absolute right-0 top-0 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-[9px] leading-none font-semibold text-primary-foreground min-[1280px]:static min-[1280px]:ml-auto min-[1280px]:text-[10px]" :aria-label="$t('inbox.unreadOpenCount', { count: inboxCount })"><span class="relative top-px tabular-nums">{{ inboxCount > 99 ? '99+' : inboxCount }}</span></span>
-            </NuxtLink>
-          </div>
-        </div>
+      <button
+        type="button"
+        class="absolute top-1/2 -right-3 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+        :title="$t(sidebarExpanded ? 'dashboard.nav.collapse' : 'dashboard.nav.expand')"
+        :aria-label="$t(sidebarExpanded ? 'dashboard.nav.collapse' : 'dashboard.nav.expand')"
+        :aria-expanded="sidebarExpanded"
+        aria-controls="dashboard-primary-links"
+        data-dashboard-sidebar-toggle
+        @click="toggleSidebar"
+      >
+        <Icon :name="sidebarExpanded ? 'lucide:chevron-left' : 'lucide:chevron-right'" size="14" />
+      </button>
 
-        <!-- Settings -->
-        <div>
-          <p class="hidden min-[1280px]:block px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ settingsTitle }}</p>
-          <div class="space-y-1">
-            <NuxtLink
-              v-for="item in settingsNav"
-              :key="item.to"
-              :to="localePath(item.to)"
-              :aria-disabled="!canVisit(item.to)"
-              class="flex items-center gap-3 py-2 rounded-lg justify-center min-[1280px]:justify-start px-0 min-[1280px]:px-3 text-muted-foreground hover:bg-background hover:text-foreground transition-colors font-semibold"
-              :title="item.label"
-              active-class="!bg-secondary !text-primary !font-bold"
-              @click.capture="guardNavigation($event, item.to)"
-            >
-              <Icon :name="item.icon" size="20" class="shrink-0" />
-              <span class="hidden min-[1280px]:inline text-sm">{{ item.label }}</span>
-            </NuxtLink>
-          </div>
-        </div>
-
-        <!-- Developer (collapsible, collapsed by default) -->
-        <div v-if="developerNav.length">
-          <button
-            class="hidden min-[1280px]:flex w-full items-center justify-between px-3 mb-2 group"
-            @click="developerOpen = !developerOpen"
-          >
-            <span class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors">{{ $t('dashboard.nav.developer') }}</span>
-            <Icon
-              :name="developerOpen ? 'lucide:chevron-down' : 'lucide:chevron-right'"
-              size="14"
-              class="text-muted-foreground"
-            />
-          </button>
-          <div class="space-y-1" :class="developerOpen ? '' : 'min-[1280px]:hidden'">
-            <NuxtLink
-              v-for="item in developerNav"
-              :key="item.to"
-              :to="localePath(item.to)"
-              :aria-disabled="!canVisit(item.to)"
-              class="flex items-center gap-3 py-2 rounded-lg justify-center min-[1280px]:justify-start px-0 min-[1280px]:px-3 text-muted-foreground hover:bg-background hover:text-foreground transition-colors font-semibold"
-              :title="item.label"
-              active-class="!bg-secondary !text-primary !font-bold"
-              @click.capture="guardNavigation($event, item.to)"
-            >
-              <Icon :name="item.icon" size="20" class="shrink-0" />
-              <span class="hidden min-[1280px]:inline text-sm">{{ item.label }}</span>
-            </NuxtLink>
-          </div>
-        </div>
+      <nav id="dashboard-primary-links" class="scrollbar-subtle min-h-0 flex-1 space-y-1 overflow-y-auto px-2">
+        <p class="dashboard-primary-caption mb-2 px-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('dashboard.nav.main') }}</p>
+        <DashboardNavigationLink
+          v-for="item in mainNav"
+          :key="item.to"
+          :item="item"
+          :selected="isCurrent(item.to, true)"
+          :unread="item.to === '/dashboard/inbox' ? inboxCount : undefined"
+        />
       </nav>
 
-      <!-- Pinned below one divider, so the scrolling navigation visibly ends above
-           both the Getting started entry and the user row. -->
-      <div class="border-t border-border">
-        <OnboardingSidebarEntry class="pt-3" />
+      <div class="shrink-0 border-t border-border px-2 pt-3">
+        <OnboardingSidebarEntry :compact="!sidebarExpanded" />
+        <DashboardNavigationLink :item="settingsEntry" :selected="inSettings" class="mb-3" />
 
         <!-- User info (bottom) -->
-        <div class="flex items-center flex-col min-[1280px]:flex-row gap-1 pb-3 min-[1280px]:pb-0 px-1 min-[1280px]:px-4 min-[1280px]:h-16">
+        <div class="dashboard-primary-account flex h-16 items-center gap-1 px-2">
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
-              <button class="flex items-center gap-3 rounded-xl hover:bg-background transition-colors p-1.5 min-[1280px]:flex-1 min-[1280px]:min-w-0 min-[1280px]:p-2">
+              <button
+                :aria-label="$t('dashboard.nav.account')"
+                class="dashboard-primary-profile flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 transition-colors hover:bg-background">
                 <Avatar class="w-8 h-8 shrink-0">
                   <img v-if="avatarUrl && !avatarError" :src="avatarUrl" :alt="user?.name" class="aspect-square size-full rounded-full object-cover" referrerpolicy="no-referrer" @error="avatarError = true">
                   <AvatarFallback v-else class="bg-accent text-accent-foreground text-sm font-bold">
                     {{ initials }}
                   </AvatarFallback>
                 </Avatar>
-                <div class="hidden min-[1280px]:block flex-1 min-w-0 text-left">
+                <div class="dashboard-nav-label flex-1 min-w-0 text-left">
                   <p class="text-xs font-bold truncate">{{ user?.name }}</p>
                   <p class="text-[10px] text-muted-foreground truncate">{{ user?.email }}</p>
                 </div>
@@ -360,18 +247,10 @@ onMounted(() => onboarding.load(onboardingStatus.value?.autoOpen === true))
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem as-child>
-                <NuxtLink :to="localePath('/dashboard/settings/personal')" :aria-current="isPersonalSettings ? 'page' : undefined" :class="{ 'text-primary': isPersonalSettings }">
+                <NuxtLink :to="localePath(personalEntry)" :aria-current="isProfileEntry ? 'page' : undefined" :class="{ 'text-primary': isProfileEntry }">
                   <Icon name="lucide:sliders-horizontal" size="16" class="mr-2" />
                   {{ $t('settings.personal.title') }}
                 </NuxtLink>
-              </DropdownMenuItem>
-              <DropdownMenuItem @click="onEditProfile">
-                <Icon name="lucide:user-round-pen" size="16" class="mr-2" />
-                {{ $t('nav.editProfile') }}
-              </DropdownMenuItem>
-              <DropdownMenuItem @click="onChangePassword">
-                <Icon name="lucide:key-round" size="16" class="mr-2" />
-                {{ $t('nav.changePassword') }}
               </DropdownMenuItem>
               <DropdownMenuItem as-child>
                 <NuxtLink :to="localePath('/')">
@@ -391,15 +270,61 @@ onMounted(() => onboarding.load(onboardingStatus.value?.autoOpen === true))
       </div>
     </aside>
 
+    <aside
+      v-if="inAgent || inSettings"
+      class="dashboard-secondary flex shrink-0 flex-col border-b border-border bg-card md:w-52 md:border-r md:border-b-0 xl:w-60"
+      :aria-label="$t(inAgent ? 'dashboard.agent.title' : 'dashboard.nav.settingsTitle')"
+    >
+      <header class="flex h-11 shrink-0 items-center px-4 md:h-16 md:border-b md:border-border md:px-5">
+        <h2 class="font-heading text-lg font-bold">{{ $t(inAgent ? 'dashboard.agent.title' : 'dashboard.nav.settingsTitle') }}</h2>
+      </header>
+      <nav class="dashboard-secondary-links scrollbar-subtle flex items-center gap-1 overflow-x-auto px-3 pb-2 md:block md:space-y-1 md:overflow-y-auto md:px-3 md:py-4">
+        <template v-if="inAgent">
+          <DashboardNavigationLink v-for="item in aiNav" :key="item.to" :item="item" :selected="isCurrent(item.to)" />
+        </template>
+        <template v-else>
+          <template v-for="(group, index) in settingsGroups" :key="group.label">
+            <p class="dashboard-secondary-group" :class="index > 0 && 'md:mt-5!'">{{ group.label }}</p>
+            <DashboardNavigationLink v-for="item in group.items" :key="item.to" :item="item" :selected="isCurrent(item.to, true)" />
+          </template>
+        </template>
+      </nav>
+    </aside>
+
     <!-- Main content -->
-    <main class="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
+    <main class="dashboard-content flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <slot />
     </main>
 
-    <ChangePasswordDialog v-model:open="showChangePassword" />
-    <EditProfileDialog v-model:open="showEditProfile" />
     <LoginModal v-model:open="showLoginModal" />
     <OnboardingGuide />
     <OnboardingDemoWidget />
   </div>
 </template>
+
+<style scoped>
+.dashboard-primary-compact { width: 64px; }
+.dashboard-primary-compact :deep(.dashboard-nav-label) { display: none; }
+.dashboard-primary-compact .dashboard-primary-caption { visibility: hidden; white-space: nowrap; overflow: hidden; }
+.dashboard-primary-compact :deep(.dashboard-nav-link) { gap: 0; }
+.dashboard-primary-compact :deep(.dashboard-nav-badge) { position: absolute; top: 0; right: 0; font-size: 9px; }
+.dashboard-primary-compact .dashboard-primary-account { height: auto; flex-direction: column; padding: 0 0 12px; }
+.dashboard-primary-compact .dashboard-primary-profile { flex: none; }
+.dashboard-secondary-group {
+  padding: 4px 8px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.dashboard-secondary :deep(.dashboard-nav-link) { gap: 10px; padding-block: 7px; }
+.dashboard-secondary :deep(.dashboard-nav-label) { font-size: 13px; }
+@media (width < 48rem) {
+  .dashboard-secondary :deep(.dashboard-nav-link), .dashboard-secondary-group { flex: none; }
+}
+@media (width >= 48rem) {
+  .dashboard-secondary-group { padding-inline: 12px; }
+  .dashboard-secondary :deep(.dashboard-nav-label) { white-space: normal; }
+}
+</style>

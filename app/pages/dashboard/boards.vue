@@ -68,7 +68,7 @@ async function handleDelete(board: BoardItem) {
 
 <template>
   <!-- Top bar -->
-  <header class="h-16 px-6 border-b border-border flex items-center justify-between shrink-0 bg-card backdrop-blur-sm">
+  <header class="dashboard-panel-page-header justify-between backdrop-blur-sm">
     <div class="flex items-center gap-4">
       <h2 class="font-heading text-lg font-bold">{{ $t('dashboard.boards.title') }}</h2>
       <div class="h-4 w-[1px] bg-border" />
@@ -86,8 +86,8 @@ async function handleDelete(board: BoardItem) {
   </header>
 
   <!-- Board list -->
-  <div class="flex-1 overflow-y-auto p-6">
-    <div class="max-w-[900px] mx-auto space-y-4">
+  <div class="flex-1 overflow-y-auto">
+    <div class="dashboard-panel-container dashboard-panel-stack dashboard-panel-stack--compact">
       <!-- Empty state -->
       <div v-if="filteredBoards.length === 0" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
         <Icon name="lucide:layers" size="48" class="mb-4 opacity-50" />
@@ -107,7 +107,7 @@ async function handleDelete(board: BoardItem) {
           <template #item="{ element: board }">
             <div
               v-show="!isSearching || filteredBoards.some(b => b.id === board.id)"
-              class="flex items-center gap-4 bg-card border border-border rounded-xl p-5 shadow-sm hover:shadow-warm transition-all group mb-4"
+              class="flex items-center gap-4 dashboard-panel dashboard-panel-row shadow-sm hover:shadow-warm transition-all group mb-4"
             >
               <!-- Drag handle -->
               <div class="drag-handle text-muted-foreground/40 shrink-0" :class="isSearching ? 'cursor-not-allowed' : 'cursor-grab'">
@@ -145,7 +145,7 @@ async function handleDelete(board: BoardItem) {
           </template>
         </draggable>
         <template #fallback>
-          <div v-for="board in filteredBoards" :key="board.id" class="flex items-center gap-4 bg-card border border-border rounded-xl p-5 shadow-sm mb-4">
+          <div v-for="board in filteredBoards" :key="board.id" class="flex items-center gap-4 dashboard-panel dashboard-panel-row shadow-sm mb-4">
             <div class="text-muted-foreground/40 shrink-0">
               <Icon name="lucide:grip-vertical" size="20" />
             </div>

@@ -13,7 +13,11 @@ test('dashboard skips inaccessible Inbox and protects restricted navigation', ()
   const reader = { member: true, inbox: false, moderate: false, owner: false }
   assert.equal(dashboardEntry(reader), '/dashboard/feedback')
   assert.equal(canVisitDashboard('/dashboard/inbox/', reader), false)
-  assert.equal(canVisitDashboard('/dashboard/settings/widget', reader), false)
+  assert.equal(canVisitDashboard('/dashboard/ai-agent', reader), true)
+  for (const route of ['/dashboard/settings/widget', '/dashboard/ai-agent/chat', '/dashboard/ai-agent/deploy/']) {
+    assert.equal(canVisitDashboard(route, reader), false)
+    assert.equal(canVisitDashboard(route, { ...reader, moderate: true }), true)
+  }
   assert.equal(canVisitDashboard('/dashboard/developer/sso', reader), false)
   assert.equal(canVisitDashboard('/dashboard/help', reader), true)
   assert.equal(dashboardEntry({ ...reader, inbox: true }), '/dashboard/inbox')

@@ -483,7 +483,25 @@
         "range": "区间"
       }
     },
+    "agent": {
+      "title": "AI Agent",
+      "training": "训练数据",
+      "chat": "对话与启动器",
+      "deploy": "部署",
+      "chatDescription": "管理助手设置和启动器偏好。",
+      "deployDescription": "试用网站组件，或将其安装到你的网站。"
+    },
     "nav": {
+      "settingsTitle": "设置",
+      "personalGroup": "个人",
+      "productGroup": "产品",
+      "workspaceGroup": "工作区",
+      "portalSettings": "门户设置",
+      "ssoSettings": "单点登录（SSO）",
+      "mcpConnections": "MCP 连接",
+      "expand": "展开侧栏",
+      "collapse": "收起侧栏",
+      "account": "账户菜单",
       "srTitle": "导航",
       "srDescription": "控制台导航菜单",
       "main": "主要",
@@ -832,6 +850,9 @@
       "customEntryHint": "通过自己的按钮打开反馈。"
     },
     "personal": {
+      "profile": "个人资料",
+      "profileDesc": "管理个人资料和密码。",
+      "emailNotifications": "邮件通知",
       "title": "个人设置",
       "subtitle": "仅影响你在「{name}」中的使用偏好",
       "scope": "仅影响你在当前工作区的使用偏好",
