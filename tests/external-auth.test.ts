@@ -9,7 +9,9 @@ import {
   selectExternalAuthUrl,
   validateExternalAuthUrl,
 } from '../shared/utils/external-auth.ts'
-import { isAuthConfigUnavailable } from '../app/composables/useAuthConfig.ts'
+import { isAuthConfigUnavailable, isEmailAuthEnabled } from '../app/composables/useAuthConfig.ts'
+import { handleAuthResultError } from '../app/utils/auth-result.ts'
+import { dashboardLoginRedirect, resolveDashboardReturn } from '../shared/auth/dashboard.ts'
 
 describe('external authentication redirects', () => {
   it('preserves local authentication when no URLs are configured', () => {
@@ -120,7 +122,42 @@ describe('external authentication redirects', () => {
     }
     assert.equal(isAuthConfigUnavailable(unconfigured), false)
     assert.equal(isAuthConfigUnavailable(undefined), true)
-    assert.equal(isAuthConfigUnavailable(undefined, true), false)
+  })
+
+  it('does not enable email login merely because local authentication is required', () => {
+    assert.equal(isEmailAuthEnabled({
+      google: true,
+      github: false,
+      email: false,
+      emailVerification: false,
+    }), false)
+    assert.equal(isEmailAuthEnabled({
+      google: false,
+      github: false,
+      email: true,
+      emailVerification: false,
+    }), true)
+  })
+
+  it('preserves only internal dashboard destinations through local login', () => {
+    assert.deepEqual(dashboardLoginRedirect('/zh/dashboard/settings/portal?tab=auth', '/zh'), {
+      path: '/zh',
+      query: {
+        dashboard_login: '1',
+        dashboard_return: '/zh/dashboard/settings/portal?tab=auth',
+      },
+    })
+    assert.equal(resolveDashboardReturn('https://evil.example/dashboard'), '/dashboard')
+    assert.equal(resolveDashboardReturn('/roadmap'), '/dashboard')
+    assert.equal(resolveDashboardReturn(['/dashboard']), '/dashboard')
+  })
+
+  it('stops invitation acceptance when Better Auth returns an error object', () => {
+    const seen: unknown[] = []
+    const localAuthError = { data: { code: 'LOCAL_AUTH_REQUIRED' } }
+    assert.equal(handleAuthResultError({ error: localAuthError }, error => seen.push(error)), true)
+    assert.deepEqual(seen, [localAuthError])
+    assert.equal(handleAuthResultError({ data: { invitation: 'accepted' }, error: null }, error => seen.push(error)), false)
   })
 
   it('stores portal auth per organization while preserving unrelated metadata', () => {

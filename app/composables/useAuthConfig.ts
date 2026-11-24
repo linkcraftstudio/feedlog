@@ -9,9 +9,12 @@ export interface PublicAuthConfig {
 
 export function isAuthConfigUnavailable(
   config: PublicAuthConfig | null | undefined,
-  localAuthRequired = false,
 ): boolean {
-  return !localAuthRequired && !config
+  return !config
+}
+
+export function isEmailAuthEnabled(config: PublicAuthConfig | null | undefined): boolean {
+  return config?.email === true
 }
 
 export function useAuthConfig() {

@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { authClient } from '~/lib/auth-client'
+import { promptLocalAuthIfRequired } from '~/composables/useLoginModal'
+import { handleAuthResultError } from '~/utils/auth-result'
 import { resolveAttachmentUrl } from '~/utils/attachment'
 
 // Accept invitation page at /invite?id=<invitationId>.
@@ -79,7 +81,13 @@ async function accept() {
   if (!invitation.value) return
   accepting.value = true
   try {
-    await authClient.organization.acceptInvitation({ invitationId: invitation.value.id })
+    const result = await authClient.organization.acceptInvitation({ invitationId: invitation.value.id })
+    // Better Auth resolves request failures as { error }; it does not throw.
+    // Keep the invitation mounted and ask portal SSO users for a local login.
+    if (handleAuthResultError(result, promptLocalAuthIfRequired)) {
+      accepting.value = false
+      return
+    }
     // customSession embeds orgList in the session cookie cache (maxAge:
     // 60s). The just-acquired membership isn't visible there yet, so the
     // /dashboard admin middleware would see an empty orgList and bounce

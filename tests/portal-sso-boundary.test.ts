@@ -101,21 +101,43 @@ test('portal session discovery remains host-bound while local sessions are uncha
 
 test('dashboard entry requests local login and admits an existing local member', async () => {
   let currentSession: unknown = null
+  let onboardingResolved = false
   Object.assign(globalThis, {
     defineNuxtRouteMiddleware: (handler: () => unknown) => handler,
     useAuthSession: async () => ({ data: { value: currentSession } }),
     navigateTo: (target: unknown) => target,
+    useLocalePath: () => (path: string) => `/zh${path === '/' ? '' : path}`,
+    useDashboardAccess: () => ({
+      canVisit: () => true,
+      entry: { value: '/dashboard' },
+      notifyDenied: () => {},
+    }),
+    resolveOnboardingStatus: async () => { onboardingResolved = true },
   })
-  const middleware = (await import('../app/middleware/admin.ts')).default as unknown as () => Promise<unknown>
-  const localLogin = { path: '/', query: { dashboard_login: '1' } }
+  const middleware = (await import('../app/middleware/admin.ts')).default as unknown as (
+    to: { path: string, fullPath: string },
+    from: { path: string, matched: unknown[] },
+  ) => Promise<unknown>
+  const to = { path: '/zh/dashboard/settings/portal', fullPath: '/zh/dashboard/settings/portal?tab=auth' }
+  const from = { path: '/zh', matched: [] }
+  const localLogin = {
+    path: '/zh',
+    query: {
+      dashboard_login: '1',
+      dashboard_return: '/zh/dashboard/settings/portal?tab=auth',
+    },
+  }
 
-  assert.deepEqual(await middleware(), localLogin)
+  assert.deepEqual(await middleware(to, from), localLogin)
+  currentSession = { session: { id: 'guest' }, user: { id: 'guest', isAnonymous: true } }
+  assert.deepEqual(await middleware(to, from), localLogin)
   currentSession = portalSession()
-  assert.deepEqual(await middleware(), localLogin)
+  assert.deepEqual(await middleware(to, from), localLogin)
   currentSession = {
     session: { id: 'local', ssoOrgId: null },
     user: { id: 'staff' },
     orgList: [{ orgId: 'one', role: 'manager' }],
   }
-  assert.equal(await middleware(), undefined)
+  assert.equal(await middleware(to, from), undefined)
+  assert.equal(onboardingResolved, true)
 })

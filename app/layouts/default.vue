@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { resolveAttachmentUrl } from '~/utils/attachment'
+import { resolveDashboardReturn } from '#layers/feedlog/shared/auth/dashboard'
 
 const { signOut } = useAuth()
 const { data: session } = await useAuthSession()
@@ -78,13 +79,19 @@ const navItems = computed(() => [
 // middleware adds this marker before returning here.
 const route = useRoute()
 const dashboardLoginRequested = computed(() => route.query.dashboard_login === '1')
-onMounted(() => {
-  if (!dashboardLoginRequested.value || canEnterDashboard.value) return
-  openLoginModal(isSsoSession.value ? LOCAL_AUTH_REASON : undefined)
-})
-watch(canEnterDashboard, (allowed) => {
-  if (allowed && dashboardLoginRequested.value) void navigateTo(localePath('/dashboard'))
-})
+const dashboardReturn = computed(() => resolveDashboardReturn(
+  route.query.dashboard_return,
+  localePath('/dashboard'),
+))
+watch([dashboardLoginRequested, canEnterDashboard], ([requested, allowed]) => {
+  if (!import.meta.client || !requested) return
+  if (allowed) {
+    showLoginModal.value = false
+    void navigateTo(dashboardReturn.value, { replace: true })
+    return
+  }
+  void openLoginModal(isSsoSession.value ? LOCAL_AUTH_REASON : undefined)
+}, { immediate: true })
 
 async function handleSignOut() {
   await signOut()

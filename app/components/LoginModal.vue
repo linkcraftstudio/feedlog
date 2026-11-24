@@ -15,13 +15,9 @@ const loginModal = useLoginModal()
 const { reason, intent, portalContext } = loginModal
 const { data: authCfg, status: authConfigStatus, refresh: refreshAuthConfig } = await useAuthConfig()
 const hasOAuth = computed(() => !!(authCfg.value?.google || authCfg.value?.github))
-const localAuthRequired = computed(() => reason.value === LOCAL_AUTH_REASON)
-const emailEnabled = computed(() => localAuthRequired.value || !!authCfg.value?.email)
+const emailEnabled = computed(() => isEmailAuthEnabled(authCfg.value))
 const showSeparator = computed(() => hasOAuth.value && emailEnabled.value)
-const authConfigUnavailable = computed(() => isAuthConfigUnavailable(
-  authCfg.value,
-  localAuthRequired.value,
-))
+const authConfigUnavailable = computed(() => isAuthConfigUnavailable(authCfg.value))
 
 function initialState(): ModalState {
   // Skip the chooser when email is the only available method.
