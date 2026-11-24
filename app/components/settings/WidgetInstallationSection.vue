@@ -97,10 +97,10 @@ const authSteps = computed(() => [
 
 <template>
   <section
-    class="rounded-xl border border-border bg-card overflow-hidden"
+    class="dashboard-panel overflow-hidden"
     data-widget-section="installation"
   >
-    <div class="px-6 py-5 border-b border-border flex flex-wrap items-start justify-between gap-4">
+    <div class="dashboard-panel-header border-b border-border flex flex-wrap items-start justify-between gap-4">
       <div>
         <h3 class="font-heading font-bold text-sm">
           {{ $t('settings.widget.installSection') }}
@@ -139,7 +139,7 @@ const authSteps = computed(() => [
         >{{ $t('settings.widget.enabledLabel') }}</label>
       </div>
     </div>
-    <div class="px-6 py-6 space-y-5 min-w-0">
+    <div class="dashboard-panel-body space-y-5 min-w-0">
       <!-- Two paths, agent first: most teams now hand integration work to a coding
            agent, and the prompt carries everything the manual steps below show. -->
       <div data-widget-agent-install>

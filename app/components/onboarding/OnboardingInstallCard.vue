@@ -8,7 +8,7 @@ onMounted(() => { if (!state.value.installCardHidden) warmDemo() })
 </script>
 
 <template>
-  <section v-if="!state.installCardHidden" class="relative rounded-xl border border-primary/30 bg-secondary/60 py-5 pl-6 pr-12 flex flex-wrap items-center gap-4" data-onboarding-install-card>
+  <section v-if="!state.installCardHidden" class="dashboard-panel dashboard-panel-header relative border-primary/30 bg-secondary/60 pe-12 flex flex-wrap items-center gap-4" data-onboarding-install-card>
     <div class="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground"><Icon name="lucide:code-xml" size="20" /></div>
     <div class="min-w-0 flex-1">
       <p class="font-heading text-sm font-bold">{{ $t('onboarding.installCard.title', { name: org.name }) }}</p>

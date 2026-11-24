@@ -4,7 +4,7 @@ defineEmits<{ cancel: []; save: [] }>()
 </script>
 
 <template>
-  <div class="px-6 py-3 border-t border-border bg-muted/30 flex flex-wrap items-center justify-end gap-3">
+  <div class="dashboard-panel-footer border-t border-border bg-muted/30 flex flex-wrap items-center justify-end gap-3">
     <p
       class="text-xs mr-auto"
       :class="error ? 'text-destructive' : 'text-muted-foreground'"

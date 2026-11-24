@@ -11,12 +11,12 @@ const { copy, copied, text } = useClipboard()
 </script>
 
 <template>
-  <section class="overflow-hidden rounded-xl border border-border bg-card">
-    <div class="border-b border-border px-6 py-5">
+  <section class="dashboard-panel overflow-hidden">
+    <div class="dashboard-panel-header border-b border-border">
       <h2 class="font-heading text-sm font-bold">{{ t('mcp.connectApplication') }}</h2>
       <p class="mt-1 text-xs leading-relaxed text-muted-foreground">{{ t('mcp.connectDescription') }}</p>
     </div>
-    <div class="space-y-5 px-6 py-5">
+    <div class="dashboard-panel-body space-y-5">
       <div class="grid grid-cols-3 gap-2 sm:grid-cols-6" role="group" :aria-label="t('mcp.chooseApplication')">
         <button v-for="client in clients" :key="client.id" type="button" class="flex min-w-0 flex-col items-center gap-2 rounded-lg border px-2 py-4 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-ring" :class="selectedId === client.id ? 'border-primary bg-secondary text-primary' : 'border-border text-muted-foreground hover:bg-muted'" :aria-pressed="selectedId === client.id" @click="selectedId = client.id"><McpLogo :type="client.id" /><span class="truncate">{{ client.name }}</span></button>
       </div>

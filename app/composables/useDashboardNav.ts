@@ -8,10 +8,10 @@ export interface DashboardNavItem {
 
 export interface DashboardNav {
   mainNav: ComputedRef<DashboardNavItem[]>
+  aiNav: ComputedRef<DashboardNavItem[]>
+  personalNav: ComputedRef<DashboardNavItem[]>
+  productNav: ComputedRef<DashboardNavItem[]>
   settingsNav: ComputedRef<DashboardNavItem[]>
-  // Advanced / integration surfaces. Rendered as a separate, collapsed-by-default
-  // section so it doesn't crowd the everyday Settings items.
-  developerNav: ComputedRef<DashboardNavItem[]>
 }
 
 export function useDashboardNav(): DashboardNav {
@@ -22,25 +22,31 @@ export function useDashboardNav(): DashboardNav {
     mainNav: computed(() => [
       { label: t('inbox.title'), to: '/dashboard/inbox', icon: 'lucide:inbox' },
       { label: t('nav.feedback'),  to: '/dashboard/feedback',  icon: 'lucide:message-square' },
+      { label: t('dashboard.agent.title'), to: '/dashboard/ai-agent', icon: 'lucide:sparkles' },
       { label: t('nav.roadmap'),   to: '/dashboard/roadmap',   icon: 'lucide:map' },
       { label: t('nav.changelog'), to: '/dashboard/changelog', icon: 'lucide:newspaper' },
       { label: t('nav.helpCenter'), to: '/dashboard/help', icon: 'lucide:book-open' },
-      { label: t('aiTraining.ui.title'), to: '/dashboard/ai-training', icon: 'lucide:database' },
+    ]),
+    aiNav: computed(() => [
+      { label: t('dashboard.agent.training'), to: '/dashboard/ai-agent', icon: 'lucide:database' },
+      { label: t('dashboard.agent.chat'), to: '/dashboard/ai-agent/chat', icon: 'lucide:settings-2' },
+      { label: t('dashboard.agent.deploy'), to: '/dashboard/ai-agent/deploy', icon: 'lucide:rocket' },
+    ]),
+    personalNav: computed(() => [
+      { label: t('settings.personal.profile'), to: '/dashboard/settings/profile', icon: 'lucide:user-round' },
+      { label: t('settings.personal.notifications'), to: '/dashboard/settings/personal', icon: 'lucide:bell' },
+    ]),
+    productNav: computed(() => [
+      { label: t('dashboard.nav.portalSettings'), to: '/dashboard/settings/portal', icon: 'lucide:layout-template' },
+      { label: t('dashboard.boards.title'), to: '/dashboard/boards', icon: 'lucide:settings-2' },
     ]),
     settingsNav: computed(() => [
-      { label: t('nav.board'),     to: '/dashboard/boards',              icon: 'lucide:settings-2' },
-      // Round chat bubble: matches the launcher visitors actually see, and stays
-      // distinct from Feedback's square one.
-      { label: t('nav.widget'),    to: '/dashboard/settings/widget',     icon: 'lucide:message-circle' },
-      { label: t('nav.members'),   to: '/dashboard/settings/members',    icon: 'lucide:users' },
-      { label: t('nav.portal'),    to: '/dashboard/settings/portal',     icon: 'lucide:layout-template' },
-      { label: t('nav.workspace'), to: '/dashboard/settings/workspace',  icon: 'lucide:building-2' },
+      { label: t('nav.workspace'), to: '/dashboard/settings/workspace', icon: 'lucide:building-2' },
+      { label: t('nav.members'), to: '/dashboard/members', icon: 'lucide:users' },
+      { label: t('dashboard.nav.ssoSettings'), to: '/dashboard/developer/sso', icon: 'lucide:key-round' },
       ...(authConfig.value?.mcp && ['owner', 'manager', 'contributor'].includes(org.value.role ?? '')
-        ? [{ label: 'MCP', to: '/dashboard/mcp', icon: 'lucide:plug' }]
+        ? [{ label: t('dashboard.nav.mcpConnections'), to: '/dashboard/mcp', icon: 'lucide:plug' }]
         : []),
-    ]),
-    developerNav: computed(() => [
-      { label: t('nav.sso'), to: '/dashboard/developer/sso', icon: 'lucide:key-round' },
     ]),
   }
 }

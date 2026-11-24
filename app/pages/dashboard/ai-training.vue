@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import AiTrainingWorkspace from '~/components/ai-training/AiTrainingLibrary.vue'
-definePageMeta({ layout: 'dashboard', middleware: 'admin' })
+definePageMeta({
+  middleware(to) {
+    const localePath = useLocalePath()
+    return navigateTo(localePath({ path: '/dashboard/ai-agent', query: to.query, hash: to.hash }), { replace: true })
+  },
+})
 </script>
-<template><AiTrainingWorkspace /></template>
+
+<template>
+  <div />
+</template>

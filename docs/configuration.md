@@ -478,7 +478,7 @@ per-conversation polling amplification. This does not serialize model execution.
 ## Website knowledge
 
 Website sources use the existing PostgreSQL/pgvector database and durable Inbox
-scheduler. Apply the generated migrations before using `/dashboard/ai-training`.
+scheduler. Apply the generated migrations before using `/dashboard/ai-agent`.
 `OPENAI_API_KEY`, `OPENAI_BASE_URL` and `OPENAI_TEXT_MODEL` configure AI cleanup
 and summaries. Knowledge embeddings default to `text-embedding-3-large / 768`;
 model and dimensions can be changed together, followed by reindexing. No resident

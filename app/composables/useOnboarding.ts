@@ -169,7 +169,8 @@ export function useOnboarding() {
     closeGuide('install')
     exitDemo()
     state.value.highlightInstall = true
-    await navigateTo(localePath('/dashboard/settings/widget'))
+    const result = await navigateTo(localePath({ path: '/dashboard/ai-agent/deploy', hash: '#installation' }))
+    if (result) state.value.highlightInstall = false
   }
 
   function hideInstallCard() {

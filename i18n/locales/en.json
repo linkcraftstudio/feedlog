@@ -483,7 +483,25 @@
         "range": "Between"
       }
     },
+    "agent": {
+      "title": "AI Agent",
+      "training": "Training Data",
+      "chat": "Chat & Launcher",
+      "deploy": "Deploy",
+      "chatDescription": "Manage assistant settings and launcher preferences.",
+      "deployDescription": "Try the widget or install it on your site."
+    },
     "nav": {
+      "settingsTitle": "Settings",
+      "personalGroup": "Personal",
+      "productGroup": "Product",
+      "workspaceGroup": "Workspace",
+      "portalSettings": "Portal settings",
+      "ssoSettings": "Single sign-on (SSO)",
+      "mcpConnections": "MCP connections",
+      "expand": "Expand sidebar",
+      "collapse": "Collapse sidebar",
+      "account": "Account menu",
       "srTitle": "Navigation",
       "srDescription": "Dashboard navigation menu",
       "main": "Main",
@@ -832,6 +850,9 @@
       "customEntryHint": "Connect your own button to open feedback."
     },
     "personal": {
+      "profile": "Profile",
+      "profileDesc": "Manage your profile and password.",
+      "emailNotifications": "Email notifications",
       "title": "Personal settings",
       "subtitle": "Your preferences in {name}",
       "scope": "Preferences for your account in this workspace",

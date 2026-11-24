@@ -1,6 +1,6 @@
-import type { ResolvedWidgetSettings } from '~~/shared/utils/widget-settings'
-import type { WidgetCustomRule } from '~~/shared/constants/widget-rules'
-import type { UpdateWidgetSettingsInput } from '~~/shared/schemas/widget'
+import type { ResolvedWidgetSettings } from '#layers/feedlog/shared/utils/widget-settings'
+import type { WidgetCustomRule } from '#layers/feedlog/shared/constants/widget-rules'
+import type { UpdateWidgetSettingsInput } from '#layers/feedlog/shared/schemas/widget'
 
 export type WidgetSettingsResponse = ResolvedWidgetSettings & { baseUrl: string }
 

@@ -111,7 +111,7 @@ async function save() {
 
 <template>
   <div class="flex flex-col h-full">
-    <header class="h-16 px-6 border-b border-border flex items-center shrink-0 bg-card">
+    <header class="dashboard-panel-page-header">
       <div>
         <h2 class="font-heading text-lg font-bold">{{ $t('settings.portal.title') }}</h2>
         <p class="text-xs text-muted-foreground">{{ $t('settings.portal.subtitle') }}</p>
@@ -119,17 +119,17 @@ async function save() {
     </header>
 
     <div class="flex-1 overflow-y-auto">
-      <div class="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+      <div class="dashboard-panel-container dashboard-panel-stack">
         <template v-if="loading">
           <p class="text-sm text-muted-foreground">{{ $t('settings.loading') }}</p>
         </template>
 
-        <section v-if="!loading && org" class="rounded-xl border border-border bg-card overflow-hidden">
-          <div class="px-6 py-5 border-b border-border">
+        <section v-if="!loading && org" class="dashboard-panel overflow-hidden">
+          <div class="dashboard-panel-header border-b border-border">
             <h3 class="font-heading font-bold text-sm">{{ $t('settings.portal.modulesSection') }}</h3>
             <p class="text-xs text-muted-foreground mt-0.5">{{ $t('settings.portal.modulesDesc') }}</p>
           </div>
-          <div class="flex items-center gap-4 px-6 py-[18px]">
+          <div class="dashboard-panel-body flex items-center gap-4">
             <span class="flex-1 min-w-0">
               <span class="block text-sm font-bold leading-5">{{ $t('settings.portal.moduleHelpCenter') }}</span>
               <span class="block mt-[3px] text-xs leading-4 text-muted-foreground">
@@ -140,13 +140,13 @@ async function save() {
           </div>
         </section>
 
-        <section v-if="!loading && org" class="rounded-xl border border-border bg-card overflow-hidden">
-          <div class="px-6 py-5 border-b border-border">
+        <section v-if="!loading && org" class="dashboard-panel overflow-hidden">
+          <div class="dashboard-panel-header border-b border-border">
             <h3 class="font-heading font-bold text-sm">{{ $t('settings.portal.welcomeSection') }}</h3>
             <p class="text-xs text-muted-foreground mt-0.5">{{ $t('settings.portal.welcomeDesc') }}</p>
           </div>
 
-          <div class="px-6 py-6 space-y-6">
+          <div class="dashboard-panel-body space-y-6">
             <div>
               <label class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('settings.portal.titleLabel') }}</label>
               <input
@@ -193,7 +193,7 @@ async function save() {
             </div>
           </div>
 
-          <div class="px-6 py-3 border-t border-border bg-muted/30 flex items-center justify-end gap-3">
+          <div class="dashboard-panel-footer border-t border-border bg-muted/30 flex items-center justify-end gap-3">
             <p v-if="error" class="text-xs text-red-600 flex items-center gap-1.5 min-w-0 truncate mr-auto">
               <Icon name="lucide:alert-circle" size="13" class="shrink-0" />
               {{ error }}

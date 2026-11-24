@@ -80,18 +80,21 @@ function confirmAction(kind: 'revoke' | 'disconnect', application: McpApplicatio
 
 <template>
   <div class="flex h-full min-h-0 flex-col">
-    <header class="shrink-0 border-b border-border bg-card px-6 py-3">
-      <h1 class="font-heading text-lg font-bold">MCP</h1><p class="text-xs text-muted-foreground">{{ t('mcp.subtitle') }}</p>
+    <header class="dashboard-panel-page-header">
+      <div>
+        <h1 class="font-heading text-lg font-bold">MCP</h1>
+        <p class="text-xs text-muted-foreground">{{ t('mcp.subtitle') }}</p>
+      </div>
     </header>
-    <div class="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-8">
-      <div class="mx-auto max-w-4xl space-y-8">
-        <div v-if="error" role="alert" class="rounded-xl border border-border bg-card p-6"><p class="mb-3 text-sm">{{ errorMessage(error) }}</p><Button variant="outline" size="sm" @click="refresh()">{{ t('mcp.retry') }}</Button></div>
+    <div class="min-h-0 flex-1 overflow-y-auto">
+      <div class="dashboard-panel-container dashboard-panel-stack">
+        <div v-if="error" role="alert" class="dashboard-panel dashboard-panel-body"><p class="mb-3 text-sm">{{ errorMessage(error) }}</p><Button variant="outline" size="sm" @click="refresh()">{{ t('mcp.retry') }}</Button></div>
         <p v-else-if="!data" role="status" class="text-sm text-muted-foreground">{{ t('a11y.loading') }}</p>
         <template v-if="data">
           <McpConnect :server-url="data.serverUrl" />
           <McpSkills />
-          <section class="overflow-hidden rounded-xl border border-border bg-card">
-            <div class="border-b border-border px-6 py-5"><h2 class="font-heading text-sm font-bold">{{ t('mcp.connectedApplications') }} <span class="ml-1 text-muted-foreground">{{ data.pagination.total }}</span></h2><p class="mt-1 text-xs text-muted-foreground">{{ t('mcp.connectionsDescription', { organization: data.organization.name }) }}</p></div>
+          <section class="dashboard-panel overflow-hidden">
+            <div class="dashboard-panel-header border-b border-border"><h2 class="font-heading text-sm font-bold">{{ t('mcp.connectedApplications') }} <span class="ml-1 text-muted-foreground">{{ data.pagination.total }}</span></h2><p class="mt-1 text-xs text-muted-foreground">{{ t('mcp.connectionsDescription', { organization: data.organization.name }) }}</p></div>
             <div class="overflow-x-auto">
               <table v-if="data.items.length" class="w-full min-w-[620px] text-left">
                 <thead class="bg-muted/30 text-xs text-muted-foreground"><tr><th class="px-6 py-3 font-normal">{{ t('mcp.application') }}</th><th class="px-4 py-3 font-normal">{{ t('mcp.authorizedBy') }}</th><th class="px-4 py-3 font-normal">{{ t('mcp.authorized') }}</th><th class="px-4 py-3 font-normal">{{ t('mcp.lastActive') }}</th><th class="relative w-12"><span class="sr-only">{{ t('mcp.actions') }}</span></th></tr></thead>

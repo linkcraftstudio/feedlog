@@ -95,7 +95,7 @@ async function confirmDelete() {
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <header class="h-16 px-6 border-b border-border flex items-center justify-between shrink-0 bg-card">
+    <header class="dashboard-panel-page-header justify-between">
       <div>
         <h2 class="font-heading text-lg font-bold">{{ $t('dashboard.sso.title') }}</h2>
         <p class="text-xs text-muted-foreground">{{ $t('dashboard.sso.subtitle') }}</p>
@@ -129,9 +129,9 @@ async function confirmDelete() {
 
     <!-- Content -->
     <div class="flex-1 overflow-y-auto">
-      <div class="max-w-3xl mx-auto px-6 py-8">
+      <div class="dashboard-panel-container dashboard-panel-stack">
         <!-- Owner gate -->
-        <div v-if="!isOwner" class="rounded-xl border border-border bg-card px-6 py-14 flex flex-col items-center text-center">
+        <div v-if="!isOwner" class="dashboard-panel dashboard-panel-inline py-14 flex flex-col items-center text-center">
           <div class="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center mb-3">
             <Icon name="lucide:lock" size="22" class="text-muted-foreground" />
           </div>
@@ -143,8 +143,8 @@ async function confirmDelete() {
 
         <!-- Secrets -->
         <template v-else-if="view === 'secrets'">
-          <section class="rounded-xl border border-border bg-card overflow-hidden">
-            <div class="px-5 py-3 border-b border-border flex items-center justify-between">
+          <section class="dashboard-panel overflow-hidden">
+            <div class="dashboard-panel-header border-b border-border flex items-center justify-between">
               <div>
                 <h3 class="font-heading font-bold text-sm">{{ $t('dashboard.sso.signingSecrets') }}</h3>
                 <p class="text-[11px] text-muted-foreground mt-0.5">{{ $t('dashboard.sso.secretsDesc') }}</p>
