@@ -2,6 +2,7 @@ import { transaction } from '../agent/runtime'
 import { eventItem, recoverLocked, type ConversationRow, type InboxRuntime } from './service'
 import { deliverReplyTask } from './email'
 import { deliverHandoffEmail } from './handoff-email'
+import { emitConversationEvent } from '../../utils/conversation-events'
 
 export async function inboxTick(runtime: InboxRuntime) {
   const result = { closed: 0, resumed: 0, recoveredRuns: 0, emails: 0, failed: 0, hasMore: false }
@@ -49,7 +50,8 @@ export async function inboxTick(runtime: InboxRuntime) {
               const wake = row.status === 'snoozed'
               const status = wake ? 'open' : 'closed'
               await client.query('UPDATE conversation SET status=$2,state_due_at=NULL WHERE id=$1', [row.id, status])
-              await eventItem(client, row.id, { kind: wake ? 'resumed' : 'closed', reason: 'timeout', fromStatus: row.status, toStatus: status })
+              const item = await eventItem(client, row.id, { kind: wake ? 'resumed' : 'closed', reason: 'timeout', fromStatus: row.status, toStatus: status })
+              if (!wake) await emitConversationEvent(client, { orgId: row.org_id, conversationId: row.id, kind: 'closed', reason: 'timeout', occurredAt: item.created_at })
               outcome = wake ? 'resumed' : 'closed'
             } else if (due.running || (row.state_due_at && !due.due)) {
               await client.query("UPDATE scheduled_task SET status='pending',schedule_at=greatest($2::timestamptz,clock_timestamp()+interval '1 minute'),updated_at=clock_timestamp() WHERE id=$1", [task.id, row.state_due_at])

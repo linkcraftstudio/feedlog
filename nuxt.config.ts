@@ -184,6 +184,24 @@ export default defineNuxtConfig({
     },
   },
 
+  // The server runs without --enable-source-maps and nothing else reads these
+  // maps, yet generating them pushes the Docker build past its 2 GiB heap limit.
+  $production: {
+    sourcemap: { server: false },
+  },
+
+  hooks: {
+    // Vite 8's manifest makes the renderer prefetch every lazy chunk, which adds
+    // about 200 KB to the widget frame and delays its first paint. Lazy chunks
+    // still load on demand.
+    'build:manifest'(manifest) {
+      for (const entry of Object.values(manifest)) {
+        entry.prefetch = false
+        entry.dynamicImports = []
+      }
+    },
+  },
+
   build: {
     transpile: ['reka-ui'],
   },

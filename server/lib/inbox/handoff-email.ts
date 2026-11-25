@@ -10,7 +10,7 @@ import { buildPostLink } from '../../utils/post-link-builder'
 export async function hasHumanSupport(client: Pick<PoolClient, 'query'>, orgId: string) {
   const { rows: [row] } = await client.query(`SELECT EXISTS(SELECT 1 FROM member m JOIN "user" u ON u.id=m.user_id
     WHERE m.organization_id=$1 AND string_to_array(m.role,',') && ARRAY['owner','manager','contributor']
-    AND NOT coalesce(u.is_anonymous,false)) AS available`, [orgId])
+    AND m.suspended_at IS NULL AND NOT coalesce(u.is_anonymous,false)) AS available`, [orgId])
   return row.available === true
 }
 
@@ -47,19 +47,19 @@ export async function deliverHandoffEmail(runtime: InboxRuntime, task: HandoffEm
       WHERE r.id=$1`, [task.ref_id])
     if (!conversation) { await finish('done', 'skipped'); return }
     const { rows: recipients } = await runtime.pool.query(`SELECT DISTINCT u.id,u.email FROM member m JOIN "user" u ON u.id=m.user_id
-      WHERE m.organization_id=$1 AND string_to_array(m.role,',') && ARRAY['owner']
+      WHERE m.organization_id=$1 AND string_to_array(m.role,',') && ARRAY['owner'] AND m.suspended_at IS NULL
       AND NOT coalesce(u.is_anonymous,false) AND nullif(btrim(u.email),'') IS NOT NULL`, [conversation.org_id])
     if (!context) {
       const { rows: messages } = await runtime.pool.query<{ author_type: string; content: Content }>(`SELECT author_type,content FROM conversation_item
         WHERE conversation_id=$1 AND seq<$2 AND author_type IN ('customer','agent','staff') ORDER BY seq DESC LIMIT 12`, [conversation.id, conversation.handoff_seq])
       const last = messages.find(message => message.author_type === 'customer')
       const notice = conversation.handoff_content?.parts?.find((part: { kind?: string }) => part.kind === 'handoff')
-      const unavailable = notice?.reason === 'ai_error'
+      const unavailable = notice?.reason === 'ai_error' || notice?.reason === 'ai_paused'
       const category = ({ 'builtin-billing': 'Billing & refunds', 'builtin-account-access': 'Account access', 'builtin-privacy-legal': 'Privacy & data' } as Record<string, string>)[notice?.rule?.id]
       context = {
         customerName: conversation.is_anonymous ? 'Visitor' : (conversation.customer_name?.trim() || 'Customer').slice(0, 100),
         customerEmail: conversation.is_anonymous ? undefined : conversation.customer_email,
-        reason: unavailable ? 'AI unavailable · Routed to your team' : notice?.reason === 'support_rule'
+        reason: notice?.reason === 'ai_paused' ? 'AI paused · Routed to your team' : unavailable ? 'AI unavailable · Routed to your team' : notice?.reason === 'support_rule'
           ? `Support rule · ${category || 'Custom support rule'}`
           : notice?.reason === 'user_requested' ? 'Customer requested a person' : 'Human assistance required',
         summary: unavailable ? '' : await summarizeHandoffQuestion([...messages].reverse()),

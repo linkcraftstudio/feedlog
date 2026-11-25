@@ -7,7 +7,7 @@ defineProps<{
   unread?: number
 }>()
 const localePath = useLocalePath()
-const { canVisit, guardNavigation } = useDashboardAccess()
+const { canVisit, suspendedBlocked, guardNavigation } = useDashboardAccess()
 </script>
 
 <template>
@@ -18,7 +18,7 @@ const { canVisit, guardNavigation } = useDashboardAccess()
     :aria-current="selected ? 'page' : undefined"
     :title="item.label"
     class="dashboard-nav-link relative flex min-w-0 items-center gap-3 rounded-lg px-3 py-2 transition-colors"
-    :class="selected ? 'bg-secondary font-bold text-primary' : 'font-semibold text-muted-foreground hover:bg-background hover:text-foreground'"
+    :class="[selected ? 'bg-secondary font-bold text-primary' : 'font-semibold text-muted-foreground hover:bg-background hover:text-foreground', suspendedBlocked(item.to) && 'opacity-50']"
     @click.capture="guardNavigation($event, item.to)"
   >
     <Icon :name="item.icon" size="20" class="shrink-0" />

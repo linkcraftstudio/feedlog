@@ -57,7 +57,7 @@ async function notifyQuota(client: Pool | PoolClient) {
   try {
     if (resolveEmailProvider().name === 'console') return
     const { rows } = await client.query(`SELECT DISTINCT m.organization_id,u.id,u.email FROM member m
-      JOIN "user" u ON u.id=m.user_id WHERE 'owner'=ANY(string_to_array(m.role,','))
+      JOIN "user" u ON u.id=m.user_id WHERE 'owner'=ANY(string_to_array(m.role,',')) AND m.suspended_at IS NULL
       AND u.email IS NOT NULL AND coalesce(u.is_anonymous,false)=false`)
     for (const owner of rows) {
       try {

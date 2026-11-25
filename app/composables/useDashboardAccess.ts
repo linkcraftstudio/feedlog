@@ -6,7 +6,11 @@ export function useDashboardAccess() {
   const { canAccessInbox, canModerate, isOrgOwner } = usePermission(computed(() => undefined), 'post')
   const { $i18n } = useNuxtApp()
   const access = computed(() => ({ member: !!org.value.role, inbox: canAccessInbox.value, moderate: canModerate.value, owner: isOrgOwner.value }))
-  const canVisit = (path: string) => canVisitDashboard(path, access.value)
+  const suspendedPages = useAppConfig().suspendedMemberAccess.pages
+  // Suspended members may open any dashboard route; the layout replaces pages
+  // outside the allow list with MemberSuspendedNotice.
+  const suspendedBlocked = (path: string) => org.value.suspended && !suspendedPages.some(prefix => path === prefix || path.startsWith(`${prefix}/`))
+  const canVisit = (path: string) => org.value.suspended || canVisitDashboard(path, access.value)
   function notifyDenied() {
     toast.error($i18n.t('dashboard.accessDenied'), { id: 'dashboard-access-denied', description: $i18n.t('dashboard.requestAccess') })
   }
@@ -16,5 +20,5 @@ export function useDashboardAccess() {
     event.stopPropagation()
     notifyDenied()
   }
-  return { canVisit, entry: computed(() => dashboardEntry(access.value)), notifyDenied, guardNavigation }
+  return { canVisit, suspendedBlocked, entry: computed(() => dashboardEntry(access.value)), notifyDenied, guardNavigation }
 }

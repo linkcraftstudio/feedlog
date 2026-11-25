@@ -19,7 +19,7 @@ definePageMeta({ layout: false, middleware: [] })
 const route = useRoute()
 const router = useRouter()
 const localePath = useLocalePath()
-const { t } = useI18n()
+const { t, te } = useI18n()
 useHead({ title: () => t('auth.invite.joinTitle') })
 // Reuse the project's global LoginModal — popping it in-page (vs navigating
 // to /?login=1) keeps the user on /invite so the page can transition into
@@ -45,6 +45,10 @@ const invitation = ref<InvitationView | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const accepting = ref(false)
+// Why the last acceptance was refused while the invitation itself is still valid; shown under the button.
+const refusal = ref('')
+// Refusals that mean the invitation can no longer be used, as opposed to a condition that may clear.
+const GONE = new Set(['INVITATION_NOT_FOUND', 'YOU_ARE_NOT_THE_RECIPIENT_OF_THE_INVITATION'])
 
 // Public lookup endpoint (server/api/invitations/[id].get.ts). Don't use
 // better-auth's organization.getInvitation — it requires the requester
@@ -78,8 +82,18 @@ const state = computed<State>(() => {
 async function accept() {
   if (!invitation.value) return
   accepting.value = true
+  refusal.value = ''
   try {
-    await authClient.organization.acceptInvitation({ invitationId: invitation.value.id })
+    const { error: refused } = await authClient.organization.acceptInvitation({ invitationId: invitation.value.id })
+    if (refused) {
+      // The invitation stays pending, so keep the page and say why, worded for the invitee. A deployment that
+      // refuses with its own code adds `auth.invite.refused.<code>` to its locale.
+      const code = refused.code ?? ''
+      if (GONE.has(code)) error.value = 'invalid'
+      else refusal.value = te(`auth.invite.refused.${code}`) ? t(`auth.invite.refused.${code}`) : refused.message || t('auth.invite.acceptFailed')
+      accepting.value = false
+      return
+    }
     // customSession embeds orgList in the session cookie cache (maxAge:
     // 60s). The just-acquired membership isn't visible there yet, so the
     // /dashboard admin middleware would see an empty orgList and bounce
@@ -190,6 +204,7 @@ const userImage = computed(() => resolveAttachmentUrl(session.value?.user?.image
           {{ accepting ? $t('auth.invite.joining') : $t('auth.invite.joinOrg', { org: invitation!.organizationName }) }}
           <Icon name="lucide:arrow-right" size="14" />
         </button>
+        <p v-if="refusal" role="alert" class="mt-3 text-xs text-red-600 leading-relaxed">{{ refusal }}</p>
 
         <p class="mt-3 text-[11px] text-muted-foreground">
           {{ $t('auth.invite.notYou') }}

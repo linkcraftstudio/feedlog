@@ -3,6 +3,7 @@ import { oauthProviderClient } from '@better-auth/oauth-provider/client'
 import { adminClient, customSessionClient, organizationClient } from 'better-auth/client/plugins'
 import { ac, contributor, manager, owner } from '~~/shared/auth/permissions'
 import { notifyPermissionDenied } from '#layers/feedlog/app/utils/permission-error'
+import { apiErrorFromAuth, handleApiError } from '#layers/feedlog/app/utils/api-error'
 import { promptLocalAuthIfRequired } from '~/composables/useLoginModal'
 import type { auth } from '~~/server/utils/better-auth'
 
@@ -22,7 +23,10 @@ export const authClient = createAuthClient({
     // than through useApiFetch. Read `error`, not `response`: better-fetch hands
     // back a plain web Response and spreads the parsed body onto `error`.
     onError(ctx) {
-      if (!promptLocalAuthIfRequired(ctx.error)) notifyPermissionDenied(ctx.error)
+      // The invitee is not yet a member, so the dashboard prompts (upgrade, permissions) do not apply to them;
+      // the invite page explains refusals itself.
+      if (String(ctx.request?.url ?? '').includes('/organization/accept-invitation')) return
+      if (!promptLocalAuthIfRequired(ctx.error) && !handleApiError(apiErrorFromAuth(ctx.error))) notifyPermissionDenied(ctx.error)
     },
   },
 })

@@ -123,6 +123,12 @@ export const member = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     role: text("role").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
+    // Set while the member is suspended: the row (role, history) stays but
+    // access is lost until activated. suspendedReason records who suspended
+    // them: 'manual' for an owner or manager; a deployment that suspends on its
+    // own (e.g. over a seat limit) uses its own value and only lifts those.
+    suspendedAt: timestamp("suspended_at"),
+    suspendedReason: text("suspended_reason"),
   },
   (table) => [
     index("member_userId_idx").on(table.userId),

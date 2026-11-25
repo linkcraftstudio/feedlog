@@ -27,6 +27,8 @@ async function handleSignOut() {
 const { mainNav, aiNav, personalNav, productNav, settingsNav } = useDashboardNav()
 const { t } = useI18n()
 const route = useRoute()
+const { suspendedBlocked } = useDashboardAccess()
+const pageBlocked = computed(() => suspendedBlocked(route.path.replace(/^\/(?:en|zh)(?=\/|$)/, '')))
 const mobileMenuOpen = ref(false)
 watch(() => route.path, () => { mobileMenuOpen.value = false })
 
@@ -270,32 +272,40 @@ onMounted(() => onboarding.load(onboardingStatus.value?.autoOpen === true))
       </div>
     </aside>
 
-    <aside
-      v-if="inAgent || inSettings"
-      class="dashboard-secondary flex shrink-0 flex-col border-b border-border bg-card md:w-52 md:border-r md:border-b-0 xl:w-60"
-      :aria-label="$t(inAgent ? 'dashboard.agent.title' : 'dashboard.nav.settingsTitle')"
-    >
-      <header class="flex h-11 shrink-0 items-center px-4 md:h-16 md:border-b md:border-border md:px-5">
-        <h2 class="font-heading text-lg font-bold">{{ $t(inAgent ? 'dashboard.agent.title' : 'dashboard.nav.settingsTitle') }}</h2>
-      </header>
-      <nav class="dashboard-secondary-links scrollbar-subtle flex items-center gap-1 overflow-x-auto px-3 pb-2 md:block md:space-y-1 md:overflow-y-auto md:px-3 md:py-4">
-        <template v-if="inAgent">
-          <DashboardNavigationLink v-for="item in aiNav" :key="item.to" :item="item" :selected="isCurrent(item.to)" />
-        </template>
-        <template v-else>
-          <template v-for="(group, index) in settingsGroups" :key="group.label">
-            <p class="dashboard-secondary-group" :class="index > 0 && 'md:mt-5!'">{{ group.label }}</p>
-            <DashboardNavigationLink v-for="item in group.items" :key="item.to" :item="item" :selected="isCurrent(item.to, true)" />
-          </template>
-        </template>
-      </nav>
-    </aside>
+    <!-- The notice bar spans the secondary navigation and the page, so it sits in the same place on every screen. -->
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col">
+      <DashboardNoticeBar />
+      <div class="flex min-h-0 min-w-0 flex-1 flex-col md:flex-row">
+        <aside
+          v-if="inAgent || inSettings"
+          class="dashboard-secondary flex shrink-0 flex-col border-b border-border bg-card md:w-52 md:border-r md:border-b-0 xl:w-60"
+          :aria-label="$t(inAgent ? 'dashboard.agent.title' : 'dashboard.nav.settingsTitle')"
+        >
+          <header class="flex h-11 shrink-0 items-center px-4 md:h-16 md:border-b md:border-border md:px-5">
+            <h2 class="font-heading text-lg font-bold">{{ $t(inAgent ? 'dashboard.agent.title' : 'dashboard.nav.settingsTitle') }}</h2>
+          </header>
+          <nav class="dashboard-secondary-links scrollbar-subtle flex items-center gap-1 overflow-x-auto px-3 pb-2 md:block md:space-y-1 md:overflow-y-auto md:px-3 md:py-4">
+            <template v-if="inAgent">
+              <DashboardNavigationLink v-for="item in aiNav" :key="item.to" :item="item" :selected="isCurrent(item.to)" />
+            </template>
+            <template v-else>
+              <template v-for="(group, index) in settingsGroups" :key="group.label">
+                <p class="dashboard-secondary-group" :class="index > 0 && 'md:mt-5!'">{{ group.label }}</p>
+                <DashboardNavigationLink v-for="item in group.items" :key="item.to" :item="item" :selected="isCurrent(item.to, true)" />
+              </template>
+            </template>
+          </nav>
+        </aside>
 
-    <!-- Main content -->
-    <main class="dashboard-content flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <slot />
-    </main>
+        <!-- Main content -->
+        <main class="dashboard-content flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <MemberSuspendedNotice v-if="pageBlocked" />
+          <slot v-else />
+        </main>
+      </div>
+    </div>
 
+    <DashboardExtensions />
     <LoginModal v-model:open="showLoginModal" />
     <OnboardingGuide />
     <OnboardingDemoWidget />

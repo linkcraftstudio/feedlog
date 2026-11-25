@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
-import { handoffNotice as customerNoticeKind, type SystemEventPart } from '#layers/feedlog/shared/inbox/state'
+import { handoffNotice as customerNoticeKind, isSystemHandoffReason, type SystemEventPart } from '#layers/feedlog/shared/inbox/state'
 import type { Content } from '#layers/feedlog/shared/agent/content'
 import InboxStatusBadge from '#layers/feedlog/app/components/inbox/StatusBadge.vue'
 import InboxCustomerDetails from '#layers/feedlog/app/components/inbox/CustomerDetails.vue'
@@ -14,7 +14,7 @@ import type {
 } from '#layers/feedlog/shared/inbox/types'
 
 definePageMeta({ layout: 'dashboard', middleware: 'admin' })
-const { t, locale } = useI18n()
+const { t, te, locale } = useI18n()
 const { data: session } = useAuthSession()
 const { confirm } = useConfirmDialog()
 const { authorName } = useAuthorDisplay()
@@ -70,10 +70,13 @@ const hasFilters = computed(() => !!filters.q.trim() || filters.status !== 'all'
 const selected = ref<string | null>(null)
 const detail = ref<InboxDetail | null>(null)
 function showSystemNotice(part: Content['parts'][number]) {
+  // Paused handoffs have no customer notice but staff need to see why the AI stopped.
   return part.type === 'system_event' && ((part.kind === 'handoff' && part.reason !== 'ai_error')
     || (part.reason === 'manual' && ['takeover', 'snoozed', 'closed'].includes(part.kind)))
 }
 function handoffNotice(part: SystemEventPart) {
+  // A deployment explains its own pause codes in its locale; unknown codes fall back to the generic text.
+  if (part.reason === 'ai_paused' && part.detail && te(`inbox.handoffNotices.${part.detail}`)) return t(`inbox.handoffNotices.${part.detail}`)
   const builtin = part.rule?.id
   const key = part.reason === 'support_rule' && builtin && ['builtin-billing', 'builtin-account-access', 'builtin-privacy-legal'].includes(builtin)
     ? builtin : part.reason
@@ -593,7 +596,7 @@ watch([initialList, initialListError, initialListStatus], ([data, failure, statu
           <div v-if="detail.nextBeforeSeq" class="text-center"><Button variant="ghost" size="sm" class="text-xs" @click="loadDetail(selected!, true)">{{ t('inbox.earlier') }}</Button></div>
           <article v-for="item in visibleItems" :key="item.id" :data-inbox-message="item.id">
             <template v-if="item.authorType === 'system'">
-              <div v-if="item.content.parts.some(part => part.type === 'system_event' && part.kind === 'handoff')" class="flex items-start gap-2.5">
+              <div v-if="item.content.parts.some(part => part.type === 'system_event' && part.kind === 'handoff' && !isSystemHandoffReason(part.reason))" class="flex items-start gap-2.5">
                 <div class="grid size-7 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><Icon name="lucide:bot" size="14" /></div>
                 <div class="min-w-0 max-w-[85%]">
                   <div class="w-fit max-w-full rounded-xl rounded-tl-sm border border-border bg-secondary/50 px-3.5 py-2.5 text-[13px] font-normal leading-relaxed" dir="auto" data-handoff-message>{{ customerConfirmation(item.content) }}</div>

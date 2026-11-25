@@ -2,6 +2,7 @@ import { queueInboxEvent } from './events'
 import { hasHumanSupport, scheduleHandoffEmail } from './handoff-email'
 import { syncConversationTask, syncRunTask, scheduleReplyEmail, replyCloseDelayMs } from './tasks'
 import { createHash } from 'node:crypto'
+import { emitConversationEvent } from '../../utils/conversation-events'
 import { uuidv7 } from 'uuidv7'
 import type { PoolClient } from 'pg'
 import { agentError, appendItem, transaction, type AgentRuntime } from '../agent/runtime'
@@ -91,6 +92,7 @@ export async function completeTakeoverLocked(client: PoolClient, row: Conversati
   if (!request) return null
   await client.query("UPDATE conversation SET status='open',state_due_at=NULL WHERE id=$1", [row.id])
   const item = await eventItem(client, row.id, { kind: 'takeover', reason: 'manual', fromStatus: 'ai_handling', toStatus: 'open', runId }, { id: `takeover:${request.id}`, userId: request.author_user_id })
+  await emitConversationEvent(client, { orgId: row.org_id, conversationId: row.id, kind: 'takeover', reason: 'manual', occurredAt: item.created_at })
   await syncConversationTask(client, row.id)
   return { id: item.id as string, seq: Number(item.seq) }
 }
@@ -104,6 +106,7 @@ export async function handoffLocked(
   feedbackResults: FeedbackPart[] = [],
   requestOrigin?: string,
   customerNotice?: string,
+  detail?: string,
 ) {
   const noticeText = customerNotice === undefined ? undefined : handoffCustomerNotice.parse(customerNotice)
   const id = `handoff:${runId}`
@@ -148,7 +151,8 @@ export async function handoffLocked(
     userId: null,
     data: { conversationId: row.id, reason },
   })
-  const notice = await eventItem(client, row.id, { kind: 'handoff', reason, ...(reason === 'support_rule' && rule ? { rule } : {}), ...(noticeText ? { customerNotice: noticeText } : {}), fromStatus: row.status, toStatus: 'open' }, { id })
+  const notice = await eventItem(client, row.id, { kind: 'handoff', reason, ...(reason === 'support_rule' && rule ? { rule } : {}), ...(noticeText ? { customerNotice: noticeText } : {}), ...(detail ? { detail } : {}), fromStatus: row.status, toStatus: 'open' }, { id })
+  await emitConversationEvent(client, { orgId: row.org_id, conversationId: row.id, kind: 'handoff', reason, occurredAt: notice.created_at })
   await scheduleHandoffEmail(client, runId, requestOrigin)
   return notice
 }
@@ -163,9 +167,10 @@ export async function handoff(
   feedbackResults: FeedbackPart[] = [],
   requestOrigin?: string,
   customerNotice?: string,
+  detail?: string,
 ) {
   const save = (expired: boolean) => transaction(runtime, async (client) =>
-    handoffLocked(client, await lockInbox(client, id, orgId), runId, reason, expired, rule, feedbackResults, requestOrigin, customerNotice),
+    handoffLocked(client, await lockInbox(client, id, orgId), runId, reason, expired, rule, feedbackResults, requestOrigin, customerNotice, detail),
   )
   try { return await save(allowExpired) }
   catch {
@@ -300,6 +305,8 @@ export async function staffCommand(
       }
       part.toStatus = status
       item = await eventItem(client, id, part, { id: itemId, userId, requestHash: fingerprint })
+      if (part.kind === 'takeover' || part.kind === 'closed')
+        await emitConversationEvent(client, { orgId, conversationId: id, kind: part.kind, reason: part.reason, occurredAt: item.created_at })
     }
     const {
       rows: [updated],

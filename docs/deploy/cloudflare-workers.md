@@ -11,7 +11,7 @@ Hyperdrive for accelerated Postgres connections.
   internet. Recommended providers: [Neon](https://neon.tech),
   [Supabase](https://supabase.com), [AWS RDS](https://aws.amazon.com/rds/), any
   host you can connect to via TLS.
-- **Node.js 22+ and pnpm 10+** on your local machine for manual setup
+- **Node.js 24+ and pnpm 10+** on your local machine for manual setup
 - **wrangler CLI** for manual setup: `pnpm dlx wrangler --version`
   (installed on demand)
 

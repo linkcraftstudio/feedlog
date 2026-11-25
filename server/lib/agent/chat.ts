@@ -12,8 +12,9 @@ import { createEventStream, getRequestURL, type H3Event } from 'h3'
 import { chatInput, contentSchema, type Part } from '#layers/feedlog/shared/agent/content'
 import { type Actor, agentRuntime, agentError } from '#layers/feedlog/server/lib/agent/runtime'
 import { handoff } from '../inbox/service'
+import { aiPauseCode } from '../../utils/ai-reply-check'
 import { requestSchedule } from '../inbox/platform'
-import { handling, handoffNotice } from '../../../shared/inbox/state'
+import { handling, handoffNotice, isSystemHandoffReason } from '../../../shared/inbox/state'
 import { publicItem, publicRun } from './runtime'
 import { imageExecutionError } from './errors'
 import { ChatImageError } from '../../../shared/agent/images'
@@ -114,10 +115,13 @@ export async function streamAgentReply(event: H3Event, actor: Actor, options: { 
       return usageWrite
     }
     let handoffUnavailable = false
+    let pauseCode: string | null = null
     let prepared: Awaited<ReturnType<typeof prepareAgent>> | undefined
     try {
       await send('run', { runId: run.id, itemId: replyId, run: publicRun(run) })
       if (!aiConfigured) throw new Error('AI unavailable')
+      pauseCode = await aiPauseCode({ orgId: actor.orgId, conversationId: id })
+      if (pauseCode) throw new Error(`AI paused: ${pauseCode}`)
       prepared = await prepareAgent(event, actor, id, run, item, signal, () => {}, unavailable => { handoffUnavailable = !!unavailable; controller.abort() }, recordUsage, preparedMessage, () => controller.abort())
       agentTiming('prepared', { runId: run.id, elapsedMs: Math.round(performance.now() - started) })
       let firstText = true
@@ -200,7 +204,7 @@ export async function streamAgentReply(event: H3Event, actor: Actor, options: { 
           return
         }
         // A tool may have already handed off or closed the conversation.
-        if (aiConfigured && ['running', 'failed'].includes(activeRun?.status)) {
+        if (aiConfigured && !pauseCode && ['running', 'failed'].includes(activeRun?.status)) {
           const timedOut = activity.signal.aborted || activeRun.error === 'ai_timeout' || error instanceof AgentDependencyTimeout || (error instanceof Error && error.name === 'TimeoutError')
           const code = timedOut ? 'ai_timeout' : 'ai_error'
           if (await failAndTakeOver(code)) return
@@ -209,7 +213,7 @@ export async function streamAgentReply(event: H3Event, actor: Actor, options: { 
         }
         const feedbackResults = await prepared?.feedbackResults().catch(() => []) ?? []
         try {
-          await handoff(runtime, id, actor.orgId, run.id, 'ai_error', true, undefined, feedbackResults, getRequestURL(event).origin)
+          await handoff(runtime, id, actor.orgId, run.id, pauseCode ? 'ai_paused' : 'ai_error', true, undefined, feedbackResults, getRequestURL(event).origin, undefined, pauseCode ?? undefined)
         } catch {
           if (await failAndTakeOver('support_unavailable')) return
           await send('handoff_unavailable', { runId: run.id })
@@ -220,8 +224,9 @@ export async function streamAgentReply(event: H3Event, actor: Actor, options: { 
         const noticePart = current.content?.parts.find(part => part.type === 'system_event' && ['handoff', 'takeover'].includes(part.kind))
         const notice = noticePart?.type === 'system_event' ? noticePart : undefined
         const reason = notice?.reason ?? 'ai_error'
+        // Customers are told only that the AI is unavailable, never why (e.g. the workspace's quota).
         if (current && current.status !== 'ai_handling') {
-          await send(current.status === 'closed' ? 'closed' : 'handoff', { runId: run.id, noticeItemId: notice?.kind === 'handoff' ? current.notice_id ?? undefined : undefined, lastSeq: Number(current.last_seq), handling: handling(current.status), ...(reason === 'ai_error' ? { reason } : notice?.kind === 'handoff' ? { handoffNotice: handoffNotice(reason, notice.rule?.id), customerNotice: notice.customerNotice } : {}) })
+          await send(current.status === 'closed' ? 'closed' : 'handoff', { runId: run.id, noticeItemId: notice?.kind === 'handoff' ? current.notice_id ?? undefined : undefined, lastSeq: Number(current.last_seq), handling: handling(current.status), ...(isSystemHandoffReason(reason) ? { reason: 'ai_error' } : notice?.kind === 'handoff' ? { handoffNotice: handoffNotice(reason, notice.rule?.id), customerNotice: notice.customerNotice } : {}) })
         }
         if (current?.status === 'ai_handling') await send('handoff_unavailable', { runId: run.id })
         await requestSchedule(event)

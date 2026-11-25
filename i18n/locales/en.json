@@ -424,7 +424,8 @@
       "notYou": "Not you?",
       "signOut": "Sign out",
       "sentToEmail": "This invitation was sent to {email}.",
-      "switchAccount": "Switch account"
+      "switchAccount": "Switch account",
+      "acceptFailed": "Couldn't join right now. Try again in a moment."
     },
     "sso": {
       "pageTitle": "Sign-in unavailable",
@@ -630,7 +631,20 @@
       "guideMatchedByPost": ". A first-time email creates an end-user account (no extra login screen); changing a user's email creates a new account and does not migrate history."
     },
     "accessDenied": "You do not have access to this page",
-    "requestAccess": "Ask a workspace owner or administrator to update your permissions."
+    "requestAccess": "Ask a workspace owner or administrator to update your permissions.",
+    "notices": {
+      "dismiss": "Dismiss"
+    },
+    "suspended": {
+      "title": "Your access is suspended",
+      "body": "An owner or manager of this workspace has suspended your access. Ask them to activate you again.",
+      "goMembers": "Go to Members"
+    },
+    "apiErrors": {
+      "seat_limit_reached": "No free seats left in this workspace. Free up a seat or add seats, then try again.",
+      "feature_not_in_plan": "This feature isn't included in your current plan.",
+      "member_suspended": "Your seat in this workspace is suspended."
+    }
   },
   "settings": {
     "loading": "Loading…",
@@ -735,6 +749,11 @@
       "invitationsCreated": "{count} invitations created",
       "inviteToastEmailOn": "If the email doesn't arrive, copy the link from the list to share it manually.",
       "inviteToastEmailOff": "No email was sent — copy the link from the list to share it manually.",
+      "inviteErrors": {
+        "inviteFailed": "Couldn’t invite {email}",
+        "alreadyMember": "{email} is already a member",
+        "alreadyInvited": "{email} already has a pending invitation"
+      },
       "roles": {
         "contributor": {
           "label": "Contributor",
@@ -748,7 +767,13 @@
           "label": "Owner",
           "desc": "Full access. Can manage members, settings, and ownership."
         }
-      }
+      },
+      "suspended": "Suspended",
+      "suspendedCount": "{count} suspended",
+      "activate": "Activate",
+      "activated": "Member activated",
+      "suspend": "Suspend",
+      "suspendedToast": "Member suspended"
     },
     "widget": {
       "title": "Widget",
@@ -1186,6 +1211,7 @@
       "dissatisfied": "Customer still needs help",
       "support_rule": "Support rule",
       "ai_error": "AI could not continue",
+      "ai_paused": "AI paused",
       "manual": "Staff action",
       "timeout": "Scheduled time reached",
       "customer_message": "New customer message"
@@ -1220,6 +1246,7 @@
       "sensitive_or_permission": "Handed to support for privacy or access assistance.",
       "dissatisfied": "Handed to support because the issue remains unresolved.",
       "ai_error": "Handed to support because the AI could not continue.",
+      "ai_paused": "AI paused",
       "support_rule": "Handed to support based on a configured rule.",
       "builtin-billing": "Handed to support for billing assistance.",
       "builtin-account-access": "Handed to support for account access assistance.",

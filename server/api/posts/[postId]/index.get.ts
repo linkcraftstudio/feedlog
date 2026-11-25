@@ -6,5 +6,5 @@ export default defineEventHandler(async (event): Promise<PostDetail> => {
   const slug = getRouterParam(event, 'postId')!
 
   setResponseHeader(event, 'Cache-Control', 'private, no-store')
-  return getFeedbackDetail({ db: useDB(), orgId }, slug, session?.user.id, getOrgMemberRole(session, orgId))
+  return getFeedbackDetail({ db: useDB(), orgId }, slug, session?.user.id, await getOrgMemberRole(session, orgId))
 })

@@ -116,7 +116,9 @@ async function save() {
       primaryColor: normalizeBrandHex(form.primaryColor),
       defaultTheme: portalThemeSchema.parse(form.defaultTheme),
     })
-    await authClient.organization.update({
+    // The client resolves with `error` instead of throwing. Treating a refusal as saved would reload the org
+    // and reset the form, losing the edits the user is still looking at.
+    const { error: refused } = await authClient.organization.update({
       organizationId: props.org.id,
       data: {
         // better-auth's update rejects a null logo (expects string); send ''
@@ -125,6 +127,11 @@ async function save() {
         metadata,
       },
     })
+    if (refused) {
+      // Coded refusals (e.g. an upgrade prompt) are already explained by the global handler.
+      if (!refused.code) error.value = t('settings.branding.saveFailed')
+      return
+    }
     emit('saved')
   } catch {
     error.value = t('settings.branding.saveFailed')

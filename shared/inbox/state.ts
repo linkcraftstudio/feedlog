@@ -9,7 +9,15 @@ export const handoffReason = z.enum([
   'dissatisfied',
   'support_rule',
 ])
-export type HandoffReason = z.infer<typeof handoffReason> | 'ai_error'
+// Reasons only the system assigns; the AI's transfer tool cannot choose them,
+// and the customer sees no handoff notice for them. `ai_paused`: the deployment
+// stopped the AI before it replied (its own code is in the event's `detail`).
+export const systemHandoffReasons = ['ai_error', 'ai_paused'] as const
+export type SystemHandoffReason = typeof systemHandoffReasons[number]
+export function isSystemHandoffReason(reason: string | undefined): reason is SystemHandoffReason {
+  return (systemHandoffReasons as readonly string[]).includes(reason ?? '')
+}
+export type HandoffReason = z.infer<typeof handoffReason> | SystemHandoffReason
 export const handoffRule = z.object({
   id: z.string().min(1),
   scenario: z.string().min(1),
@@ -21,12 +29,14 @@ export const systemEventPart = z
   .object({
     type: z.literal('system_event'),
     kind: z.enum(['handoff', 'takeover_requested', 'takeover', 'reopened', 'customer_resumed', 'priority_changed', 'snoozed', 'resumed', 'closed']),
-    reason: z.enum([...handoffReason.options, 'ai_error', 'manual', 'timeout', 'customer_message']),
+    reason: z.enum([...handoffReason.options, ...systemHandoffReasons, 'manual', 'timeout', 'customer_message']),
     fromStatus: inboxStatus,
     toStatus: inboxStatus,
     runId: z.uuid().optional(),
     rule: handoffRule.optional(),
     customerNotice: handoffCustomerNotice.optional(),
+    // Deployment-defined code explaining an `ai_paused` handoff to staff.
+    detail: z.string().regex(/^[a-z][a-z0-9_]{0,63}$/).optional(),
     dueAt: z.iso.datetime().optional(),
     fromPriority: z.enum(['normal', 'high']).optional(),
     toPriority: z.enum(['normal', 'high']).optional(),

@@ -65,10 +65,11 @@ export async function resolvePostThreadRecipients(orgId: string, postId: string,
       -- claim the content onto a real account the mail starts flowing.
       AND u.is_anonymous IS NOT TRUE
       ${excludeVoters}
+      -- Suspended members get no notification email at all, subscriber mail included.
       AND NOT EXISTS (
         SELECT 1 FROM member m
         WHERE m.user_id = ps.user_id AND m.organization_id = ${orgId}
-          AND m.role IN ('owner', 'manager')
+          AND (m.role IN ('owner', 'manager') OR m.suspended_at IS NOT NULL)
       )
   `) as unknown as RecipientRow[]
 }

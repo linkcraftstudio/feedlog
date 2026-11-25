@@ -36,6 +36,7 @@ export async function executeMcpOperation(event: H3Event, identity: McpIdentity,
       if (!organization) throw contentError(403, 'Organization access is not authorized')
       const [membership] = await tx.select().from(member).where(and(eq(member.id, organization.memberId), eq(member.userId, identity.userId), eq(member.organizationId, orgId!))).for('share')
       if (!membership || !['owner', 'manager', 'contributor'].includes(membership.role)) throw contentError(403, 'Organization membership is required')
+      if (membership.suspendedAt) throw contentError(403, 'Your seat in this organization is suspended')
       enteredOrganization = true
       await tx.update(mcpConsentOrganization).set({ lastUsedAt: sql`greatest(coalesce(${mcpConsentOrganization.lastUsedAt}, '-infinity'::timestamptz), clock_timestamp())` })
         .where(and(eq(mcpConsentOrganization.consentId, identity.consentId), eq(mcpConsentOrganization.organizationId, orgId!)))

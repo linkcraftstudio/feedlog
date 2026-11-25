@@ -33,7 +33,7 @@ export async function contentTransaction<T>(event: H3Event, orgId: string, userI
   const afterCommit: ContentContext['afterCommit'] = []
   const result = await db.transaction(async tx => {
     const [membership] = await tx.select().from(member).where(and(eq(member.userId, userId), eq(member.organizationId, orgId))).for('share')
-    return operation({ db: tx, orgId, userId, role: membership?.role ?? null, origin: getRequestURL(event).origin, event, afterCommit })
+    return operation({ db: tx, orgId, userId, role: membership && !membership.suspendedAt ? membership.role : null, origin: getRequestURL(event).origin, event, afterCommit })
   })
   runAfterCommit({ event, afterCommit })
   return result

@@ -8,6 +8,7 @@ export default defineEventHandler(async (event) => {
   // Answers exactly as better-auth does when signed out, so the client can't
   // tell the two apart.
   if (await guardSsoAuthRequest(event, request)) return null
+  await guardSuspendedAuthRequest(event)
   if (event.path.startsWith('/api/auth/oauth2/') || event.path.split('?')[0] === '/api/auth/jwks') {
     return getMcpAuth(requireMcpOrigin(event)).handler(request)
   }

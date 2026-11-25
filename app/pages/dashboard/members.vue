@@ -12,7 +12,8 @@ const ctx = useOrgContext()
 const { data: session } = useAuthSession()
 const orgId = computed(() => ctx.value.orgId)
 const myUserId = computed(() => session.value?.user?.id)
-const canManage = computed(() => ctx.value.role === 'owner' || ctx.value.role === 'manager')
+// A suspended member keeps read access to this page but manages nothing.
+const canManage = computed(() => !ctx.value.suspended && (ctx.value.role === 'owner' || ctx.value.role === 'manager'))
 const canPromoteToOwner = computed(() => ctx.value.role === 'owner')
 const { t } = useI18n()
 
@@ -23,6 +24,7 @@ interface MemberView {
   userId: string
   role: Role
   createdAt?: string
+  suspendedAt?: string | null
   user: { name: string; email: string; image: string | null }
 }
 interface InvitationView {
@@ -38,7 +40,9 @@ const members = ref<MemberView[]>([])
 const invitations = ref<InvitationView[]>([])
 const loading = ref(true)
 
-async function refresh() {
+const nuxtApp = useNuxtApp()
+// `changed`: called after this page changed membership, as opposed to the first load.
+async function refresh(changed = true) {
   loading.value = true
   try {
     const [memRes, invRes] = await Promise.all([
@@ -51,14 +55,16 @@ async function refresh() {
   } finally {
     loading.value = false
   }
+  if (changed) void nuxtApp.callHook('feedlog:members:changed')
 }
 // Defer to onMounted: authClient.organization.* hits /api/... with a
 // relative URL via better-fetch, which Node's fetch can't parse during
 // SSR. Loading is fine as a post-mount fetch — the table renders in
 // `loading` state briefly then populates.
-onMounted(() => { void refresh() })
+onMounted(() => { void refresh(false) })
 
 const ownerCount = computed(() => members.value.filter(m => m.role === 'owner').length)
+const suspendedCount = computed(() => members.value.filter(m => m.suspendedAt).length)
 
 const roleOptions = computed<{ key: Role; label: string; icon: string; desc: string }[]>(() => [
   { key: 'contributor', label: t('settings.members.roles.contributor.label'), icon: 'lucide:user', desc: t('settings.members.roles.contributor.desc') },
@@ -75,6 +81,38 @@ const showInvite = ref(false)
 const inviteEmails = ref('')
 const inviteRole = ref<Role>('contributor')
 const inviting = ref(false)
+const INVITE_ERRORS_SHOWN_BY_HOOK = new Set(['seat_limit_reached', 'feature_not_in_plan', 'member_suspended', 'PERMISSION_DENIED', 'LOCAL_AUTH_REQUIRED'])
+
+// Buying a seat leaves the page and returns to /dashboard/members?invite=1;
+// the unsent invitation survives that trip in sessionStorage.
+const INVITE_DRAFT_KEY = 'feedlog.members.inviteDraft'
+function saveInviteDraft() {
+  try { sessionStorage.setItem(INVITE_DRAFT_KEY, JSON.stringify({ orgId: orgId.value, emails: inviteEmails.value, role: inviteRole.value })) }
+  catch { /* The draft is a convenience; the dialog still opens empty. */ }
+}
+function clearInviteDraft() {
+  try { sessionStorage.removeItem(INVITE_DRAFT_KEY) }
+  catch { /* Nothing stored. */ }
+}
+function restoreInviteDraft() {
+  try {
+    const draft = JSON.parse(sessionStorage.getItem(INVITE_DRAFT_KEY) ?? 'null') as { orgId?: string; emails?: string; role?: Role } | null
+    if (draft?.orgId !== orgId.value) return
+    inviteEmails.value = draft.emails ?? ''
+    if (draft.role && availableRoles.value.some(r => r.key === draft.role)) inviteRole.value = draft.role
+  }
+  catch { /* Unreadable draft: start empty. */ }
+}
+const route = useRoute()
+const router = useRouter()
+onMounted(() => {
+  if (route.query.invite !== '1') return
+  const { invite: _invite, ...query } = route.query
+  void router.replace({ query })
+  if (!canManage.value) return
+  restoreInviteDraft()
+  showInvite.value = true
+})
 
 // Whether an outbound email provider (Resend) is configured. When false, the
 // invite is still created but no email is sent — admin must copy the link
@@ -91,13 +129,30 @@ async function sendInvite() {
   if (emails.length === 0) return
   inviting.value = true
   try {
-    for (const email of emails) {
-      await authClient.organization.inviteMember({
+    for (const [index, email] of emails.entries()) {
+      const { error } = await authClient.organization.inviteMember({
         organizationId: orgId.value,
         email,
         role: inviteRole.value,
       })
+      // The auth client reports refusals instead of throwing. Its error hook
+      // already shows coded refusals (e.g. no free seat) and 403s; anything else
+      // is shown here. Keep only the addresses not yet invited, so a retry does
+      // not repeat the ones that went through.
+      if (error) {
+        if (!INVITE_ERRORS_SHOWN_BY_HOOK.has(error.code ?? '') && error.status !== 403) {
+          const key = error.code === 'USER_IS_ALREADY_A_MEMBER_OF_THIS_ORGANIZATION' ? 'alreadyMember'
+            : error.code === 'USER_IS_ALREADY_INVITED_TO_THIS_ORGANIZATION' ? 'alreadyInvited'
+              : 'inviteFailed'
+          toast.error(t(`settings.members.inviteErrors.${key}`, { email }), { description: key === 'inviteFailed' ? error.message : undefined })
+        }
+        inviteEmails.value = emails.slice(index).join('\n')
+        if (error.code === 'seat_limit_reached') saveInviteDraft()
+        await refresh()
+        return
+      }
     }
+    clearInviteDraft()
     showInvite.value = false
     inviteEmails.value = ''
     inviteRole.value = 'contributor'
@@ -137,6 +192,27 @@ async function removeMember(member: MemberView) {
   await refresh()
 }
 
+const activeOwnerCount = computed(() => members.value.filter(m => m.role === 'owner' && !m.suspendedAt).length)
+// Mirrors the server rules so the menu never offers a refused suspension.
+const canSuspend = (member: MemberView) => member.role !== 'owner' || (canPromoteToOwner.value && activeOwnerCount.value > 1)
+
+const activating = ref<string | null>(null)
+async function setSuspended(member: MemberView, suspended: boolean) {
+  activating.value = member.id
+  try {
+    await useApiFetch(`/api/admin/members/${member.id}/${suspended ? 'suspend' : 'activate'}`, { method: 'POST' })
+    toast.success(t(suspended ? 'settings.members.suspendedToast' : 'settings.members.activated'))
+    await refresh()
+  }
+  catch {
+    // useApiFetch has shown the refusal (seat limit, permission).
+  }
+  finally {
+    activating.value = null
+  }
+}
+const activateMember = (member: MemberView) => setSuspended(member, false)
+
 function copyInviteLink(invitationId: string) {
   const url = `${window.location.origin}/invite?id=${invitationId}`
   navigator.clipboard?.writeText(url)
@@ -175,6 +251,8 @@ function formatExpiresIn(iso: string | null): string {
 
     <div class="flex-1 overflow-y-auto">
       <div class="dashboard-panel-container dashboard-panel-stack">
+        <!-- Deployment-provided line such as seat usage; empty unless overridden. -->
+        <MembersHeaderInfo />
         <template v-if="loading">
           <p class="text-sm text-muted-foreground">{{ $t('settings.loading') }}</p>
         </template>
@@ -223,18 +301,31 @@ function formatExpiresIn(iso: string | null): string {
           <section class="dashboard-panel overflow-hidden">
             <div class="dashboard-panel-header border-b border-border flex items-center justify-between">
               <h3 class="font-heading font-bold text-sm">{{ $t('settings.members.membersSection') }}</h3>
-              <span class="text-[11px] text-muted-foreground">{{ $t('settings.members.total', { count: members.length }) }}</span>
+              <span class="text-[11px] text-muted-foreground">{{ $t('settings.members.total', { count: members.length }) }}<template v-if="suspendedCount"> · {{ $t('settings.members.suspendedCount', { count: suspendedCount }) }}</template></span>
             </div>
             <ul class="divide-y divide-border">
               <li v-for="m in members" :key="m.id" class="dashboard-panel-row flex items-center gap-3">
-                <UserAvatar :author="{ name: m.user.name, image: m.user.image }" :size="9" />
-                <div class="flex-1 min-w-0">
+                <!-- UserAvatar drops fallthrough classes, so the suspended look goes on a wrapper. -->
+                <span class="inline-flex shrink-0" :class="m.suspendedAt && 'opacity-50 grayscale'">
+                  <UserAvatar :author="{ name: m.user.name, image: m.user.image }" :size="9" />
+                </span>
+                <div class="flex-1 min-w-0" :class="m.suspendedAt && 'opacity-60'">
                   <div class="flex items-center gap-2">
-                    <p class="text-sm font-bold truncate">{{ m.user.name }}</p>
+                    <p class="text-sm font-bold truncate" :class="m.suspendedAt && 'text-muted-foreground'">{{ m.user.name }}</p>
                     <span v-if="m.userId === myUserId" class="text-[10px] font-bold uppercase tracking-wider bg-muted text-muted-foreground px-1.5 py-0.5 rounded">{{ $t('settings.members.you') }}</span>
+                    <span v-if="m.suspendedAt" class="text-[10px] font-bold uppercase tracking-wider border border-border text-muted-foreground px-1.5 py-0.5 rounded">{{ $t('settings.members.suspended') }}</span>
                   </div>
                   <p class="text-[11px] text-muted-foreground truncate">{{ m.user.email }}</p>
                 </div>
+
+                <button
+                  v-if="m.suspendedAt && canManage"
+                  class="h-8 px-3 rounded-md border border-border bg-background hover:bg-secondary transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  :disabled="activating === m.id"
+                  @click="activateMember(m)"
+                >
+                  {{ $t('settings.members.activate') }}
+                </button>
 
                 <!-- Role: inline Select (read-only label for self / when can't manage) -->
                 <Select
@@ -274,6 +365,16 @@ function formatExpiresIn(iso: string | null): string {
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" class="w-[180px]">
+                    <!-- Frees a seat without removing the member -->
+                    <DropdownMenuItem v-if="!m.suspendedAt" :disabled="activating === m.id || !canSuspend(m)" @click="setSuspended(m, true)">
+                      <Icon name="lucide:user-minus" size="13" class="mr-2" />
+                      {{ $t('settings.members.suspend') }}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem v-else :disabled="activating === m.id" @click="activateMember(m)">
+                      <Icon name="lucide:user-check" size="13" class="mr-2" />
+                      {{ $t('settings.members.activate') }}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem
                       class="text-red-600"
                       :disabled="m.role === 'owner' && ownerCount <= 1"

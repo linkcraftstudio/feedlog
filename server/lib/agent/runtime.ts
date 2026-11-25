@@ -7,7 +7,7 @@ import { createError, type H3Event } from 'h3'
 import type { Content, PageContext } from '../../../shared/agent/content'
 import { stripMarkdown } from '../../../shared/utils/markdown'
 import { CONVERSATION_RETENTION_DEFAULT_DAYS } from '../../../shared/constants/conversation'
-import { HANDOFF_NOTICES, handoffNotice } from '../../../shared/inbox/state'
+import { HANDOFF_NOTICES, handoffNotice, isSystemHandoffReason } from '../../../shared/inbox/state'
 
 function initialize(connectionString: string, worker = false) {
   const options = { connectionString, connectionTimeoutMillis: 10000, statement_timeout: 20000 }
@@ -98,7 +98,7 @@ export async function appendItem(client: PoolClient, input: { id: string; conver
 export function publicItem(item: Record<string, unknown>) {
   if (item.author_type === 'system') {
     const part = (item.content as Content).parts.find(part => part.type === 'system_event')
-    if (!part || part.type !== 'system_event' || part.kind !== 'handoff' || part.reason === 'ai_error') return null
+    if (!part || part.type !== 'system_event' || part.kind !== 'handoff' || isSystemHandoffReason(part.reason)) return null
     const noticeKind = handoffNotice(part.reason, part.rule?.id)
     const text = part.customerNotice ?? HANDOFF_NOTICES[noticeKind]
     return { id: item.id, seq: Number(item.seq), authorType: 'system' as const, notice: 'handoff' as const, handoffNotice: noticeKind, ...(part.customerNotice ? { customerNotice: part.customerNotice } : {}), content: { parts: [{ type: 'text' as const, text }] }, context: null, agentRunId: null, createdAt: item.created_at }

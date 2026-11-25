@@ -15,7 +15,7 @@ to send a pull request.
 
 ### Prerequisites
 
-- **Node.js 22+**
+- **Node.js 24+**
 - **pnpm 10+** (managed via `packageManager` field in `package.json` — enable with `corepack enable`)
 - **PostgreSQL 17+** with the `vector` extension. For local dev, the easiest path is the `pgvector/pgvector` Docker image:
 

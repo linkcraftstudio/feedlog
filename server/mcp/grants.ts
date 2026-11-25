@@ -1,4 +1,4 @@
-import { and, eq, inArray, like, sql } from 'drizzle-orm'
+import { and, eq, inArray, isNull, like, sql } from 'drizzle-orm'
 import { createError } from 'h3'
 import { db } from '../db'
 import { mcpAuditLog, mcpConsentOrganization, member, oauthAccessToken, oauthClient, oauthConsent, oauthRefreshToken, organization, user } from '../db/schemas'
@@ -20,7 +20,7 @@ export async function eligibleOrganizations(userId: string, database: McpDatabas
   const query = database.select({ id: organization.id, name: organization.name, slug: organization.slug, role: member.role, memberId: member.id })
     .from(member).innerJoin(organization, eq(organization.id, member.organizationId))
     .innerJoin(user, eq(user.id, member.userId))
-    .where(and(eq(member.userId, userId), inArray(member.role, MCP_STAFF_ROLES), sql`${user.isAnonymous} IS NOT TRUE`, sql`${user.banned} IS NOT TRUE`))
+    .where(and(eq(member.userId, userId), inArray(member.role, MCP_STAFF_ROLES), isNull(member.suspendedAt), sql`${user.isAnonymous} IS NOT TRUE`, sql`${user.banned} IS NOT TRUE`))
     .orderBy(organization.name, organization.id)
   return lock ? query.for('share', { of: member }) : query
 }

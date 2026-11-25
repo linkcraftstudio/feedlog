@@ -10,6 +10,12 @@ changes; patch versions (`0.x.y`) will not.
 
 ## [Unreleased]
 
+### Changed
+
+- Node.js 24 is now required, and the Docker image is based on `node:24-slim`.
+- Upgrade to Nuxt 4.5 (Vite 8 with Rolldown). The Docker build needs about half
+  the time and fits in 3 GB of memory.
+
 ## [0.1.0] - 2026-04-27
 
 Initial public release.

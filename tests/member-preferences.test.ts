@@ -46,7 +46,8 @@ async function fixture() {
       id text PRIMARY KEY,
       user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
       organization_id text NOT NULL REFERENCES organization(id) ON DELETE CASCADE,
-      role text NOT NULL
+      role text NOT NULL,
+      suspended_at timestamp
     );
     INSERT INTO "user" VALUES
       ('a', 'Alex', 'a@example.com'), ('b', 'Blair', 'b@example.com'),
@@ -66,6 +67,10 @@ test('database preferences isolate members, merge keys, follow roles, and cascad
   try {
     const recipientIds = async (org = 'one') => (await findStaffFeedbackRecipients(db, org, 'actor')).map(row => row.userId).sort()
     assert.deepEqual(await recipientIds(), ['a', 'b'])
+    // Suspended members receive no notification email.
+    await client.exec("UPDATE member SET suspended_at = now() WHERE id = 'one-b'")
+    assert.deepEqual(await recipientIds(), ['a'])
+    await client.exec("UPDATE member SET suspended_at = NULL WHERE id = 'one-b'")
     const original = await findOwnMemberPreference(db, 'one', 'a')
     assert.equal(original?.preference, null)
     assert.equal(original?.organization.name, 'First workspace')

@@ -424,7 +424,8 @@
       "notYou": "不是你?",
       "signOut": "退出登录",
       "sentToEmail": "该邀请发送至 {email}。",
-      "switchAccount": "切换账号"
+      "switchAccount": "切换账号",
+      "acceptFailed": "暂时无法加入，请稍后再试。"
     },
     "sso": {
       "pageTitle": "无法登录",
@@ -630,7 +631,20 @@
       "guideMatchedByPost": "匹配。首次使用的邮箱会创建终端用户账户(无需额外登录界面);更改用户邮箱会创建新账户,且不会迁移历史记录。"
     },
     "accessDenied": "你没有访问此页面的权限",
-    "requestAccess": "请联系工作区所有者或管理员调整你的权限。"
+    "requestAccess": "请联系工作区所有者或管理员调整你的权限。",
+    "notices": {
+      "dismiss": "关闭"
+    },
+    "suspended": {
+      "title": "你的访问已被暂停",
+      "body": "这个工作区的所有者或管理员暂停了你的访问。请联系他们重新激活。",
+      "goMembers": "前往成员"
+    },
+    "apiErrors": {
+      "seat_limit_reached": "工作区已没有空余席位。请先释放席位或增加席位后再试。",
+      "feature_not_in_plan": "当前套餐不包含此功能。",
+      "member_suspended": "你在此工作区的席位已暂停。"
+    }
   },
   "settings": {
     "loading": "加载中……",
@@ -735,6 +749,11 @@
       "invitationsCreated": "已创建 {count} 个邀请",
       "inviteToastEmailOn": "如果没收到邮件,可从列表中复制链接手动分享。",
       "inviteToastEmailOff": "未发送邮件——请从列表中复制链接手动分享。",
+      "inviteErrors": {
+        "inviteFailed": "无法邀请 {email}",
+        "alreadyMember": "{email} 已经是成员",
+        "alreadyInvited": "{email} 已有待接受的邀请"
+      },
       "roles": {
         "contributor": {
           "label": "贡献者",
@@ -748,7 +767,13 @@
           "label": "所有者",
           "desc": "完全访问权限。可管理成员、设置和所有权。"
         }
-      }
+      },
+      "suspended": "已暂停",
+      "suspendedCount": "{count} 人已暂停",
+      "activate": "恢复",
+      "activated": "成员已恢复",
+      "suspend": "暂停",
+      "suspendedToast": "成员已暂停"
     },
     "widget": {
       "title": "反馈组件",
@@ -1186,6 +1211,7 @@
       "dissatisfied": "用户问题尚未解决",
       "support_rule": "命中支持规则",
       "ai_error": "AI 无法继续处理",
+      "ai_paused": "AI 已暂停",
       "manual": "客服操作",
       "timeout": "已到设定时间",
       "customer_message": "用户新消息"
@@ -1220,6 +1246,7 @@
       "sensitive_or_permission": "涉及隐私或权限，已转交人工处理。",
       "dissatisfied": "用户的问题尚未解决，已转交人工处理。",
       "ai_error": "AI 暂时无法继续，已转交人工处理。",
+      "ai_paused": "AI 已暂停",
       "support_rule": "根据支持规则，已转交人工处理。",
       "builtin-billing": "需要处理账单问题，已转交人工。",
       "builtin-account-access": "需要协助处理账户访问问题，已转交人工。",

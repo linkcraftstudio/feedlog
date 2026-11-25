@@ -9,9 +9,13 @@ export interface ClientOrgContext {
   orgSlug: string
   // Current user's role inside this org, if any (driven by session.orgList).
   role: 'owner' | 'manager' | 'contributor' | null
+  // Suspended: still a member, but limited to a few pages.
+  suspended: boolean
+  // 'manual' when an owner or manager suspended the member; otherwise a deployment-defined value.
+  suspendedReason: string | null
 }
 
-interface OrgListRow { orgId: string, slug: string, role: string }
+interface OrgListRow { orgId: string, slug: string, role: string, suspended?: boolean, suspendedReason?: string | null }
 
 function parseTenantSlug(host: string, rootDomain: string, authDomainHost: string): string | null {
   const bare = host.toLowerCase().split(':')[0] ?? ''
@@ -38,7 +42,7 @@ export function useOrgContext(): ComputedRef<ClientOrgContext> {
     // Open-source: rootDomain unset → single-tenant.
     if (!rootDomain) {
       const match = list.find(o => o.orgId === DEFAULT_ORG_ID)
-      return { orgId: DEFAULT_ORG_ID, orgSlug: DEFAULT_ORG_SLUG, role: (match?.role as ClientOrgContext['role']) ?? null }
+      return { orgId: DEFAULT_ORG_ID, orgSlug: DEFAULT_ORG_SLUG, role: (match?.role as ClientOrgContext['role']) ?? null, suspended: match?.suspended === true, suspendedReason: match?.suspendedReason ?? null }
     }
 
     const host = import.meta.server
@@ -48,13 +52,15 @@ export function useOrgContext(): ComputedRef<ClientOrgContext> {
     if (!slug) {
       // Auth / root host — no tenant binding. Surface the default-org so
       // unrelated UI bits don't crash, but role is null.
-      return { orgId: DEFAULT_ORG_ID, orgSlug: DEFAULT_ORG_SLUG, role: null }
+      return { orgId: DEFAULT_ORG_ID, orgSlug: DEFAULT_ORG_SLUG, role: null, suspended: false, suspendedReason: null }
     }
     const match = list.find(o => o.slug === slug)
     return {
       orgId: match?.orgId ?? slug,
       orgSlug: match?.slug ?? slug,
       role: (match?.role as ClientOrgContext['role']) ?? null,
+      suspended: match?.suspended === true,
+      suspendedReason: match?.suspendedReason ?? null,
     }
   })
 }

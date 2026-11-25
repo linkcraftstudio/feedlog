@@ -155,6 +155,13 @@
       "when": 1794557366785,
       "tag": "0021_ai_training",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1795507007623,
+      "tag": "0022_member_suspension",
+      "breakpoints": true
     }
   ]
 }

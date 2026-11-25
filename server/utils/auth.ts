@@ -1,4 +1,5 @@
 import type { H3Event } from 'h3'
+import { assertMemberNotSuspended, isSuspendedMember } from './member-suspension'
 
 // `auth` is the better-auth instance, auto-imported from
 // server/utils/better-auth.ts by Nitro. No explicit import needed.
@@ -90,6 +91,7 @@ export async function requireOrgPermission(
       body: { organizationId?: string; permissions: OrgPermissionStatement }
     }) => Promise<{ success: boolean; error: string | null }>
   }
+  await assertMemberNotSuspended(event, session.user.id, orgId)
   const result = await orgApi.hasPermission({
     headers: event.headers,
     body: { organizationId: orgId, permissions },
@@ -129,6 +131,7 @@ export async function requireOrgMember(event: H3Event) {
   if (!found) {
     throw createError({ statusCode: 403, message: 'Not a member of this organization' })
   }
+  await assertMemberNotSuspended(event, session.user.id, orgId)
   return { session, orgId, role: found.role }
 }
 
@@ -136,14 +139,17 @@ export async function requireOrgMember(event: H3Event) {
 // everyone but enrich the payload for staff — a throwing gate can't express
 // "same route, more fields". Guests get null; an SSO session is read at its real
 // member role, since callers only ask about the org this request resolved to.
-export function getOrgMemberRole(
+export async function getOrgMemberRole(
   session: Awaited<ReturnType<typeof getUserSession>>,
   orgId: string | undefined,
-): string | null {
+): Promise<string | null> {
   if (!session || !orgId) return null
   if ((session.user as { isAnonymous?: boolean | null }).isAnonymous) return null
   const orgList = (session as { orgList?: { orgId: string; role: string }[] }).orgList
-  return orgList?.find(o => o.orgId === orgId)?.role ?? null
+  const role = orgList?.find(o => o.orgId === orgId)?.role ?? null
+  // A suspended member is served as a non-member.
+  if (role && await isSuspendedMember(session.user.id, orgId)) return null
+  return role
 }
 
 // Gate a dashboard surface on "current user is owner of this org". Used for

@@ -12,6 +12,7 @@ node_modules
 .data
 *.md
 docs
+tests
 
 # Local verification artifacts and credentials
 tmp

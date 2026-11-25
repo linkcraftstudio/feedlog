@@ -1,4 +1,4 @@
-import { and, eq, inArray, ne, sql } from 'drizzle-orm'
+import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core'
 import { member, organization, user } from '../db/schemas/auth'
 import { memberPreference } from '../db/schemas/member-preferences'
@@ -47,6 +47,7 @@ export async function findStaffFeedbackRecipients(db: PreferenceDB, orgId: strin
     .where(and(
       eq(member.organizationId, orgId),
       inArray(member.role, ['owner', 'manager']),
+      isNull(member.suspendedAt),
       ne(member.userId, actorId),
     ))
   return rows.filter(row => resolveMemberNotifications(row.preference?.notifications).staff_feedback_email_enabled)

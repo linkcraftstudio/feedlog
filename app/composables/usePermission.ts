@@ -13,7 +13,8 @@ export function usePermission(authorId: Ref<string | undefined> | ComputedRef<st
   const ctx = useOrgContext()
 
   const userId = computed(() => session.value?.user?.id)
-  const role = computed(() => ctx.value.role)
+  // A suspended member keeps a role but none of its capabilities.
+  const role = computed(() => ctx.value.suspended ? null : ctx.value.role)
   const isOrgOwner = computed(() => role.value === 'owner')
   const isOwner = computed(() => !!authorId.value && userId.value === authorId.value)
 

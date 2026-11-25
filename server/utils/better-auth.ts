@@ -115,6 +115,8 @@ async function loadOrgList(userId: string, confineToOrgId?: string | null) {
       name: orgTable.name,
       logo: orgTable.logo,
       role: member.role,
+      suspendedAt: member.suspendedAt,
+      suspendedReason: member.suspendedReason,
     })
     .from(member)
     .innerJoin(orgTable, eq(member.organizationId, orgTable.id))
@@ -123,7 +125,11 @@ async function loadOrgList(userId: string, confineToOrgId?: string | null) {
         ? and(eq(member.userId, userId), eq(member.organizationId, confineToOrgId))
         : eq(member.userId, userId),
     )
-  return rows
+  return rows.map(({ suspendedAt, suspendedReason, ...row }) => ({
+    ...row,
+    suspended: suspendedAt !== null,
+    suspendedReason: suspendedAt !== null ? suspendedReason : null,
+  }))
 }
 
 // Bootstrap hook: any email listed in SYSTEM_ADMIN_EMAILS is auto-enrolled
@@ -210,6 +216,18 @@ export function buildAuthConfig(overrides: AuthConfigOverrides = {}): BetterAuth
     creatorRole: 'owner' as const,
     invitationExpiresIn: 7 * 24 * 60 * 60,
     ...overrides.organizationExtras,
+    schema: {
+      ...overrides.organizationExtras?.schema,
+      member: {
+        ...overrides.organizationExtras?.schema?.member,
+        // Listed so listMembers returns it; only server code changes it.
+        additionalFields: {
+          ...overrides.organizationExtras?.schema?.member?.additionalFields,
+          suspendedAt: { type: 'date', required: false, input: false },
+          suspendedReason: { type: 'string', required: false, input: false },
+        },
+      },
+    },
     // After the spread so our best-effort wrapper wins over an override's own
     // sender (it already delegates to that override via rawSendInvite).
     sendInvitationEmail,
