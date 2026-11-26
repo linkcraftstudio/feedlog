@@ -3,10 +3,15 @@
 export function useLoginModal() {
   const isOpen = useState('login-modal', () => false)
   const reason = useState<string | null>('login-modal-reason', () => null)
+  const { dashboardLoginOnly } = useRuntimeConfig().public
+  const router = useRouter()
   return {
     isOpen,
     reason,
     open: (reasonKey?: string) => {
+      if (dashboardLoginOnly && !signsInInPlace(router.currentRoute.value.path)) {
+        return navigateTo('/dashboard/login')
+      }
       reason.value = reasonKey ?? null
       isOpen.value = true
     },
