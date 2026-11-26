@@ -53,6 +53,27 @@ test('article search preserves query order despite completion order and merges s
   }
 })
 
+test('full-text candidates beyond the returned count still reach rank fusion', async () => {
+  const saved = process.env.HELP_VECTOR_SEARCH; process.env.HELP_VECTOR_SEARCH = 'true'
+  const article = (id: string) => ({ article_id: id, title: id, description: null, slug: id, published: true, content: 'Export guide.' })
+  const lexicalIds = ['l1', 'l2', 'l3', 'target', 'l5', 'l6']
+  const vectorIds = ['v1', 'v2', 'target']
+  const pool = {
+    query: async (sql: string, params: unknown[]) => {
+      if (sql.startsWith('SELECT metadata')) return { rows: [{ metadata: null }] }
+      if (sql.startsWith('SELECT 1')) return { rows: [{}] }
+      if (sql.startsWith('WITH candidates')) return { rows: vectorIds.map(id => ({ articleId: id, shortId: '000001', slug: id, title: id, description: null, content: 'Export guide.', collectionId: 'c', collectionName: 'c', published: true, score: 0.9 })) }
+      // Honor the SQL LIMIT parameter, as the database does.
+      return { rows: lexicalIds.map(article).slice(0, Number(params[params.length - 1])) }
+    },
+  } as unknown as Pool
+  try {
+    const result = await searchHelpArticles(pool, 'test', { queries: ['export'] }, origin, async () => [[1, 0]])
+    assert.equal(result.articles.length, 3)
+    assert.ok(result.articles.some(a => a.article_id === 'target'), 'article ranked 4th by full-text and 3rd by vector is returned')
+  } finally { if (saved === undefined) delete process.env.HELP_VECTOR_SEARCH; else process.env.HELP_VECTOR_SEARCH = saved }
+})
+
 test('article search applies tenant and AI visibility filters before each top-three limit', async () => {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1 })
   const client = await pool.connect()

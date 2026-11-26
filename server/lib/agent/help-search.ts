@@ -10,6 +10,8 @@ import { stripMarkdown } from '../../../shared/utils/markdown'
 import { buildHelpExcerpt, buildHelpTsQuery, splitHelpQuery } from '../../utils/help-search'
 
 const RESULTS_PER_QUERY = 3
+// Full-text candidates passed into rank fusion; matches the vector retriever's limit.
+const CANDIDATES_PER_QUERY = 12
 
 export const helpArticleSearchInput = z.object({
   queries: z.array(z.string().trim().min(1).max(100).describe(
@@ -78,7 +80,7 @@ export async function searchHelpArticles(pool: Pick<Pool, 'query'>, orgId: strin
         WHERE a.org_id=$1 AND a.ai_enabled AND c.ai_enabled
           AND a.tsv @@ (${expression})
         ORDER BY ts_rank_cd(a.tsv,(${expression})) DESC,a.id
-        LIMIT $${limitIndex}`, [orgId, ...compiled.params, RESULTS_PER_QUERY])
+        LIMIT $${limitIndex}`, [orgId, ...compiled.params, CANDIDATES_PER_QUERY])
       if (!rows.length && !english?.length && !/[\u3400-\u9fff]/.test(query)) {
         // A bounded candidate fallback for Agent full-text lookup, not public
         // search. Require multiple distinct lexemes; the Agent must read and
@@ -98,7 +100,7 @@ export async function searchHelpArticles(pool: Pick<Pool, 'query'>, orgId: strin
           AND a.tsv @@ (SELECT string_agg(q::text,' | ')::tsquery FROM terms)
           AND (SELECT count(*) FROM terms)>=3 AND hits.matched>=2
         ORDER BY hits.matched DESC,hits.rank DESC,a.id
-        LIMIT $3`, [orgId, query, RESULTS_PER_QUERY])
+        LIMIT $3`, [orgId, query, CANDIDATES_PER_QUERY])
         return relaxed.rows
       }
       return rows
